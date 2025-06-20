@@ -4,306 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Gestion des Licences</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
     <style>
-        :root {
-            --primary-color: #3b82f6;
-            --primary-dark: #2563eb;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --error-color: #ef4444;
-            --gray-50: #f9fafb;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
-            --white: #ffffff;
-            --radius: 0.5rem;
-            --radius-md: 0.375rem;
-            --radius-lg: 0.75rem;
-            --transition: 0.2s ease;
-            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--gray-50);
-            color: var(--gray-900);
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
-
-        /* Header */
-        .page-header {
-            background: var(--white);
-            box-shadow: var(--shadow);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .navbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 0;
-            gap: 2rem;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-            color: var(--gray-900);
-        }
-
-        .logo-icon {
-            font-size: 1.5rem;
-        }
-
-        .logo h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-
-        .nav-menu {
-            display: flex;
-            list-style: none;
-            gap: 1rem;
-            flex: 1;
-            justify-content: center;
-        }
-
-        .nav-link {
-            padding: 0.5rem 1rem;
-            text-decoration: none;
-            color: var(--gray-600);
-            border-radius: var(--radius);
-            transition: var(--transition);
-            font-weight: 500;
-        }
-
-        .nav-link:hover {
-            background: var(--gray-100);
-            color: var(--gray-900);
-        }
-
-        .nav-link.active {
-            background: var(--primary-color);
-            color: var(--white);
-        }
-
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            background: var(--primary-color);
-            color: var(--white);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .user-details {
-            text-align: right;
-        }
-
-        .user-name {
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .user-role {
-            font-size: 0.75rem;
-            color: var(--gray-500);
-        }
-
-        /* Buttons */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: var(--radius);
-            font-weight: 500;
-            text-decoration: none;
-            cursor: pointer;
-            transition: var(--transition);
-            font-size: 0.875rem;
-        }
-
-        .btn-primary {
-            background: var(--primary-color);
-            color: var(--white);
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .btn-secondary {
-            background: var(--gray-100);
-            color: var(--gray-700);
-            border: 1px solid var(--gray-300);
-        }
-
-        .btn-secondary:hover {
-            background: var(--gray-200);
-        }
-
-        .btn-danger {
-            background: var(--error-color);
-            color: var(--white);
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-        }
-
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-        }
-
-        /* Cards */
-        .card {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .stat-card {
-            background: var(--white);
-            padding: 1.5rem;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
-            text-align: center;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .stat-card.success {
-            border-left-color: var(--success-color);
-        }
-
-        .stat-card.warning {
-            border-left-color: var(--warning-color);
-        }
-
-        .stat-card.error {
-            border-left-color: var(--error-color);
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--gray-900);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: var(--gray-600);
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        /* Filters */
-        .filter-btn {
-            padding: 0.5rem 1rem;
-            background: var(--gray-100);
-            border: 1px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--gray-700);
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-
-        .filter-btn:hover {
-            background: var(--gray-200);
-        }
-
-        .filter-btn.active {
-            background: var(--primary-color);
-            color: var(--white);
-            border-color: var(--primary-color);
-        }
-
-        /* Table */
-        .table-container {
-            overflow-x: auto;
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .table th,
-        .table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .table th {
-            background: var(--gray-50);
-            font-weight: 600;
-            color: var(--gray-700);
-        }
-
-        .table tr:hover {
-            background: var(--gray-50);
-        }
-
-        /* License Status */
+        /* Styles spécifiques pour la page licences */
         .license-status {
             padding: 0.25rem 0.75rem;
             border-radius: 9999px;
@@ -339,12 +43,52 @@
             animation: pulse 2s infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: var(--transition);
+            white-space: nowrap;
         }
 
-        /* Modal */
+        .filter-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        .license-usage-bar {
+            background: var(--gray-200);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .license-usage-fill {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .license-usage-fill.warning {
+            background: var(--warning-color);
+        }
+
+        .license-usage-fill.danger {
+            background: var(--error-color);
+        }
+
+        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -366,12 +110,12 @@
         .modal-content {
             background: var(--white);
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
+            box-shadow: var(--shadow-xl);
             max-width: 600px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
-            animation: slideUp 0.3s ease;
+            animation: slideInUp 0.3s ease;
         }
 
         .modal-header {
@@ -394,17 +138,31 @@
             cursor: pointer;
             color: var(--gray-400);
             padding: 0.25rem;
+            border-radius: var(--radius);
+            transition: var(--transition);
         }
 
         .close-btn:hover {
             color: var(--gray-600);
+            background: var(--gray-100);
         }
 
         .modal-body {
             padding: 1.5rem;
         }
 
-        /* Forms */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+
         .form-group {
             margin-bottom: 1rem;
         }
@@ -432,105 +190,17 @@
         .form-group textarea:focus {
             outline: none;
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+        .pricing-preview {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin: 1rem 0;
         }
 
-        .form-grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-        }
-
-        /* Utilities */
-        .text-center {
-            text-align: center;
-        }
-
-        .mb-2 {
-            margin-bottom: 2rem;
-        }
-
-        .mt-2 {
-            margin-top: 2rem;
-        }
-
-        .d-flex {
-            display: flex;
-        }
-
-        .justify-between {
-            justify-content: space-between;
-        }
-
-        .align-center {
-            align-items: center;
-        }
-
-        .gap-1 {
-            gap: 1rem;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .navbar {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .nav-menu {
-                order: 2;
-                width: 100%;
-                justify-content: space-around;
-            }
-
-            .form-grid,
-            .form-grid-3 {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        /* Notifications */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: var(--radius);
-            color: var(--white);
-            font-weight: 500;
-            z-index: 1100;
-            animation: slideInRight 0.3s ease;
-        }
-
-        .notification.success {
-            background: var(--success-color);
-        }
-
-        .notification.error {
-            background: var(--error-color);
-        }
-
-        /* User Management Styles */
         .user-card {
             background: var(--white);
             border: 1px solid var(--gray-200);
@@ -605,70 +275,136 @@
             border: 2px dashed var(--gray-300);
         }
 
-        .license-usage-bar {
-            background: var(--gray-200);
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 1rem 0;
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            color: var(--white);
+            font-weight: 500;
+            z-index: 1100;
+            animation: slideInDown 0.3s ease;
         }
 
-        .license-usage-fill {
-            height: 100%;
-            background: var(--primary-color);
-            transition: width 0.3s ease;
+        .notification.success {
+            background: var(--success-color);
         }
 
-        .license-usage-fill.warning {
-            background: var(--warning-color);
-        }
-
-        .license-usage-fill.danger {
+        .notification.error {
             background: var(--error-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-grid,
+            .form-grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .user-meta {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations keyframes */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
     </style>
 </head>
 <body>
-    <!-- Header de navigation -->
-    <header class="page-header">
-        <div class="container">
-            <nav class="navbar">
-                <a href="dashboard.html" class="logo">
-                    <div class="logo-icon">🚀</div>
-                    <h1>CRM Pro</h1>
+    <!-- Navigation avec CSS unifié -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Accueil
                 </a>
-                
-                <ul class="nav-menu">
-                    <li><a href="dashboard.html" class="nav-link">📊 Dashboard</a></li>
-                    <li><a href="companies.html" class="nav-link">🏢 Sociétés</a></li>
-                    <li><a href="forecast.html" class="nav-link">📈 Forecast</a></li>
-                    <li><a href="onboarding.html" class="nav-link">🎯 Onboarding</a></li>
-                    <li><a href="licenses.html" class="nav-link active">🔑 Licences</a></li>
-                </ul>
-                
-                <div class="user-menu">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar">AD</div>
-                        <div class="user-details">
-                            <div class="user-name" id="userName">Admin</div>
-                            <div class="user-role" id="userRole">Administrateur</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary btn-sm" onclick="logout()">
-                        Déconnexion
-                    </button>
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="forecast.html" class="nav-link">
+                    <span class="nav-icon">📈</span>
+                    Forecast
+                </a>
+                <a href="onboarding.html" class="nav-link">
+                    <span class="nav-icon">🎯</span>
+                    Onboarding
+                </a>
+                <a href="licenses.html" class="nav-link active">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
                 </div>
-            </nav>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
+                </button>
+            </div>
         </div>
-    </header>
+    </nav>
 
     <!-- Contenu principal -->
     <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
         <!-- En-tête de page -->
-        <div class="d-flex justify-between align-center mb-2">
+        <div class="d-flex justify-between align-center mb-2" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
                 <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
-                    🔑 Gestion des Licences
+                    📄 Gestion des Licences
                 </h1>
                 <p style="color: var(--gray-600);">
                     Gérez les licences, utilisateurs, renouvellements et revenus récurrents
@@ -680,7 +416,7 @@
         </div>
 
         <!-- Statistiques des licences -->
-        <div class="stats-grid mb-2">
+        <div class="stats-grid" style="margin-bottom: 2rem;">
             <div class="stat-card">
                 <div class="stat-number" id="totalLicenses">0</div>
                 <div class="stat-label">Licences Actives</div>
@@ -700,11 +436,11 @@
         </div>
 
         <!-- Filtres et recherche -->
-        <div class="card mb-2">
+        <div class="card" style="margin-bottom: 2rem;">
             <div class="card-body">
-                <div class="d-flex gap-1 align-center" style="flex-wrap: wrap;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <!-- Filtres par statut -->
-                    <div class="d-flex gap-1 align-center" style="gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
                         <button class="filter-btn active" data-filter="all" onclick="filterLicenses('all')">
                             Toutes (<span id="count-all">0</span>)
@@ -723,7 +459,7 @@
                     <!-- Barre de recherche -->
                     <div style="flex: 1; min-width: 200px;">
                         <input type="text" id="searchInput" placeholder="🔍 Rechercher une licence..." 
-                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"
+                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius);"
                                oninput="searchLicenses()">
                     </div>
                 </div>
@@ -754,8 +490,8 @@
                 </div>
                 
                 <!-- État vide -->
-                <div id="emptyState" class="text-center" style="display: none; padding: 3rem;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🔑</div>
+                <div id="emptyState" class="text-center" style="display: none; padding: 3rem; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
                     <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucune licence trouvée</h3>
                     <p style="color: var(--gray-500); margin-bottom: 2rem;">
                         Commencez par créer votre première licence
@@ -835,27 +571,25 @@
                     </div>
                     
                     <!-- Aperçu des coûts -->
-                    <div id="pricingPreview" class="card" style="background: var(--gray-50); margin-bottom: 1rem; display: none;">
-                        <div class="card-body">
-                            <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
-                            <div class="form-grid-3 text-center">
-                                <div>
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
-                                </div>
+                    <div id="pricingPreview" class="pricing-preview" style="display: none;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
+                        <div class="form-grid-3" style="text-align: center;">
+                            <div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="d-flex gap-1" style="justify-content: flex-end;">
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                         <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">
                             Annuler
                         </button>
@@ -896,8 +630,9 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
     <script>
-        // Données simulées
+        // Données simulées pour démo
         let licenses = [
             {
                 id: '1',
@@ -946,28 +681,10 @@
                 payment_method: 'stripe',
                 monthly_cost: 89.97,
                 users_count: 3
-            },
-            {
-                id: '4',
-                company_id: '4',
-                company_name: 'StartupX',
-                plan_id: '1',
-                plan_name: 'Starter',
-                plan_price: 29.99,
-                license_count: 2,
-                start_date: '2023-12-01',
-                end_date: '2024-12-01',
-                renewal_date: '2024-11-01',
-                status: 'expired',
-                payment_method: 'check',
-                monthly_cost: 59.98,
-                users_count: 1
             }
         ];
 
-        // Données des utilisateurs par licence
         let licenseUsers = [
-            // Utilisateurs pour TechCorp Solutions (licence 1)
             {
                 id: '1',
                 license_id: '1',
@@ -987,149 +704,6 @@
                 last_login: '2024-06-18T16:45:00Z',
                 role: 'User',
                 created_at: '2024-01-20T10:30:00Z'
-            },
-            {
-                id: '3',
-                license_id: '1',
-                name: 'Pierre Durand',
-                email: 'p.durand@techcorp.com',
-                status: 'active',
-                last_login: '2024-06-17T08:15:00Z',
-                role: 'User',
-                created_at: '2024-02-01T14:00:00Z'
-            },
-            {
-                id: '4',
-                license_id: '1',
-                name: 'Sophie Lefebvre',
-                email: 's.lefebvre@techcorp.com',
-                status: 'inactive',
-                last_login: '2024-05-15T12:20:00Z',
-                role: 'User',
-                created_at: '2024-03-10T11:15:00Z'
-            },
-            // Utilisateurs pour Innovation Ltd (licence 2)
-            {
-                id: '5',
-                license_id: '2',
-                name: 'Alex Johnson',
-                email: 'a.johnson@innovation.com',
-                status: 'active',
-                last_login: '2024-06-19T15:20:00Z',
-                role: 'Admin',
-                created_at: '2024-03-01T09:00:00Z'
-            },
-            {
-                id: '6',
-                license_id: '2',
-                name: 'Lisa Chen',
-                email: 'l.chen@innovation.com',
-                status: 'active',
-                last_login: '2024-06-19T11:30:00Z',
-                role: 'Manager',
-                created_at: '2024-03-05T10:00:00Z'
-            },
-            {
-                id: '7',
-                license_id: '2',
-                name: 'Robert Smith',
-                email: 'r.smith@innovation.com',
-                status: 'active',
-                last_login: '2024-06-18T13:45:00Z',
-                role: 'User',
-                created_at: '2024-03-10T15:30:00Z'
-            },
-            {
-                id: '8',
-                license_id: '2',
-                name: 'Emma Wilson',
-                email: 'e.wilson@innovation.com',
-                status: 'active',
-                last_login: '2024-06-19T09:15:00Z',
-                role: 'User',
-                created_at: '2024-03-15T14:20:00Z'
-            },
-            {
-                id: '9',
-                license_id: '2',
-                name: 'David Brown',
-                email: 'd.brown@innovation.com',
-                status: 'inactive',
-                last_login: '2024-06-10T16:00:00Z',
-                role: 'User',
-                created_at: '2024-04-01T12:00:00Z'
-            },
-            {
-                id: '10',
-                license_id: '2',
-                name: 'Sarah Davis',
-                email: 's.davis@innovation.com',
-                status: 'active',
-                last_login: '2024-06-19T14:10:00Z',
-                role: 'User',
-                created_at: '2024-04-15T09:45:00Z'
-            },
-            {
-                id: '11',
-                license_id: '2',
-                name: 'Michael Taylor',
-                email: 'm.taylor@innovation.com',
-                status: 'active',
-                last_login: '2024-06-18T17:30:00Z',
-                role: 'User',
-                created_at: '2024-05-01T11:30:00Z'
-            },
-            {
-                id: '12',
-                license_id: '2',
-                name: 'Jennifer Garcia',
-                email: 'j.garcia@innovation.com',
-                status: 'active',
-                last_login: '2024-06-19T10:20:00Z',
-                role: 'User',
-                created_at: '2024-05-15T13:15:00Z'
-            },
-            // Utilisateurs pour Digital Marketing Pro (licence 3)
-            {
-                id: '13',
-                license_id: '3',
-                name: 'Thomas Blanc',
-                email: 't.blanc@digitalpro.com',
-                status: 'active',
-                last_login: '2024-06-19T16:00:00Z',
-                role: 'Admin',
-                created_at: '2024-06-15T10:00:00Z'
-            },
-            {
-                id: '14',
-                license_id: '3',
-                name: 'Julie Moreau',
-                email: 'j.moreau@digitalpro.com',
-                status: 'active',
-                last_login: '2024-06-19T12:45:00Z',
-                role: 'Manager',
-                created_at: '2024-06-20T14:30:00Z'
-            },
-            {
-                id: '15',
-                license_id: '3',
-                name: 'Nicolas Petit',
-                email: 'n.petit@digitalpro.com',
-                status: 'active',
-                last_login: '2024-06-18T15:30:00Z',
-                role: 'User',
-                created_at: '2024-06-25T16:00:00Z'
-            },
-            // Utilisateur pour StartupX (licence 4 - expirée)
-            {
-                id: '16',
-                license_id: '4',
-                name: 'Kevin Startup',
-                email: 'k.startup@startupx.com',
-                status: 'inactive',
-                last_login: '2024-11-15T10:30:00Z',
-                role: 'Admin',
-                created_at: '2023-12-01T09:00:00Z'
             }
         ];
 
@@ -1153,11 +727,36 @@
         let editingLicense = null;
 
         // Initialisation
-        document.addEventListener('DOMContentLoaded', () => {
-            initializePage();
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading(true);
+            
+            try {
+                // Vérifier l'authentification
+                if (!await AuthService.requireAuth()) return;
+                
+                // Charger les informations utilisateur
+                loadUserInfo();
+                
+                // Initialiser la page
+                await initializePage();
+                
+            } catch (error) {
+                console.error('Erreur initialisation:', error);
+                showError('Erreur lors du chargement de la page');
+            } finally {
+                showLoading(false);
+            }
         });
 
-        function initializePage() {
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            }
+        }
+
+        async function initializePage() {
             populateCompanySelect();
             populatePlanSelect();
             updateStats();
@@ -1431,26 +1030,19 @@
 
         // Gestion des modals
         function openAddLicenseModal() {
-            console.log('Ouverture du modal d\'ajout de licence');
             resetLicenseForm();
             document.getElementById('licenseModalTitle').textContent = '➕ Nouvelle Licence';
             document.getElementById('submitLicenseBtn').textContent = '💾 Créer la licence';
             editingLicense = null;
             
-            // S'assurer que le modal s'affiche
             const modal = document.getElementById('licenseModal');
             modal.classList.add('show');
-            modal.style.display = 'flex';
-            
-            console.log('Modal ouvert:', modal.classList.contains('show'));
         }
 
         function closeLicenseModal() {
             const modal = document.getElementById('licenseModal');
             modal.classList.remove('show');
-            modal.style.display = 'none';
             resetLicenseForm();
-            console.log('Modal fermé');
         }
 
         function openLicenseDetails(licenseId) {
@@ -1466,7 +1058,7 @@
             const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
             
             document.getElementById('licenseDetailsContent').innerHTML = `
-                <div class="form-grid mb-2">
+                <div class="form-grid" style="margin-bottom: 2rem;">
                     <div>
                         <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📋 Informations générales</h4>
                         <div style="display: grid; gap: 0.75rem;">
@@ -1490,7 +1082,7 @@
                 
                 <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
                     <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Informations financières</h4>
-                    <div class="form-grid-3 text-center">
+                    <div class="form-grid-3" style="text-align: center;">
                         <div>
                             <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(license.plan_price || 0)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
@@ -1506,70 +1098,7 @@
                     </div>
                 </div>
                 
-                ${isExpiring ? `
-                    <div style="background: #fed7aa; border: 1px solid #fb923c; padding: 1rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <span style="font-size: 1.25rem;">⚠️</span>
-                            <strong style="color: #c2410c;">Renouvellement requis</strong>
-                        </div>
-                        <p style="color: #c2410c; margin: 0;">Cette licence expire dans moins de 30 jours. Pensez à la renouveler pour éviter toute interruption de service.</p>
-                    </div>
-                ` : ''}
-                
-                <!-- Aperçu des utilisateurs -->
-                <div style="margin-bottom: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 style="color: var(--gray-800);">👥 Utilisateurs (${users.length}/${license.license_count})</h4>
-                        <button class="btn btn-primary btn-sm" onclick="openUsersModal('${license.id}')">
-                            Gérer les utilisateurs
-                        </button>
-                    </div>
-                    
-                    <!-- Barre d'utilisation -->
-                    <div class="license-usage-bar">
-                        <div class="license-usage-fill ${users.length >= license.license_count ? 'danger' : users.length >= license.license_count * 0.8 ? 'warning' : ''}" 
-                             style="width: ${(users.length / license.license_count) * 100}%"></div>
-                    </div>
-                    <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 1rem;">
-                        ${license.license_count - users.length} place(s) disponible(s)
-                    </p>
-                    
-                    ${users.length === 0 ? `
-                        <div style="text-align: center; padding: 2rem; background: var(--gray-50); border-radius: var(--radius); color: var(--gray-500);">
-                            Aucun utilisateur configuré pour cette licence
-                        </div>
-                    ` : `
-                        <div style="display: grid; gap: 0.75rem; max-height: 300px; overflow-y: auto;">
-                            ${users.slice(0, 5).map(user => `
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius);">
-                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                        <div style="width: 35px; height: 35px; background: var(--primary-color); color: var(--white); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem;">
-                                            ${getInitials(user.name)}
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 600; font-size: 0.875rem;">${user.name}</div>
-                                            <div style="font-size: 0.75rem; color: var(--gray-500);">${user.email}</div>
-                                            <div style="font-size: 0.75rem; color: var(--gray-400);">
-                                                ${user.role} • Dernière connexion: ${getTimeAgo(user.last_login)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span class="user-status-badge status-${user.status}">${user.status}</span>
-                                </div>
-                            `).join('')}
-                            ${users.length > 5 ? `
-                                <div style="text-align: center; padding: 1rem; color: var(--gray-500); font-size: 0.875rem;">
-                                    ... et ${users.length - 5} autre(s) utilisateur(s)
-                                    <button class="btn btn-sm btn-secondary" onclick="openUsersModal('${license.id}')" style="margin-left: 0.5rem;">
-                                        Voir tous
-                                    </button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    `}
-                </div>
-                
-                <div class="d-flex gap-1" style="justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
                     <button class="btn btn-secondary" onclick="closeDetailsModal()">
                         Fermer
                     </button>
@@ -1602,7 +1131,7 @@
             document.getElementById('usersModalContent').innerHTML = `
                 <!-- En-tête avec statistiques -->
                 <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                    <div class="form-grid-3 text-center">
+                    <div class="form-grid-3" style="text-align: center;">
                         <div>
                             <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${users.length}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-600);">Utilisateurs total</div>
@@ -1630,142 +1159,10 @@
                     </div>
                 </div>
                 
-                <!-- Formulaire d'ajout d'utilisateur -->
-                ${users.length < license.license_count ? `
-                    <div class="add-user-form">
-                        <h5 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                            ➕ Ajouter un nouvel utilisateur
-                        </h5>
-                        <form id="addUserForm" onsubmit="addUser(event, '${licenseId}')">
-                            <div class="form-grid" style="margin-bottom: 1rem;">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="userName">Nom complet *</label>
-                                    <input type="text" id="userName" required placeholder="Ex: Jean Dupont">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="userEmail">Email *</label>
-                                    <input type="email" id="userEmail" required placeholder="jean.dupont@entreprise.com">
-                                </div>
-                            </div>
-                            <div class="form-grid" style="margin-bottom: 1rem;">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="userRole">Rôle</label>
-                                    <select id="userRole">
-                                        <option value="User">Utilisateur</option>
-                                        <option value="Manager">Manager</option>
-                                        <option value="Admin">Administrateur</option>
-                                    </select>
-                                </div>
-                                <div style="display: flex; align-items: end;">
-                                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                                        ➕ Ajouter l'utilisateur
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                ` : `
-                    <div style="background: #fed7aa; border: 1px solid #fb923c; padding: 1rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-size: 1.25rem;">⚠️</span>
-                            <strong style="color: #c2410c;">Limite d'utilisateurs atteinte</strong>
-                        </div>
-                        <p style="color: #c2410c; margin: 0.5rem 0 0 0;">
-                            Toutes les places sont occupées. Mettez à niveau votre licence pour ajouter plus d'utilisateurs.
-                        </p>
-                    </div>
-                `}
-                
-                <!-- Liste des utilisateurs -->
-                <div style="margin-bottom: 2rem;">
-                    <h5 style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                        <span>👥 Liste des utilisateurs (${users.length})</span>
-                        ${users.length > 0 ? `
-                            <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-sm btn-secondary" onclick="exportUsers('${licenseId}')">
-                                    📄 Exporter
-                                </button>
-                                <button class="btn btn-sm btn-secondary" onclick="sendInvitations('${licenseId}')">
-                                    📧 Inviter tous
-                                </button>
-                            </div>
-                        ` : ''}
-                    </h5>
-                    
-                    ${users.length === 0 ? `
-                        <div style="text-align: center; padding: 3rem; background: var(--gray-50); border-radius: var(--radius); color: var(--gray-500);">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">👤</div>
-                            <h4 style="margin-bottom: 0.5rem;">Aucun utilisateur</h4>
-                            <p style="font-size: 0.875rem;">Ajoutez le premier utilisateur pour cette licence</p>
-                        </div>
-                    ` : `
-                        <div style="display: grid; gap: 1rem; max-height: 400px; overflow-y: auto;">
-                            ${users.map(user => `
-                                <div class="user-card">
-                                    <div class="user-header">
-                                        <div class="user-info-details">
-                                            <div class="user-avatar-large">${getInitials(user.name)}</div>
-                                            <div>
-                                                <div style="font-weight: 600; font-size: 1rem;">${user.name}</div>
-                                                <div style="color: var(--gray-600); font-size: 0.875rem;">${user.email}</div>
-                                                <div style="color: var(--gray-500); font-size: 0.75rem;">
-                                                    ${user.role} • Créé le ${formatDateShort(user.created_at)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 1rem;">
-                                            <span class="user-status-badge status-${user.status}">${user.status}</span>
-                                            <div style="display: flex; gap: 0.5rem;">
-                                                <button class="btn btn-sm btn-secondary" onclick="toggleUserStatus('${user.id}', '${licenseId}')" 
-                                                        title="${user.status === 'active' ? 'Désactiver' : 'Activer'}" 
-                                                        style="min-width: 35px;">
-                                                    ${user.status === 'active' ? '⏸️' : '▶️'}
-                                                </button>
-                                                <button class="btn btn-sm btn-secondary" onclick="editUser('${user.id}', '${licenseId}')" 
-                                                        title="Modifier" style="min-width: 35px;">
-                                                    ✏️
-                                                </button>
-                                                <button class="btn btn-sm btn-danger" onclick="removeUser('${user.id}', '${licenseId}')" 
-                                                        title="Supprimer" style="min-width: 35px;">
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="user-meta">
-                                        <div>
-                                            <strong>Dernière connexion:</strong><br>
-                                            <span style="color: var(--gray-600);">${getTimeAgo(user.last_login)}</span>
-                                        </div>
-                                        <div>
-                                            <strong>Statut d'activité:</strong><br>
-                                            <span style="color: ${user.status === 'active' ? 'var(--success-color)' : 'var(--error-color)'};">
-                                                ${user.status === 'active' ? '🟢 En ligne' : '🔴 Hors ligne'}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <strong>Actions rapides:</strong><br>
-                                            <button class="btn btn-sm btn-secondary" onclick="sendInvitation('${user.id}', '${licenseId}')" 
-                                                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
-                                                📧 Inviter
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `}
-                </div>
-                
-                <div class="d-flex gap-1" style="justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                     <button class="btn btn-secondary" onclick="closeUsersModal()">
                         Fermer
                     </button>
-                    ${users.length < license.license_count ? `
-                        <button class="btn btn-primary" onclick="document.getElementById('userName').focus()">
-                            ➕ Ajouter un utilisateur
-                        </button>
-                    ` : ''}
                 </div>
             `;
             
@@ -1781,13 +1178,9 @@
             document.getElementById('pricingPreview').style.display = 'none';
             editingLicense = null;
             
-            // Réinitialiser les dates par défaut
             const today = new Date();
             document.getElementById('startDate').value = today.toISOString().split('T')[0];
             updateDates();
-            
-            // Debug pour vérifier que le formulaire est bien réinitialisé
-            console.log('Formulaire réinitialisé');
         }
 
         function editLicense(licenseId) {
@@ -1796,10 +1189,8 @@
             
             editingLicense = license;
             
-            // Fermer le modal de détails s'il est ouvert
             closeDetailsModal();
             
-            // Pré-remplir le formulaire
             document.getElementById('licenseCompany').value = license.company_id;
             document.getElementById('licensePlan').value = license.plan_id;
             document.getElementById('licenseCount').value = license.license_count;
@@ -1809,14 +1200,11 @@
             document.getElementById('licenseStatus').value = license.status;
             document.getElementById('paymentMethod').value = license.payment_method || '';
             
-            // Mettre à jour le titre et le bouton
             document.getElementById('licenseModalTitle').textContent = '✏️ Modifier la Licence';
             document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
             
-            // Calculer les coûts
             updatePricing();
             
-            // Ouvrir le modal
             document.getElementById('licenseModal').classList.add('show');
         }
 
@@ -1827,200 +1215,18 @@
             const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${license.company_name}" ?\n\nCette action est irréversible.`);
             if (!confirmed) return;
             
-            // Supprimer la licence
             licenses = licenses.filter(l => l.id !== licenseId);
             
-            showNotification('Licence supprimée avec succès', 'success');
+            showSuccess('Licence supprimée avec succès');
             updateStats();
             updateCounts();
             filterLicenses(currentFilter);
-        }
-
-        // Gestion des utilisateurs
-        function addUser(event, licenseId) {
-            event.preventDefault();
-            
-            const name = document.getElementById('userName').value.trim();
-            const email = document.getElementById('userEmail').value.trim();
-            const role = document.getElementById('userRole').value;
-            
-            if (!name || !email) {
-                showNotification('Veuillez remplir tous les champs requis', 'error');
-                return;
-            }
-            
-            // Vérifier si l'email existe déjà
-            const existingUser = licenseUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-            if (existingUser) {
-                showNotification('Cet email est déjà utilisé par un autre utilisateur', 'error');
-                return;
-            }
-            
-            // Vérifier la limite de licences
-            const license = licenses.find(l => l.id === licenseId);
-            const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
-            if (currentUsers.length >= license.license_count) {
-                showNotification('Limite d\'utilisateurs atteinte pour cette licence', 'error');
-                return;
-            }
-            
-            // Ajouter le nouvel utilisateur
-            const newUser = {
-                id: Date.now().toString(),
-                license_id: licenseId,
-                name: name,
-                email: email,
-                role: role,
-                status: 'active',
-                last_login: new Date().toISOString(),
-                created_at: new Date().toISOString()
-            };
-            
-            licenseUsers.push(newUser);
-            
-            showNotification(`Utilisateur ${name} ajouté avec succès`, 'success');
-            
-            // Recharger la gestion des utilisateurs
-            openUsersModal(licenseId);
-            // Mettre à jour les stats
-            updateStats();
-            filterLicenses(currentFilter);
-        }
-
-        function removeUser(userId, licenseId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name}" ?\n\nCette action est irréversible.`);
-            if (!confirmed) return;
-            
-            // Supprimer l'utilisateur
-            licenseUsers = licenseUsers.filter(u => u.id !== userId);
-            
-            showNotification(`Utilisateur ${user.name} supprimé avec succès`, 'success');
-            
-            // Recharger la gestion des utilisateurs
-            openUsersModal(licenseId);
-            // Mettre à jour les stats
-            updateStats();
-            filterLicenses(currentFilter);
-        }
-
-        function toggleUserStatus(userId, licenseId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            user.status = user.status === 'active' ? 'inactive' : 'active';
-            
-            showNotification(`Utilisateur ${user.name} ${user.status === 'active' ? 'activé' : 'désactivé'}`, 'success');
-            
-            // Recharger la gestion des utilisateurs
-            openUsersModal(licenseId);
-            // Mettre à jour les stats
-            updateStats();
-        }
-
-        function editUser(userId, licenseId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            const newName = prompt('Nom complet:', user.name);
-            if (newName === null) return; // Annulé
-            
-            const newEmail = prompt('Email:', user.email);
-            if (newEmail === null) return; // Annulé
-            
-            const newRole = prompt('Rôle (User/Manager/Admin):', user.role);
-            if (newRole === null) return; // Annulé
-            
-            if (!newName.trim() || !newEmail.trim()) {
-                showNotification('Le nom et l\'email ne peuvent pas être vides', 'error');
-                return;
-            }
-            
-            // Vérifier si le nouvel email existe déjà (sauf pour cet utilisateur)
-            const existingUser = licenseUsers.find(u => u.email.toLowerCase() === newEmail.toLowerCase() && u.id !== userId);
-            if (existingUser) {
-                showNotification('Cet email est déjà utilisé par un autre utilisateur', 'error');
-                return;
-            }
-            
-            // Mettre à jour l'utilisateur
-            user.name = newName.trim();
-            user.email = newEmail.trim();
-            user.role = newRole || 'User';
-            
-            showNotification(`Utilisateur ${user.name} modifié avec succès`, 'success');
-            
-            // Recharger la gestion des utilisateurs
-            openUsersModal(licenseId);
-        }
-
-        function sendInvitation(userId, licenseId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            showNotification(`Invitation envoyée à ${user.name} (${user.email})`, 'success');
-        }
-
-        function sendInvitations(licenseId) {
-            const users = licenseUsers.filter(u => u.license_id === licenseId);
-            showNotification(`Invitations envoyées à ${users.length} utilisateur(s)`, 'success');
-        }
-
-        function exportUsers(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            const users = licenseUsers.filter(u => u.license_id === licenseId);
-            
-            let csvContent = "Nom,Email,Rôle,Statut,Dernière connexion,Date de création\n";
-            users.forEach(user => {
-                csvContent += `"${user.name}","${user.email}","${user.role}","${user.status}","${formatDate(user.last_login)}","${formatDate(user.created_at)}"\n`;
-            });
-            
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `utilisateurs-${license.company_name.replace(/\s+/g, '-')}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-            
-        }
-
-        // Fonctions utilitaires
-        function getInitials(name) {
-            return name.split(' ')
-                       .map(n => n.charAt(0))
-                       .join('')
-                       .toUpperCase()
-                       .substring(0, 2);
-        }
-
-        function getTimeAgo(dateString) {
-            const now = new Date();
-            const date = new Date(dateString);
-            const diffTime = now - date;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-            const diffMinutes = Math.floor(diffTime / (1000 * 60));
-            
-            if (diffDays > 0) {
-                return diffDays === 1 ? 'il y a 1 jour' : `il y a ${diffDays} jours`;
-            } else if (diffHours > 0) {
-                return diffHours === 1 ? 'il y a 1 heure' : `il y a ${diffHours} heures`;
-            } else if (diffMinutes > 0) {
-                return diffMinutes === 1 ? 'il y a 1 minute' : `il y a ${diffMinutes} minutes`;
-            } else {
-                return 'À l\'instant';
-            }
-        }
         }
 
         // Gestion du formulaire
         document.getElementById('licenseForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // Validation des champs requis
             const companyId = document.getElementById('licenseCompany').value;
             const planId = document.getElementById('licensePlan').value;
             const licenseCount = parseInt(document.getElementById('licenseCount').value);
@@ -2028,7 +1234,7 @@
             const endDate = document.getElementById('endDate').value;
             
             if (!companyId || !planId || !licenseCount || !startDate || !endDate) {
-                showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+                showError('Veuillez remplir tous les champs obligatoires');
                 return;
             }
             
@@ -2058,22 +1264,19 @@
             
             try {
                 if (editingLicense) {
-                    // Modification
                     const index = licenses.findIndex(l => l.id === editingLicense.id);
                     if (index !== -1) {
                         licenses[index] = licenseData;
-                        showNotification('Licence modifiée avec succès !', 'success');
+                        showSuccess('Licence modifiée avec succès !');
                     } else {
-                        showNotification('Erreur lors de la modification', 'error');
+                        showError('Erreur lors de la modification');
                         return;
                     }
                 } else {
-                    // Création
                     licenses.push(licenseData);
-                    showNotification('Licence créée avec succès !', 'success');
+                    showSuccess('Licence créée avec succès !');
                 }
                 
-                // Fermer le modal et actualiser
                 closeLicenseModal();
                 updateStats();
                 updateCounts();
@@ -2081,53 +1284,9 @@
                 
             } catch (error) {
                 console.error('Erreur lors de la sauvegarde:', error);
-                showNotification('Erreur lors de la sauvegarde de la licence', 'error');
+                showError('Erreur lors de la sauvegarde de la licence');
             }
         });
-
-        // Fonctions utilitaires
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('fr-FR', {
-                style: 'currency',
-                currency: 'EUR'
-            }).format(amount);
-        }
-
-        function formatDate(dateString) {
-            return new Date(dateString).toLocaleDateString('fr-FR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        }
-
-        function formatDateShort(dateString) {
-            return new Date(dateString).toLocaleDateString('fr-FR');
-        }
-
-        function showNotification(message, type = 'success') {
-            // Supprimer les notifications existantes
-            const existingNotifications = document.querySelectorAll('.notification');
-            existingNotifications.forEach(n => n.remove());
-            
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            console.log(`Notification ${type}: ${message}`);
-            
-            setTimeout(() => {
-                notification.remove();
-            }, 3000);
-        }
-
-        function logout() {
-            if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-                showNotification('Déconnexion réussie', 'success');
-                // Ici, vous pourriez rediriger vers la page de connexion
-            }
-        }
 
         // Fermer les modals en cliquant en dehors
         document.addEventListener('click', (e) => {
