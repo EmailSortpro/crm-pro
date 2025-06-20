@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Connexion</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="logo">
+                    <div class="logo-icon">🚀</div>
+                    <h1>CRM Pro</h1>
+                </div>
+                <p class="subtitle">Connectez-vous à votre espace</p>
+            </div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">📧</span>
+                        <input type="email" id="email" name="email" required placeholder="votre@email.com">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <input type="password" id="password" name="password" required placeholder="••••••••">
+                    </div>
+                </div>
+                
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span class="btn-text">Se connecter</span>
+                    <div class="btn-loader" style="display: none;">
+                        <div class="spinner"></div>
+                    </div>
+                </button>
+                
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+            </form>
+            
+            <div class="demo-accounts">
+                <h3>🧪 Comptes de démonstration</h3>
+                <div class="demo-grid">
+                    <div class="demo-account" onclick="fillDemo('admin')">
+                        <div class="demo-icon">👑</div>
+                        <div class="demo-info">
+                            <strong>Administrateur</strong>
+                            <small>admin@crm.com</small>
+                        </div>
+                    </div>
+                    <div class="demo-account" onclick="fillDemo('user')">
+                        <div class="demo-icon">👤</div>
+                        <div class="demo-info">
+                            <strong>Utilisateur</strong>
+                            <small>user@crm.com</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-footer">
+            <p>&copy; 2025 CRM Pro - Gestion intelligente de vos relations clients</p>
+        </div>
+    </div>
+    
+    <script src="config.js"></script>
+    <script>
+        // Variables globales
+        let isSubmitting = false;
+        
+        // Éléments DOM
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = document.querySelector('.btn-text');
+        const btnLoader = document.querySelector('.btn-loader');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // Gestion du formulaire de connexion
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (isSubmitting) return;
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            await handleLogin(email, password);
+        });
+        
+        // Fonction de connexion
+        async function handleLogin(email, password) {
+            setLoading(true);
+            hideError();
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    throw error;
+                }
+                
+                // Récupérer le rôle utilisateur
+                const userRole = data.user.user_metadata?.role || 'user';
+                
+                // Stocker les infos utilisateur
+                localStorage.setItem('userInfo', JSON.stringify({
+                    email: data.user.email,
+                    role: userRole,
+                    id: data.user.id
+                }));
+                
+                // Animation de succès
+                btnText.textContent = 'Connexion réussie !';
+                loginBtn.style.background = '#28a745';
+                
+                // Redirection après un délai
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Erreur de connexion:', error);
+                showError(getErrorMessage(error.message));
+                setLoading(false);
+            }
+        }
+        
+        // Gestion du loading
+        function setLoading(loading) {
+            isSubmitting = loading;
+            
+            if (loading) {
+                btnText.style.display = 'none';
+                btnLoader.style.display = 'flex';
+                loginBtn.disabled = true;
+            } else {
+                btnText.style.display = 'block';
+                btnLoader.style.display = 'none';
+                loginBtn.disabled = false;
+                btnText.textContent = 'Se connecter';
+                loginBtn.style.background = '';
+            }
+        }
+        
+        // Affichage des erreurs
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            errorMessage.style.animation = 'slideInDown 0.3s ease';
+        }
+        
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+        
+        // Messages d'erreur conviviaux
+        function getErrorMessage(error) {
+            const messages = {
+                'Invalid login credentials': 'Email ou mot de passe incorrect',
+                'Email not confirmed': 'Veuillez confirmer votre email',
+                'Too many requests': 'Trop de tentatives. Réessayez plus tard',
+                'User not found': 'Utilisateur introuvable',
+                'Network request failed': 'Problème de connexion. Vérifiez votre internet'
+            };
+            
+            return messages[error] || 'Erreur de connexion. Réessayez';
+        }
+        
+        // Remplir automatiquement les comptes de démo
+        function fillDemo(type) {
+            const credentials = {
+                admin: { email: 'admin@crm.com', password: 'admin123' },
+                user: { email: 'user@crm.com', password: 'user123' }
+            };
+            
+            const creds = credentials[type];
+            document.getElementById('email').value = creds.email;
+            document.getElementById('password').value = creds.password;
+            
+            // Animation des champs
+            document.getElementById('email').style.animation = 'pulse 0.5s ease';
+            document.getElementById('password').style.animation = 'pulse 0.5s ease';
+        }
+        
+        // Vérifier si l'utilisateur est déjà connecté
+        window.addEventListener('load', async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+                // Utilisateur déjà connecté, rediriger
+                window.location.href = 'dashboard.html';
+            }
+        });
+        
+        // Animation d'entrée
+        window.addEventListener('load', () => {
+            document.querySelector('.login-card').style.animation = 'slideInUp 0.6s ease';
+        });
+    </script>
+</body>
+</html>
