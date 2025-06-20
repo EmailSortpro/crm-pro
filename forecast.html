@@ -245,7 +245,7 @@
             <div class="stat-card success">
                 <div class="stat-number" id="projectedRevenue">0 €</div>
                 <div class="stat-label">Revenus Projetés</div>
-                <div class="stat-change" id="revenueChange">Revenus pondérés</div>
+                <div class="stat-change" id="revenueChange">Valeur totale des opportunités</div>
             </div>
             <div class="stat-card warning">
                 <div class="stat-number" id="conversionRate">0%</div>
@@ -579,7 +579,8 @@
         // Calculer les métriques basées sur les vraies données
         function calculateForecastMetrics() {
             const totalOpportunities = opportunities.length;
-            const projectedRevenue = opportunities.reduce((sum, opp) => sum + (opp.value * opp.probability / 100), 0);
+            // Revenus projetés = somme des valeurs (pas de pondération par probabilité)
+            const projectedRevenue = opportunities.reduce((sum, opp) => sum + opp.value, 0);
             
             // Taux de conversion basé sur les vraies données
             const totalCompanies = companies.length;
@@ -599,7 +600,7 @@
             const clientCount = companies.filter(c => c.status === 'client').length;
             
             document.getElementById('opportunitiesChange').textContent = `${prospectCount} prospects à convertir`;
-            document.getElementById('revenueChange').textContent = `Revenus pondérés`;
+            document.getElementById('revenueChange').textContent = `Valeur totale`;
             document.getElementById('conversionTrend').textContent = `${clientCount}/${totalCompanies} sociétés`;
             document.getElementById('dealSizeTrend').textContent = 'Par opportunité';
         }
@@ -766,8 +767,8 @@
                 const quarterly = baseMonthlyRevenue * 3;
                 const conservativeGrowth = quarterly > 0 ? quarterly * (1 + index * 0.05) : 0; // 5% par trimestre seulement
                 
-                // Probabilité réaliste
-                const probability = Math.max(30, 70 - index * 10);
+                // Probabilité fixée à 100% (revenus pondérés = valeur)
+                const probability = 100;
                 
                 return {
                     name: quarter,
@@ -778,7 +779,8 @@
             });
             
             tableBody.innerHTML = periods.map(period => {
-                const weightedRevenue = period.estimated * period.probability / 100;
+                // Revenus pondérés = valeur estimée (probabilité 100%)
+                const weightedRevenue = period.estimated;
                 const trend = period.estimated > periods[0].estimated ? '📈' : '📊';
                 
                 return `
@@ -963,7 +965,7 @@
                         <div style="display: grid; gap: 0.75rem;">
                             <div><strong>Clôture prévue :</strong> ${formatDate(opportunity.expected_close_date)}</div>
                             <div><strong>Créée le :</strong> ${formatDate(opportunity.created_at)}</div>
-                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value * opportunity.probability / 100)}</span></div>
+                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value)}</span></div>
                         </div>
                     </div>
                 </div>
