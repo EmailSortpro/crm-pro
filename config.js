@@ -25,90 +25,12 @@ try {
             console.warn('⚠️ Test de connexion Supabase échoué:', err.message);
         });
     } else {
-        console.warn('⚠️ Supabase client non disponible, mode démo activé');
+        console.warn('⚠️ Supabase client non disponible');
+        throw new Error('Supabase non disponible');
     }
 } catch (error) {
-    console.warn('⚠️ Erreur initialisation Supabase, mode démo activé:', error.message);
-}
-
-// ===================================
-// STOCKAGE LOCAL DES DONNÉES (MODE DÉMO)
-// ===================================
-
-// Gestionnaire du stockage local pour le mode démo
-class LocalStorageManager {
-    static getKey(table) {
-        return `crm_demo_${table}`;
-    }
-    
-    static getData(table) {
-        try {
-            const data = localStorage.getItem(this.getKey(table));
-            return data ? JSON.parse(data) : [];
-        } catch (error) {
-            console.error(`Erreur lecture ${table}:`, error);
-            return [];
-        }
-    }
-    
-    static setData(table, data) {
-        try {
-            localStorage.setItem(this.getKey(table), JSON.stringify(data));
-            return true;
-        } catch (error) {
-            console.error(`Erreur écriture ${table}:`, error);
-            return false;
-        }
-    }
-    
-    static addItem(table, item) {
-        const data = this.getData(table);
-        const newItem = {
-            ...item,
-            id: item.id || Date.now().toString(),
-            created_at: item.created_at || new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-        data.push(newItem);
-        this.setData(table, data);
-        return newItem;
-    }
-    
-    static updateItem(table, id, updates) {
-        const data = this.getData(table);
-        const index = data.findIndex(item => item.id === id);
-        if (index !== -1) {
-            data[index] = {
-                ...data[index],
-                ...updates,
-                updated_at: new Date().toISOString()
-            };
-            this.setData(table, data);
-            return data[index];
-        }
-        return null;
-    }
-    
-    static deleteItem(table, id) {
-        const data = this.getData(table);
-        const filteredData = data.filter(item => item.id !== id);
-        this.setData(table, filteredData);
-        return true;
-    }
-    
-    static initializeDemo() {
-        // Initialiser les données démo si le localStorage est vide
-        const tables = ['companies', 'contacts', 'licenses', 'license_plans'];
-        
-        tables.forEach(table => {
-            if (this.getData(table).length === 0) {
-                const demoData = CRMService.getDemoData();
-                if (demoData[table]) {
-                    this.setData(table, demoData[table]);
-                }
-            }
-        });
-    }
+    console.error('❌ Erreur initialisation Supabase:', error.message);
+    supabase = null;
 }
 
 // ===================================
@@ -119,9 +41,7 @@ class AuthService {
     static async getCurrentUser() {
         try {
             if (!supabase) {
-                // Mode démo - simuler un utilisateur connecté
-                const demoUser = localStorage.getItem('demoUser');
-                return demoUser ? JSON.parse(demoUser) : null;
+                throw new Error('Supabase non initialisé');
             }
             
             const { data: { user }, error } = await supabase.auth.getUser();
@@ -136,19 +56,7 @@ class AuthService {
     static async login(email, password) {
         try {
             if (!supabase) {
-                // Mode démo - validation simple
-                if (email && password) {
-                    const demoUser = {
-                        id: 'demo-user-id',
-                        email: email,
-                        role: email.includes('admin') ? 'admin' : 'user'
-                    };
-                    localStorage.setItem('demoUser', JSON.stringify(demoUser));
-                    localStorage.setItem('userInfo', JSON.stringify(demoUser));
-                    return { success: true, user: demoUser };
-                } else {
-                    return { success: false, error: 'Email et mot de passe requis' };
-                }
+                throw new Error('Service non disponible');
             }
             
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -177,16 +85,10 @@ class AuthService {
     
     static async logout() {
         try {
-            if (!supabase) {
-                // Mode démo
-                localStorage.removeItem('demoUser');
-                localStorage.removeItem('userInfo');
-                window.location.href = 'index.html';
-                return;
+            if (supabase) {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
             }
-            
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
             
             // Nettoyer le localStorage
             localStorage.removeItem('userInfo');
@@ -224,220 +126,12 @@ class AuthService {
 // ===================================
 
 class CRMService {
-    // Données de démonstration intégrées
-    static getDemoData() {
-        return {
-            companies: [
-                {
-                    id: '1',
-                    name: 'TechCorp Solutions',
-                    status: 'client',
-                    industry: 'Technologie',
-                    employees: 150,
-                    revenue: 2500000,
-                    website: 'https://techcorp.example.com',
-                    phone: '+33 1 23 45 67 89',
-                    account_manager: 'Jean-Marie Leclerc',
-                    address: '123 Avenue de la Tech',
-                    city: 'Paris',
-                    postal_code: '75001',
-                    country: 'France',
-                    siret: '12345678901234',
-                    notes: 'Client important avec fort potentiel de croissance',
-                    created_at: '2024-01-15T09:00:00Z',
-                    company_contacts: [
-                        {
-                            id: '1',
-                            first_name: 'Jean',
-                            last_name: 'Dupont',
-                            email: 'j.dupont@techcorp.com',
-                            position: 'CTO',
-                            contact_type: 'technical',
-                            is_admin_contact: true,
-                            is_payment_contact: false
-                        }
-                    ]
-                },
-                {
-                    id: '2',
-                    name: 'Innovation Ltd',
-                    status: 'client',
-                    industry: 'Consulting',
-                    employees: 75,
-                    revenue: 1200000,
-                    website: 'https://innovation.example.com',
-                    phone: '+33 1 98 76 54 32',
-                    account_manager: 'Sophie Martin',
-                    address: '456 Rue de l\'Innovation',
-                    city: 'Lyon',
-                    postal_code: '69001',
-                    country: 'France',
-                    siret: '98765432109876',
-                    notes: 'Partenaire stratégique depuis 3 ans',
-                    created_at: '2024-03-01T10:00:00Z',
-                    company_contacts: [
-                        {
-                            id: '2',
-                            first_name: 'Marie',
-                            last_name: 'Martin',
-                            email: 'm.martin@innovation.com',
-                            position: 'CEO',
-                            contact_type: 'commercial',
-                            is_admin_contact: true,
-                            is_payment_contact: true
-                        }
-                    ]
-                },
-                {
-                    id: '3',
-                    name: 'StartupX',
-                    status: 'prospect',
-                    industry: 'E-commerce',
-                    employees: 25,
-                    revenue: 500000,
-                    website: 'https://startupx.example.com',
-                    phone: '+33 1 55 44 33 22',
-                    account_manager: 'Pierre Durand',
-                    address: '789 Boulevard du Commerce',
-                    city: 'Marseille',
-                    postal_code: '13001',
-                    country: 'France',
-                    siret: '45678912345678',
-                    notes: 'Jeune startup prometteuse en phase de croissance rapide',
-                    created_at: '2024-05-15T14:30:00Z',
-                    company_contacts: []
-                },
-                {
-                    id: '4',
-                    name: 'MegaCorp International',
-                    status: 'sponsor',
-                    industry: 'Finance',
-                    employees: 500,
-                    revenue: 10000000,
-                    website: 'https://megacorp.example.com',
-                    phone: '+33 1 77 88 99 00',
-                    account_manager: 'Claire Dubois',
-                    address: '1000 Place de la Finance',
-                    city: 'La Défense',
-                    postal_code: '92400',
-                    country: 'France',
-                    siret: '78912345678912',
-                    notes: 'Sponsor principal de nos événements',
-                    created_at: '2024-02-20T16:45:00Z',
-                    company_contacts: [
-                        {
-                            id: '4',
-                            first_name: 'Paul',
-                            last_name: 'Legrand',
-                            email: 'p.legrand@megacorp.com',
-                            position: 'Directeur Partenariats',
-                            contact_type: 'commercial',
-                            is_admin_contact: false,
-                            is_payment_contact: true
-                        }
-                    ]
-                }
-            ],
-            contacts: [
-                {
-                    id: '1',
-                    first_name: 'Jean',
-                    last_name: 'Dupont',
-                    email: 'j.dupont@techcorp.com',
-                    phone: '+33 1 23 45 67 89',
-                    position: 'CTO',
-                    contact_type: 'technical',
-                    company_id: '1',
-                    company_name: 'TechCorp Solutions',
-                    is_admin_contact: true,
-                    is_payment_contact: false,
-                    notes: 'Responsable technique principal',
-                    created_at: '2024-01-15T09:00:00Z',
-                    updated_at: '2024-01-15T09:00:00Z'
-                },
-                {
-                    id: '2',
-                    first_name: 'Marie',
-                    last_name: 'Martin',
-                    email: 'm.martin@innovation.com',
-                    phone: '+33 1 98 76 54 32',
-                    position: 'CEO',
-                    contact_type: 'commercial',
-                    company_id: '2',
-                    company_name: 'Innovation Ltd',
-                    is_admin_contact: true,
-                    is_payment_contact: true,
-                    notes: 'Décideuse principale',
-                    created_at: '2024-03-01T10:00:00Z',
-                    updated_at: '2024-03-01T10:00:00Z'
-                },
-                {
-                    id: '3',
-                    first_name: 'Sophie',
-                    last_name: 'Durand',
-                    email: 's.durand@freelance.com',
-                    phone: '+33 6 12 34 56 78',
-                    position: 'Consultant',
-                    contact_type: 'commercial',
-                    company_id: null,
-                    company_name: null,
-                    is_admin_contact: false,
-                    is_payment_contact: false,
-                    notes: 'Contact freelance intéressé par nos services',
-                    created_at: '2024-06-01T15:30:00Z',
-                    updated_at: '2024-06-01T15:30:00Z'
-                },
-                {
-                    id: '4',
-                    first_name: 'Paul',
-                    last_name: 'Legrand',
-                    email: 'p.legrand@megacorp.com',
-                    phone: '+33 1 77 88 99 01',
-                    position: 'Directeur Partenariats',
-                    contact_type: 'commercial',
-                    company_id: '4',
-                    company_name: 'MegaCorp International',
-                    is_admin_contact: false,
-                    is_payment_contact: true,
-                    notes: 'Contact pour les partenariats stratégiques',
-                    created_at: '2024-02-20T16:45:00Z',
-                    updated_at: '2024-02-20T16:45:00Z'
-                },
-                {
-                    id: '5',
-                    first_name: 'Alice',
-                    last_name: 'Bernard',
-                    email: 'a.bernard@techcorp.com',
-                    phone: '+33 1 23 45 67 90',
-                    position: 'Développeuse Senior',
-                    contact_type: 'technical',
-                    company_id: '1',
-                    company_name: 'TechCorp Solutions',
-                    is_admin_contact: false,
-                    is_payment_contact: false,
-                    notes: 'Contact technique pour les intégrations',
-                    created_at: '2024-04-10T11:20:00Z',
-                    updated_at: '2024-04-10T11:20:00Z'
-                }
-            ],
-            licenses: [
-                // Tableau vide pour les licences - elles seront chargées depuis Supabase uniquement
-            ],
-            license_plans: [
-                // Tableau vide pour les plans - ils seront chargés depuis Supabase uniquement
-            ]
-        };
-    }
-    
     // ========== SOCIÉTÉS ==========
     
     static async getCompanies() {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                LocalStorageManager.initializeDemo();
-                const data = LocalStorageManager.getData('companies');
-                return { success: true, data };
+                throw new Error('Base de données non disponible');
             }
             
             const { data, error } = await supabase
@@ -461,19 +155,14 @@ class CRMService {
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('Erreur récupération sociétés:', error);
-            
-            // Fallback en mode démo si erreur
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.companies };
+            return { success: false, error: error.message };
         }
     }
     
     static async createCompany(companyData) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                const newCompany = LocalStorageManager.addItem('companies', companyData);
-                return { success: true, data: newCompany };
+                throw new Error('Base de données non disponible');
             }
             
             const { data, error } = await supabase
@@ -496,9 +185,7 @@ class CRMService {
     static async updateCompany(id, companyData) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                const updatedCompany = LocalStorageManager.updateItem('companies', id, companyData);
-                return { success: true, data: updatedCompany };
+                throw new Error('Base de données non disponible');
             }
             
             const { data, error } = await supabase
@@ -521,9 +208,7 @@ class CRMService {
     static async deleteCompany(id) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                LocalStorageManager.deleteItem('companies', id);
-                return { success: true };
+                throw new Error('Base de données non disponible');
             }
             
             const { error } = await supabase
@@ -544,15 +229,7 @@ class CRMService {
     static async getContacts(companyId = null) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                LocalStorageManager.initializeDemo();
-                let allContacts = LocalStorageManager.getData('contacts');
-                
-                if (companyId) {
-                    allContacts = allContacts.filter(c => c.company_id === companyId);
-                }
-                
-                return { success: true, data: allContacts };
+                throw new Error('Base de données non disponible');
             }
             
             let query = supabase
@@ -569,19 +246,14 @@ class CRMService {
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('Erreur récupération contacts:', error);
-            
-            // Fallback en mode démo
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.contacts };
+            return { success: false, error: error.message };
         }
     }
     
     static async createContact(contactData) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                const newContact = LocalStorageManager.addItem('contacts', contactData);
-                return { success: true, data: newContact };
+                throw new Error('Base de données non disponible');
             }
             
             const { data, error } = await supabase
@@ -604,9 +276,7 @@ class CRMService {
     static async updateContact(id, contactData) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                const updatedContact = LocalStorageManager.updateItem('contacts', id, contactData);
-                return { success: true, data: updatedContact };
+                throw new Error('Base de données non disponible');
             }
             
             const { data, error } = await supabase
@@ -629,9 +299,7 @@ class CRMService {
     static async deleteContact(id) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                LocalStorageManager.deleteItem('contacts', id);
-                return { success: true };
+                throw new Error('Base de données non disponible');
             }
             
             const { error } = await supabase
@@ -652,20 +320,21 @@ class CRMService {
     static async getLicenses() {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage - retourne un tableau vide pour les licences
-                return { success: true, data: [] };
+                throw new Error('Base de données non disponible');
             }
+            
+            console.log('🔍 Requête Supabase pour les licences...');
             
             const { data, error } = await supabase
                 .from('company_licenses')
                 .select(`
                     *,
-                    companies (
+                    companies!company_licenses_company_id_fkey (
                         id,
                         name,
                         status
                     ),
-                    license_plans (
+                    license_plans!company_licenses_plan_id_fkey (
                         id,
                         name,
                         price_per_user
@@ -673,22 +342,27 @@ class CRMService {
                 `)
                 .order('created_at', { ascending: false });
             
-            if (error) throw error;
+            console.log('📊 Réponse Supabase licences:', { data, error });
+            
+            if (error) {
+                console.error('❌ Erreur Supabase:', error);
+                throw error;
+            }
+            
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('Erreur récupération licences:', error);
-            // En cas d'erreur, retourner un tableau vide
-            return { success: true, data: [] };
+            console.error('❌ Erreur récupération licences:', error);
+            return { success: false, error: error.message };
         }
     }
     
     static async createLicense(licenseData) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                const newLicense = LocalStorageManager.addItem('licenses', licenseData);
-                return { success: true, data: newLicense };
+                throw new Error('Base de données non disponible');
             }
+            
+            console.log('📝 Création licence:', licenseData);
             
             const { data, error } = await supabase
                 .from('company_licenses')
@@ -697,12 +371,29 @@ class CRMService {
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 }])
-                .select();
+                .select(`
+                    *,
+                    companies!company_licenses_company_id_fkey (
+                        id,
+                        name,
+                        status
+                    ),
+                    license_plans!company_licenses_plan_id_fkey (
+                        id,
+                        name,
+                        price_per_user
+                    )
+                `);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur création licence:', error);
+                throw error;
+            }
+            
+            console.log('✅ Licence créée:', data);
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('Erreur création licence:', error);
+            console.error('❌ Erreur création licence:', error);
             return { success: false, error: error.message };
         }
     }
@@ -710,10 +401,10 @@ class CRMService {
     static async updateLicense(id, licenseData) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                const updatedLicense = LocalStorageManager.updateItem('licenses', id, licenseData);
-                return { success: true, data: updatedLicense };
+                throw new Error('Base de données non disponible');
             }
+            
+            console.log('📝 Mise à jour licence:', id, licenseData);
             
             const { data, error } = await supabase
                 .from('company_licenses')
@@ -722,12 +413,29 @@ class CRMService {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', id)
-                .select();
+                .select(`
+                    *,
+                    companies!company_licenses_company_id_fkey (
+                        id,
+                        name,
+                        status
+                    ),
+                    license_plans!company_licenses_plan_id_fkey (
+                        id,
+                        name,
+                        price_per_user
+                    )
+                `);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur mise à jour licence:', error);
+                throw error;
+            }
+            
+            console.log('✅ Licence mise à jour:', data);
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('Erreur mise à jour licence:', error);
+            console.error('❌ Erreur mise à jour licence:', error);
             return { success: false, error: error.message };
         }
     }
@@ -735,20 +443,25 @@ class CRMService {
     static async deleteLicense(id) {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage
-                LocalStorageManager.deleteItem('licenses', id);
-                return { success: true };
+                throw new Error('Base de données non disponible');
             }
+            
+            console.log('🗑️ Suppression licence:', id);
             
             const { error } = await supabase
                 .from('company_licenses')
                 .delete()
                 .eq('id', id);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur suppression licence:', error);
+                throw error;
+            }
+            
+            console.log('✅ Licence supprimée');
             return { success: true };
         } catch (error) {
-            console.error('Erreur suppression licence:', error);
+            console.error('❌ Erreur suppression licence:', error);
             return { success: false, error: error.message };
         }
     }
@@ -756,9 +469,10 @@ class CRMService {
     static async getLicensePlans() {
         try {
             if (!supabase) {
-                // Mode démo avec localStorage - retourne un tableau vide pour les plans
-                return { success: true, data: [] };
+                throw new Error('Base de données non disponible');
             }
+            
+            console.log('🔍 Requête Supabase pour les plans de licence...');
             
             const { data, error } = await supabase
                 .from('license_plans')
@@ -766,12 +480,17 @@ class CRMService {
                 .eq('is_active', true)
                 .order('price_per_user', { ascending: true });
             
-            if (error) throw error;
+            console.log('📊 Réponse Supabase plans:', { data, error });
+            
+            if (error) {
+                console.error('❌ Erreur Supabase plans:', error);
+                throw error;
+            }
+            
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('Erreur récupération plans:', error);
-            // En cas d'erreur, retourner un tableau vide
-            return { success: true, data: [] };
+            console.error('❌ Erreur récupération plans:', error);
+            return { success: false, error: error.message };
         }
     }
     
@@ -800,7 +519,7 @@ class CRMService {
                 activeLicenses: licenses.filter(l => l.status === 'active').length,
                 totalLicenseCount: licenses
                     .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + l.license_count, 0),
+                    .reduce((sum, l) => sum + (l.license_count || 0), 0),
                 monthlyRevenue: licenses
                     .filter(l => l.status === 'active')
                     .reduce((sum, l) => sum + (l.monthly_cost || 0), 0),
@@ -817,22 +536,7 @@ class CRMService {
             return { success: true, data: stats };
         } catch (error) {
             console.error('Erreur calcul statistiques:', error);
-            
-            // Statistiques par défaut en cas d'erreur
-            return {
-                success: true,
-                data: {
-                    totalCompanies: 4,
-                    prospects: 1,
-                    sponsors: 1,
-                    clients: 2,
-                    onboarded: 0,
-                    activeLicenses: 0,
-                    totalLicenseCount: 0,
-                    monthlyRevenue: 0,
-                    expiringLicenses: 0
-                }
-            };
+            return { success: false, error: error.message };
         }
     }
 }
@@ -887,7 +591,7 @@ function getInitials(firstName, lastName) {
     return first + last || '?';
 }
 
-// Gestion des erreurs avec retry automatique
+// Gestion des erreurs
 function showError(message, duration = 5000) {
     console.error('Erreur:', message);
     
@@ -1025,7 +729,7 @@ function showSuccess(message, duration = 3000) {
     }
 }
 
-// Loading overlay optimisé
+// Loading overlay
 function showLoading(show = true) {
     let loader = document.getElementById('global-loader');
     
@@ -1093,25 +797,12 @@ function withTimeout(promise, timeoutMs = 10000) {
 }
 
 // ===================================
-// INITIALISATION
-// ===================================
-
-// Initialiser le localStorage en mode démo au chargement
-document.addEventListener('DOMContentLoaded', () => {
-    if (!supabase) {
-        LocalStorageManager.initializeDemo();
-        console.log('📦 Mode démo initialisé avec localStorage');
-    }
-});
-
-// ===================================
 // EXPORT GLOBAL
 // ===================================
 
 // Rendre les services disponibles globalement
 window.AuthService = AuthService;
 window.CRMService = CRMService;
-window.LocalStorageManager = LocalStorageManager;
 window.formatDate = formatDate;
 window.formatDateShort = formatDateShort;
 window.formatCurrency = formatCurrency;
@@ -1124,16 +815,11 @@ window.withTimeout = withTimeout;
 // Gestion globale des erreurs
 window.addEventListener('error', (e) => {
     console.error('Erreur globale:', e.error);
-    if (e.error?.message?.includes('Supabase')) {
-        console.warn('Mode démo activé suite à erreur Supabase');
-    }
 });
 
 window.addEventListener('unhandledrejection', (e) => {
     console.error('Promise rejetée:', e.reason);
-    if (e.reason?.message?.includes('Supabase')) {
-        console.warn('Mode démo activé suite à erreur Supabase');
-    }
+    e.preventDefault(); // Empêcher l'affichage dans la console
 });
 
 console.log('🚀 Configuration CRM Pro chargée avec succès');
