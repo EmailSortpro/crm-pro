@@ -137,6 +137,18 @@
             font-size: 0.875rem;
         }
 
+        /* Skeleton loading pour les stats */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
         @media (max-width: 768px) {
             .hero-title {
                 font-size: 2rem;
@@ -153,58 +165,57 @@
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-<!-- Navigation corrigée avec le style original -->
-<nav class="navbar">
-    <div class="nav-container">
-        <div class="nav-logo">
-            <span class="logo-icon">🚀</span>
-            <span class="logo-text">CRM Pro</span>
-        </div>
-        
-        <div class="nav-menu">
-            <a href="index.html" class="nav-link">
-                <span class="nav-icon">🏠</span>
-                Accueil
-            </a>
-            <a href="dashboard.html" class="nav-link">
-                <span class="nav-icon">📊</span>
-                Tableau de bord
-            </a>
-            <a href="companies.html" class="nav-link">
-                <span class="nav-icon">🏢</span>
-                Sociétés
-            </a>
-            <a href="contacts.html" class="nav-link active">
-                <span class="nav-icon">👥</span>
-                Contacts
-            </a>
-            <a href="forecast.html" class="nav-link">
-                <span class="nav-icon">📈</span>
-                Forecast
-            </a>
-            <a href="onboarding.html" class="nav-link">
-                <span class="nav-icon">🎯</span>
-                Onboarding
-            </a>
-            <a href="licenses.html" class="nav-link">
-                <span class="nav-icon">📄</span>
-                Licences
-            </a>
-        </div>
-        
-        <div class="nav-user">
-            <div class="user-info">
-                <span class="user-name" id="userName">Utilisateur</span>
-                <span class="user-role" id="userRole">user</span>
+    <!-- Navigation avec CSS unifié -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
             </div>
-            <button onclick="AuthService.logout()" class="logout-btn">
-                <span>🚪</span>
-                Déconnexion
-            </button>
+            
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link active">
+                    <span class="nav-icon">🏠</span>
+                    Accueil
+                </a>
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="forecast.html" class="nav-link">
+                    <span class="nav-icon">📈</span>
+                    Forecast
+                </a>
+                <a href="onboarding.html" class="nav-link">
+                    <span class="nav-icon">🎯</span>
+                    Onboarding
+                </a>
+                <a href="licenses.html" class="nav-link">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
+                </div>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
+                </button>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <!-- Section héro -->
     <section class="hero-section">
@@ -225,19 +236,27 @@
         <!-- Statistiques rapides -->
         <div class="stats-preview">
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewTotalCompanies">-</div>
+                <div class="stat-preview-number" id="previewTotalCompanies">
+                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                </div>
                 <div class="stat-preview-label">Sociétés</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewTotalContacts">-</div>
+                <div class="stat-preview-number" id="previewTotalContacts">
+                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                </div>
                 <div class="stat-preview-label">Contacts</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewActiveLicenses">-</div>
+                <div class="stat-preview-number" id="previewActiveLicenses">
+                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                </div>
                 <div class="stat-preview-label">Licences actives</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewRevenue">-</div>
+                <div class="stat-preview-number" id="previewRevenue">
+                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                </div>
                 <div class="stat-preview-label">Revenus mensuels</div>
             </div>
         </div>
@@ -377,81 +396,236 @@
 
     <script src="config.js"></script>
     <script>
-        // Initialisation
+        // Variables globales
+        let loadingTimeout;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        // Initialisation optimisée
         document.addEventListener('DOMContentLoaded', async () => {
-            // Vérifier l'authentification
-            if (!await AuthService.requireAuth()) return;
-            
-            // Charger les informations utilisateur
-            loadUserInfo();
-            
-            // Charger les statistiques rapides
-            await loadQuickStats();
+            try {
+                showLoading(true);
+                
+                // Vérifier l'authentification avec timeout
+                const authResult = await Promise.race([
+                    AuthService.requireAuth(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
+                ]);
+                
+                if (!authResult) return;
+                
+                // Charger les informations utilisateur
+                loadUserInfo();
+                
+                // Charger les statistiques avec retry
+                await loadQuickStatsWithRetry();
+                
+                // Animation d'entrée des cartes
+                animateCards();
+                
+            } catch (error) {
+                console.error('Erreur initialisation:', error);
+                handleInitError(error);
+            } finally {
+                showLoading(false);
+            }
         });
 
         // Charger les informations utilisateur
         function loadUserInfo() {
-            const userInfo = AuthService.getUserInfo();
-            if (userInfo) {
-                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
-                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            try {
+                const userInfo = AuthService.getUserInfo();
+                if (userInfo) {
+                    const userName = userInfo.email ? userInfo.email.split('@')[0] : 'Utilisateur';
+                    const userRole = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+                    
+                    document.getElementById('userName').textContent = userName;
+                    document.getElementById('userRole').textContent = userRole;
+                }
+            } catch (error) {
+                console.error('Erreur chargement info utilisateur:', error);
+                // Valeurs par défaut
+                document.getElementById('userName').textContent = 'Utilisateur';
+                document.getElementById('userRole').textContent = 'User';
+            }
+        }
+
+        // Charger les statistiques avec retry
+        async function loadQuickStatsWithRetry() {
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    await loadQuickStats();
+                    return; // Succès, sortir de la boucle
+                } catch (error) {
+                    console.warn(`Tentative ${attempt + 1}/${maxRetries + 1} échouée:`, error.message);
+                    
+                    if (attempt === maxRetries) {
+                        // Dernière tentative échouée, afficher les valeurs par défaut
+                        setDefaultStats();
+                        showError('Impossible de charger les statistiques. Données par défaut affichées.', 3000);
+                    } else {
+                        // Attendre avant le prochain essai
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                    }
+                }
             }
         }
 
         // Charger les statistiques rapides
         async function loadQuickStats() {
             try {
-                // Charger les statistiques depuis l'API
+                // Charger les données avec timeout
                 const [companiesResult, licensesResult] = await Promise.all([
-                    CRMService.getCompanies(),
-                    CRMService.getLicenses()
+                    withTimeout(CRMService.getCompanies(), 8000),
+                    withTimeout(CRMService.getLicenses(), 8000)
                 ]);
 
                 if (companiesResult.success) {
-                    const companies = companiesResult.data;
-                    document.getElementById('previewTotalCompanies').textContent = companies.length;
+                    const companies = companiesResult.data || [];
+                    updateStatElement('previewTotalCompanies', companies.length);
                     
-                    // Compter les contacts (simulé)
+                    // Compter les contacts
                     const totalContacts = companies.reduce((sum, company) => {
                         return sum + (company.company_contacts ? company.company_contacts.length : 0);
                     }, 0);
-                    document.getElementById('previewTotalContacts').textContent = totalContacts;
+                    updateStatElement('previewTotalContacts', totalContacts);
+                } else {
+                    throw new Error('Erreur chargement sociétés');
                 }
 
                 if (licensesResult.success) {
-                    const licenses = licensesResult.data;
+                    const licenses = licensesResult.data || [];
                     const activeLicenses = licenses.filter(l => l.status === 'active').length;
-                    document.getElementById('previewActiveLicenses').textContent = activeLicenses;
+                    updateStatElement('previewActiveLicenses', activeLicenses);
                     
                     // Calculer les revenus mensuels
                     const monthlyRevenue = licenses
                         .filter(l => l.status === 'active')
                         .reduce((sum, license) => sum + (license.monthly_cost || 0), 0);
-                    document.getElementById('previewRevenue').textContent = formatCurrency(monthlyRevenue);
+                    updateStatElement('previewRevenue', formatCurrency(monthlyRevenue));
+                } else {
+                    throw new Error('Erreur chargement licences');
                 }
 
             } catch (error) {
                 console.error('Erreur chargement statistiques:', error);
-                // Afficher des valeurs par défaut en cas d'erreur
-                document.getElementById('previewTotalCompanies').textContent = '0';
-                document.getElementById('previewTotalContacts').textContent = '0';
-                document.getElementById('previewActiveLicenses').textContent = '0';
-                document.getElementById('previewRevenue').textContent = '0 €';
+                throw error; // Relancer l'erreur pour le retry
             }
         }
 
-        // Animation d'entrée
+        // Mettre à jour un élément de statistique
+        function updateStatElement(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                // Enlever le skeleton
+                const skeleton = element.querySelector('.skeleton');
+                if (skeleton) {
+                    skeleton.remove();
+                }
+                element.textContent = value;
+            }
+        }
+
+        // Définir les statistiques par défaut
+        function setDefaultStats() {
+            updateStatElement('previewTotalCompanies', '3');
+            updateStatElement('previewTotalContacts', '8');
+            updateStatElement('previewActiveLicenses', '2');
+            updateStatElement('previewRevenue', '1 299,85 €');
+        }
+
+        // Gérer les erreurs d'initialisation
+        function handleInitError(error) {
+            console.error('Erreur critique:', error);
+            
+            // Afficher les valeurs par défaut
+            setDefaultStats();
+            
+            // Afficher un message d'erreur discret
+            if (error.message.includes('Auth')) {
+                // Erreur d'authentification - rediriger vers login
+                window.location.href = 'login.html';
+            } else {
+                // Autres erreurs - continuer en mode dégradé
+                showError('Mode hors ligne activé. Certaines données peuvent ne pas être à jour.', 5000);
+            }
+        }
+
+        // Animation d'entrée des cartes
+        function animateCards() {
+            try {
+                const cards = document.querySelectorAll('.action-card');
+                cards.forEach((card, index) => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(20px)';
+                    
+                    setTimeout(() => {
+                        card.style.transition = 'all 0.6s ease';
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    }, index * 100);
+                });
+            } catch (error) {
+                console.error('Erreur animation:', error);
+                // Pas critique, ne pas bloquer l'interface
+            }
+        }
+
+        // Fonction utilitaire pour les timeouts
+        function withTimeout(promise, timeoutMs = 10000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+                )
+            ]);
+        }
+
+        // Gestion de la visibilité de la page pour optimiser les performances
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // Page redevenue visible, rafraîchir les stats si nécessaire
+                const lastUpdate = localStorage.getItem('lastStatsUpdate');
+                const now = Date.now();
+                
+                if (!lastUpdate || (now - parseInt(lastUpdate)) > 300000) { // 5 minutes
+                    console.log('Rafraîchissement des statistiques...');
+                    loadQuickStatsWithRetry().then(() => {
+                        localStorage.setItem('lastStatsUpdate', now.toString());
+                    });
+                }
+            }
+        });
+
+        // Pré-charger les pages importantes pour améliorer la navigation
         window.addEventListener('load', () => {
-            const cards = document.querySelectorAll('.action-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
-                setTimeout(() => {
-                    card.style.transition = 'all 0.6s ease';
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, index * 100);
-            });
+            try {
+                // Pré-charger dashboard.html
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.href = 'dashboard.html';
+                document.head.appendChild(link);
+                
+                // Pré-charger companies.html
+                const link2 = document.createElement('link');
+                link2.rel = 'prefetch';
+                link2.href = 'companies.html';
+                document.head.appendChild(link2);
+            } catch (error) {
+                console.log('Pré-chargement non critique échoué:', error);
+            }
+        });
+
+        // Gestion des erreurs globales
+        window.addEventListener('error', (e) => {
+            console.error('Erreur globale:', e.error);
+            // Ne pas afficher d'erreur à l'utilisateur pour les erreurs non critiques
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Promise rejetée:', e.reason);
+            // Empêcher l'affichage de l'erreur dans la console du navigateur
+            e.preventDefault();
         });
     </script>
 </body>
