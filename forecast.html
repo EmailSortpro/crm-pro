@@ -256,6 +256,84 @@
 
     <script src="config.js"></script>
     <script>
+        // Service de gestion des opportunités
+        class OpportunityService {
+            static opportunities = [
+                {
+                    id: '1',
+                    company_id: '1',
+                    title: 'Licence pour 25 utilisateurs',
+                    value: 2475,
+                    stage: 'proposal',
+                    probability: 60,
+                    expected_close_date: '2025-02-15',
+                    source: 'website',
+                    notes: 'Besoin urgent pour Q1 2025',
+                    created_at: '2025-01-15'
+                },
+                {
+                    id: '2',
+                    company_id: '2',
+                    title: 'Extension à 15 licences supplémentaires',
+                    value: 1485,
+                    stage: 'negotiation',
+                    probability: 75,
+                    expected_close_date: '2025-01-30',
+                    source: 'referral',
+                    notes: 'Client existant, négociation sur le prix',
+                    created_at: '2025-01-10'
+                },
+                {
+                    id: '3',
+                    company_id: '1',
+                    title: 'Module premium + support',
+                    value: 3500,
+                    stage: 'qualification',
+                    probability: 40,
+                    expected_close_date: '2025-03-01',
+                    source: 'marketing',
+                    notes: 'Intéressés par les fonctionnalités avancées',
+                    created_at: '2025-01-20'
+                }
+            ];
+            
+            static getAll() {
+                return [...this.opportunities];
+            }
+            
+            static getById(id) {
+                return this.opportunities.find(opp => opp.id === id);
+            }
+            
+            static create(data) {
+                const newOpportunity = {
+                    id: Date.now().toString(),
+                    ...data,
+                    created_at: new Date().toISOString()
+                };
+                this.opportunities.push(newOpportunity);
+                return newOpportunity;
+            }
+            
+            static update(id, data) {
+                const index = this.opportunities.findIndex(opp => opp.id === id);
+                if (index !== -1) {
+                    this.opportunities[index] = { ...this.opportunities[index], ...data };
+                    return this.opportunities[index];
+                }
+                return null;
+            }
+            
+            static delete(id) {
+                const index = this.opportunities.findIndex(opp => opp.id === id);
+                if (index !== -1) {
+                    this.opportunities.splice(index, 1);
+                    return true;
+                }
+                return false;
+            }
+        }
+
         // Variables globales
         let companies = [];
         let opportunities = [];
@@ -263,9 +341,783 @@
         let filteredOpportunities = [];
         let forecastChart = null;
         let pipelineChart = null;
+        let selectedOpportunity = null;
 
         // Styles pour la page forecast
         const forecastStyles = `
+            .filter-btn {
+                padding: 0.5rem 1rem;
+                background: var(--gray-100);
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                cursor: pointer;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--gray-700);
+                transition: all var(--transition);
+                white-space: nowrap;
+            }
+            .filter-btn:hover {
+                background: var(--gray-200);
+            }
+            .filter-btn.active {
+                background: var(--primary-color);
+                color: var(--white);
+                border-color: var(--primary-color);
+            }
+            .opportunity-card {
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius-lg);
+                padding: 1.5rem;
+                margin-bottom: 1rem;
+                background: var(--white);
+                transition: all var(--transition);
+                cursor: pointer;
+                position: relative;
+            }
+            .opportunity-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+                border-color: var(--primary-color);
+            }
+            .opportunity-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 1rem;
+            }
+            .opportunity-title {
+                font-size: 1.125rem;
+                font-weight: 700;
+                color: var(--gray-800);
+                margin-bottom: 0.25rem;
+            }
+            .opportunity-company {
+                font-size: 0.875rem;
+                color: var(--gray-600);
+            }
+            .opportunity-value {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--primary-color);
+            }
+            .stage-badge {
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.025em;
+            }
+            .stage-prospect {
+                background: #f3f4f6;
+                color: #6b7280;
+            }
+            .stage-qualification {
+                background: #dbeafe;
+                color: #1e40af;
+            }
+            .stage-proposal {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            .stage-negotiation {
+                background: #fed7aa;
+                color: #c2410c;
+            }
+            .stage-closing {
+                background: #dcfce7;
+                color: #166534;
+            }
+            .probability-bar {
+                width: 100%;
+                height: 8px;
+                background: var(--gray-200);
+                border-radius: 4px;
+                overflow: hidden;
+                margin: 0.5rem 0;
+            }
+            .probability-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--error-color) 0%, var(--warning-color) 50%, var(--success-color) 100%);
+                transition: width 0.3s ease;
+            }
+            .opportunity-actions {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                display: flex;
+                gap: 0.25rem;
+                opacity: 0;
+                transition: opacity var(--transition);
+            }
+            .opportunity-card:hover .opportunity-actions {
+                opacity: 1;
+            }
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+            }
+            .modal.show {
+                display: flex;
+            }
+            .modal-content {
+                background: var(--white);
+                border-radius: var(--radius-lg);
+                padding: 2rem;
+                width: 90%;
+                max-width: 700px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--gray-200);
+            }
+            .modal-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--gray-800);
+            }
+            .close-btn {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: var(--gray-500);
+                padding: 0.25rem;
+                border-radius: var(--radius);
+                transition: all var(--transition);
+            }
+            .close-btn:hover {
+                background: var(--gray-100);
+                color: var(--gray-700);
+            }
+        `;
+
+        // Injecter les styles
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = forecastStyles;
+        document.head.appendChild(styleSheet);
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isAuthenticated = await AuthService.requireAuth();
+            if (!isAuthenticated) return;
+
+            loadUserInfo();
+            await loadAllData();
+            initializeCharts();
+            calculateForecastMetrics();
+        });
+
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email;
+                document.getElementById('userRole').textContent = userInfo.role;
+                document.getElementById('userAvatar').textContent = getInitials(userInfo.email, '');
+            }
+        }
+
+        async function loadAllData() {
+            showLoading(true);
+            
+            try {
+                const [companiesResult, licensesResult] = await Promise.all([
+                    CRMService.getCompanies(),
+                    CRMService.getLicenses()
+                ]);
+                
+                if (companiesResult.success) {
+                    companies = companiesResult.data;
+                    populateCompanySelect();
+                }
+                
+                if (licensesResult.success) {
+                    licenses = licensesResult.data;
+                }
+                
+                // Charger les opportunités
+                opportunities = OpportunityService.getAll().map(opp => ({
+                    ...opp,
+                    company_name: companies.find(c => c.id === opp.company_id)?.name || 'Société inconnue'
+                }));
+                
+                filteredOpportunities = [...opportunities];
+                renderOpportunities();
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors du chargement des données');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function populateCompanySelect() {
+            const select = document.getElementById('opportunityCompany');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Sélectionner une société</option>';
+            
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = `${company.name} (${company.status})`;
+                select.appendChild(option);
+            });
+        }
+
+        function calculateForecastMetrics() {
+            const totalOpportunities = opportunities.length;
+            const projectedRevenue = opportunities.reduce((sum, opp) => sum + (opp.value * opp.probability / 100), 0);
+            
+            // Calculer le taux de conversion (simulé)
+            const totalCompanies = companies.length;
+            const clientCompanies = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
+            const conversionRate = totalCompanies > 0 ? (clientCompanies / totalCompanies * 100) : 0;
+            
+            const avgDealSize = opportunities.length > 0 ? opportunities.reduce((sum, opp) => sum + opp.value, 0) / opportunities.length : 0;
+            
+            // Mettre à jour l'affichage
+            document.getElementById('totalOpportunities').textContent = totalOpportunities;
+            document.getElementById('projectedRevenue').textContent = formatCurrency(projectedRevenue);
+            document.getElementById('conversionRate').textContent = conversionRate.toFixed(1) + '%';
+            document.getElementById('avgDealSize').textContent = formatCurrency(avgDealSize);
+            
+            // Tendances (simulées)
+            document.getElementById('opportunitiesChange').textContent = '+12% ce mois';
+            document.getElementById('revenueChange').textContent = 'T1 2025';
+            document.getElementById('conversionTrend').textContent = 'Prospect → Client';
+            document.getElementById('dealSizeTrend').textContent = 'Par contrat';
+        }
+
+        function initializeCharts() {
+            initializeForecastChart();
+            initializePipelineChart();
+            updateForecastTable();
+        }
+
+        function initializeForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            // Données simulées pour les 6 prochains mois
+            const months = [];
+            const projectedData = [];
+            const actualData = [];
+            
+            for (let i = 0; i < 6; i++) {
+                const date = new Date();
+                date.setMonth(date.getMonth() + i);
+                months.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
+                
+                // Simulation de croissance progressive
+                const baseRevenue = 15000;
+                const growth = i * 0.1;
+                projectedData.push(baseRevenue * (1 + growth));
+                actualData.push(i === 0 ? baseRevenue * 0.9 : null); // Données réelles seulement pour le mois en cours
+            }
+            
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Revenus Projetés',
+                            data: projectedData,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Revenus Réels',
+                            data: actualData,
+                            borderColor: '#48bb78',
+                            backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializePipelineChart() {
+            const ctx = document.getElementById('pipelineChart').getContext('2d');
+            
+            // Calculer la répartition par étape
+            const stages = ['prospect', 'qualification', 'proposal', 'negotiation', 'closing'];
+            const stageLabels = ['Prospect', 'Qualification', 'Proposition', 'Négociation', 'Finalisation'];
+            const stageCounts = stages.map(stage => opportunities.filter(opp => opp.stage === stage).length);
+            
+            pipelineChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: stageLabels,
+                    datasets: [{
+                        data: stageCounts,
+                        backgroundColor: [
+                            '#6b7280',
+                            '#1e40af',
+                            '#92400e',
+                            '#c2410c',
+                            '#166534'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateForecastTable() {
+            const tableBody = document.getElementById('forecastTableBody');
+            
+            // Générer des prévisions par trimestre basées sur les opportunités réelles
+            const quarters = ['T1 2025', 'T2 2025', 'T3 2025', 'T4 2025'];
+            const periods = quarters.map((quarter, index) => {
+                // Simuler des données basées sur les opportunités existantes
+                const baseOpportunities = opportunities.length;
+                const oppsCount = Math.ceil(baseOpportunities * (1 + index * 0.3));
+                const baseRevenue = opportunities.reduce((sum, opp) => sum + opp.value, 0);
+                const estimated = Math.ceil(baseRevenue * (1 + index * 0.2));
+                const probability = Math.max(70 - index * 5, 40); // Décroissant
+                
+                return {
+                    name: quarter,
+                    opportunities: oppsCount,
+                    estimated: estimated,
+                    probability: probability
+                };
+            });
+            
+            tableBody.innerHTML = periods.map(period => {
+                const weightedRevenue = period.estimated * period.probability / 100;
+                const trend = period.estimated > periods[0].estimated ? '📈' : '📊';
+                
+                return `
+                    <tr>
+                        <td style="font-weight: 600;">${period.name}</td>
+                        <td>${period.opportunities}</td>
+                        <td style="font-weight: 600;">${formatCurrency(period.estimated)}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="probability-bar" style="width: 100px;">
+                                    <div class="probability-fill" style="width: ${period.probability}%;"></div>
+                                </div>
+                                <span style="font-weight: 600;">${period.probability}%</span>
+                            </div>
+                        </td>
+                        <td style="font-weight: 600; color: var(--primary-color);">${formatCurrency(weightedRevenue)}</td>
+                        <td style="font-size: 1.25rem;">${trend}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterOpportunities(stage) {
+            // Mettre à jour les boutons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Filtrer les données
+            if (stage === 'all') {
+                filteredOpportunities = [...opportunities];
+            } else {
+                filteredOpportunities = opportunities.filter(opp => opp.stage === stage);
+            }
+            
+            renderOpportunities();
+        }
+
+        function searchOpportunities() {
+            const searchTerm = document.getElementById('opportunitySearch').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderOpportunities();
+                return;
+            }
+            
+            const searchResults = filteredOpportunities.filter(opp =>
+                opp.title.toLowerCase().includes(searchTerm) ||
+                opp.company_name.toLowerCase().includes(searchTerm) ||
+                (opp.notes && opp.notes.toLowerCase().includes(searchTerm))
+            );
+            
+            renderOpportunities(searchResults);
+        }
+
+        function renderOpportunities(opportunitiesToRender = filteredOpportunities) {
+            const container = document.getElementById('opportunitiesContainer');
+            
+            if (opportunitiesToRender.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: var(--gray-500);">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+                        <h3 style="margin-bottom: 1rem;">Aucune opportunité trouvée</h3>
+                        <p>Créez votre première opportunité pour commencer le suivi</p>
+                        <button class="btn btn-primary" onclick="openModal('add-opportunity')" style="margin-top: 1rem;">
+                            ➕ Créer une opportunité
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = opportunitiesToRender.map(opp => `
+                <div class="opportunity-card" onclick="openOpportunityDetails('${opp.id}')">
+                    <div class="opportunity-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); editOpportunity('${opp.id}')" title="Modifier">
+                            ✏️
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteOpportunity('${opp.id}')" title="Supprimer">
+                            🗑️
+                        </button>
+                    </div>
+                    
+                    <div class="opportunity-header">
+                        <div>
+                            <div class="opportunity-title">${opp.title}</div>
+                            <div class="opportunity-company">${opp.company_name}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="opportunity-value">${formatCurrency(opp.value)}</div>
+                            <span class="stage-badge stage-${opp.stage}">${getStageLabel(opp.stage)}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <span style="font-size: 0.875rem; color: var(--gray-600);">Probabilité</span>
+                                <span style="font-weight: 600;">${opp.probability}%</span>
+                            </div>
+                            <div class="probability-bar">
+                                <div class="probability-fill" style="width: ${opp.probability}%;"></div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Clôture prévue</div>
+                            <div style="font-weight: 600;">${formatDateShort(opp.expected_close_date)}</div>
+                        </div>
+                    </div>
+                    
+                    ${opp.notes ? `
+                        <div style="background: var(--gray-50); padding: 0.75rem; border-radius: var(--radius); font-size: 0.875rem; color: var(--gray-700);">
+                            ${opp.notes}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function getStageLabel(stage) {
+            const labels = {
+                prospect: 'Prospect',
+                qualification: 'Qualification',
+                proposal: 'Proposition',
+                negotiation: 'Négociation',
+                closing: 'Finalisation'
+            };
+            return labels[stage] || stage;
+        }
+
+        function updateStageDefaults() {
+            const stage = document.getElementById('opportunityStage').value;
+            const probabilityInput = document.getElementById('opportunityProbability');
+            
+            // Probabilités par défaut selon l'étape
+            const defaultProbabilities = {
+                prospect: 25,
+                qualification: 40,
+                proposal: 60,
+                negotiation: 75,
+                closing: 90
+            };
+            
+            if (defaultProbabilities[stage]) {
+                probabilityInput.value = defaultProbabilities[stage];
+            }
+        }
+
+        function updateForecastChart(period) {
+            // Mettre à jour les boutons
+            document.querySelectorAll('.card-header .btn-sm').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Ici on pourrait recharger le graphique avec des données différentes
+            console.log('Mise à jour du graphique pour la période:', period);
+        }
+
+        function openOpportunityDetails(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            selectedOpportunity = opportunity;
+            
+            // Créer le modal des détails si il n'existe pas
+            let modal = document.getElementById('modal-opportunity-details');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'modal-opportunity-details';
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="opportunityDetailsTitle"></h3>
+                            <button class="close-btn" onclick="closeModal('opportunity-details')">&times;</button>
+                        </div>
+                        <div id="opportunityDetailsContent"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            document.getElementById('opportunityDetailsTitle').textContent = opportunity.title;
+            document.getElementById('opportunityDetailsContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Informations générales</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Société :</strong> ${opportunity.company_name}</div>
+                            <div><strong>Valeur :</strong> <span style="color: var(--primary-color); font-weight: 700;">${formatCurrency(opportunity.value)}</span></div>
+                            <div><strong>Étape :</strong> <span class="stage-badge stage-${opportunity.stage}">${getStageLabel(opportunity.stage)}</span></div>
+                            <div><strong>Probabilité :</strong> ${opportunity.probability}%</div>
+                            <div><strong>Source :</strong> ${opportunity.source || 'Non spécifiée'}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Échéances</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Clôture prévue :</strong> ${formatDate(opportunity.expected_close_date)}</div>
+                            <div><strong>Créée le :</strong> ${formatDate(opportunity.created_at)}</div>
+                            <div><strong>Revenus pondérés :</strong> <span style="color: var(--success-color); font-weight: 600;">${formatCurrency(opportunity.value * opportunity.probability / 100)}</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${opportunity.notes ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Notes</h4>
+                        <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); color: var(--gray-700);">
+                            ${opportunity.notes}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="closeModal('opportunity-details')">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="editOpportunity('${opportunity.id}')">
+                        ✏️ Modifier
+                    </button>
+                </div>
+            `;
+            
+            openModal('opportunity-details');
+        }
+
+        function editOpportunity(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            selectedOpportunity = opportunity;
+            
+            // Pré-remplir le formulaire avec les données existantes
+            document.getElementById('opportunityCompany').value = opportunity.company_id;
+            document.getElementById('opportunityTitle').value = opportunity.title;
+            document.getElementById('opportunityValue').value = opportunity.value;
+            document.getElementById('opportunityStage').value = opportunity.stage;
+            document.getElementById('opportunityProbability').value = opportunity.probability;
+            document.getElementById('expectedCloseDate').value = opportunity.expected_close_date;
+            document.getElementById('opportunitySource').value = opportunity.source || '';
+            document.getElementById('opportunityNotes').value = opportunity.notes || '';
+            
+            // Changer le titre et le bouton
+            document.querySelector('#modal-add-opportunity .modal-title').textContent = '✏️ Modifier l\'opportunité';
+            document.querySelector('#addOpportunityForm button[type="submit"]').innerHTML = '💾 Sauvegarder les modifications';
+            
+            openModal('add-opportunity');
+        }
+
+        function deleteOpportunity(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'opportunité "${opportunity.title}" ?\n\nCette action est irréversible.`)) {
+                return;
+            }
+            
+            // Supprimer de la liste locale
+            OpportunityService.delete(opportunityId);
+            opportunities = OpportunityService.getAll().map(opp => ({
+                ...opp,
+                company_name: companies.find(c => c.id === opp.company_id)?.name || 'Société inconnue'
+            }));
+            
+            // Mettre à jour l'affichage
+            filteredOpportunities = [...opportunities];
+            renderOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            showSuccess('Opportunité supprimée avec succès');
+        }
+
+        // Gestion des modals
+        function openModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.add('show');
+            
+            if (modalId === 'add-opportunity' && !selectedOpportunity) {
+                // Réinitialiser le formulaire pour une nouvelle opportunité
+                document.getElementById('addOpportunityForm').reset();
+                document.querySelector('#modal-add-opportunity .modal-title').textContent = '🎯 Nouvelle Opportunité';
+                document.querySelector('#addOpportunityForm button[type="submit"]').innerHTML = '💾 Créer l\'opportunité';
+                
+                // Initialiser la date de clôture par défaut (dans 30 jours)
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 30);
+                document.getElementById('expectedCloseDate').value = futureDate.toISOString().split('T')[0];
+                
+                updateStageDefaults();
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.remove('show');
+            
+            // Réinitialiser selectedOpportunity si on ferme le modal d'ajout
+            if (modalId === 'add-opportunity') {
+                selectedOpportunity = null;
+            }
+        }
+
+        // Gestion du formulaire d'opportunité
+        document.getElementById('addOpportunityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                company_id: document.getElementById('opportunityCompany').value,
+                title: document.getElementById('opportunityTitle').value,
+                value: parseFloat(document.getElementById('opportunityValue').value),
+                stage: document.getElementById('opportunityStage').value,
+                probability: parseInt(document.getElementById('opportunityProbability').value),
+                expected_close_date: document.getElementById('expectedCloseDate').value,
+                source: document.getElementById('opportunitySource').value,
+                notes: document.getElementById('opportunityNotes').value
+            };
+            
+            if (selectedOpportunity) {
+                // Modifier l'opportunité existante
+                OpportunityService.update(selectedOpportunity.id, formData);
+                showSuccess('Opportunité modifiée avec succès !');
+            } else {
+                // Créer une nouvelle opportunité
+                OpportunityService.create(formData);
+                showSuccess('Opportunité créée avec succès !');
+            }
+            
+            // Recharger les données
+            opportunities = OpportunityService.getAll().map(opp => ({
+                ...opp,
+                company_name: companies.find(c => c.id === opp.company_id)?.name || 'Société inconnue'
+            }));
+            
+            filteredOpportunities = [...opportunities];
+            
+            // Mettre à jour l'affichage
+            renderOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            closeModal('add-opportunity');
+            selectedOpportunity = null;
+        });
+
+        // Fermer les modals en cliquant à l'extérieur
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                const modalId = e.target.id.replace('modal-', '');
+                closeModal(modalId);
+            }
+        });
+
+        // Raccourcis clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.show').forEach(modal => {
+                    const modalId = modal.id.replace('modal-', '');
+                    closeModal(modalId);
+                });
+            }
+            
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'n':
+                        e.preventDefault();
+                        openModal('add-opportunity');
+                        break;
+                }
+            }
+        });
             .filter-btn {
                 padding: 0.5rem 1rem;
                 background: var(--gray-100);
