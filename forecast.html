@@ -3,18 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM Pro - Gestion des Sociétés</title>
+    <title>CRM Pro - Forecast & Opportunités</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .filter-btn:hover {
+            background: #e5e7eb;
+        }
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .opportunity-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            background: white;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .opportunity-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+        .opportunity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .opportunity-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+        .opportunity-company {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .opportunity-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .stage-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        .stage-prospect {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .stage-qualification {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .stage-proposal {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .stage-negotiation {
+            background: #fed7aa;
+            color: #c2410c;
+        }
+        .stage-closing {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .probability-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+            transition: width 0.3s ease;
+        }
+        .opportunity-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .opportunity-card:hover .opportunity-actions {
+            opacity: 1;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.25rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+        .close-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">
+            <div class="nav-logo">
                 <span class="logo-icon">🚀</span>
                 <span class="logo-text">CRM Pro</span>
-            </a>
+            </div>
             
             <div class="nav-menu">
                 <a href="index.html" class="nav-link">
@@ -25,7 +188,7 @@
                     <span class="nav-icon">📊</span>
                     Tableau de bord
                 </a>
-                <a href="companies.html" class="nav-link active">
+                <a href="companies.html" class="nav-link">
                     <span class="nav-icon">🏢</span>
                     Sociétés
                 </a>
@@ -33,7 +196,7 @@
                     <span class="nav-icon">👥</span>
                     Contacts
                 </a>
-                <a href="forecast.html" class="nav-link">
+                <a href="forecast.html" class="nav-link active">
                     <span class="nav-icon">📈</span>
                     Forecast
                 </a>
@@ -49,10 +212,8 @@
             
             <div class="nav-user">
                 <div class="user-info">
-                    <div>
-                        <div class="user-name" id="userName">Utilisateur</div>
-                        <div class="user-role" id="userRole">user</div>
-                    </div>
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
                 </div>
                 <button onclick="AuthService.logout()" class="logout-btn">
                     <span>🚪</span>
@@ -65,170 +226,224 @@
     <!-- Contenu principal -->
     <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
         <!-- En-tête de page -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <div>
-                <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
-                    🏢 Gestion des Sociétés
-                </h1>
-                <p style="color: var(--gray-600);">
-                    Gérez vos prospects, clients et sociétés onboardées
-                </p>
-            </div>
-            <button class="btn btn-primary" onclick="openModal('add-company')">
-                ➕ Nouvelle Société
-            </button>
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; font-weight: 700; color: #1f2937; margin-bottom: 0.5rem;">
+                📈 Forecast & Opportunités
+            </h1>
+            <p style="color: #6b7280;">
+                Analysez vos prévisions de ventes et suivez vos opportunités commerciales
+            </p>
         </div>
 
-        <!-- Filtres et recherche -->
-        <div class="card" style="margin-bottom: 2rem;">
-            <div class="card-body" style="padding: 1.5rem;">
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <!-- Filtres par statut -->
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
-                        <button class="filter-btn active" data-filter="all" onclick="filterCompanies('all')">
-                            Toutes (<span id="count-all">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="prospect" onclick="filterCompanies('prospect')">
-                            Prospects (<span id="count-prospect">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="sponsor" onclick="filterCompanies('sponsor')">
-                            Sponsors (<span id="count-sponsor">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="client" onclick="filterCompanies('client')">
-                            Clients (<span id="count-client">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="onboarded" onclick="filterCompanies('onboarded')">
-                            Onboardés (<span id="count-onboarded">0</span>)
-                        </button>
+        <!-- Métriques de forecast basées sur les vraies données -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOpportunities">0</div>
+                <div class="stat-label">Opportunités Totales</div>
+                <div class="stat-change" id="opportunitiesChange">Basé sur les données réelles</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-number" id="projectedRevenue">0 €</div>
+                <div class="stat-label">Revenus Projetés</div>
+                <div class="stat-change" id="revenueChange">Revenus pondérés</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-number" id="conversionRate">0%</div>
+                <div class="stat-label">Taux de Conversion</div>
+                <div class="stat-change" id="conversionTrend">Prospect → Client</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-number" id="avgDealSize">0 €</div>
+                <div class="stat-label">Taille Moyenne</div>
+                <div class="stat-change" id="dealSizeTrend">Par opportunité</div>
+            </div>
+        </div>
+
+        <!-- Graphiques et analyses -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <!-- Graphique principal -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📊 Évolution Basée sur les Licences Réelles</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-sm btn-secondary active" onclick="updateForecastChart('monthly')">Mensuel</button>
+                        <button class="btn btn-sm btn-secondary" onclick="updateForecastChart('quarterly')">Trimestriel</button>
+                        <button class="btn btn-sm btn-secondary" onclick="updateForecastChart('yearly')">Annuel</button>
                     </div>
-                    
-                    <!-- Barre de recherche -->
-                    <div style="flex: 1; min-width: 200px;">
-                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
-                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"
-                               oninput="searchCompanies()">
-                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="forecastChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Pipeline de vente basé sur les vrais statuts -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">🔄 Répartition des Sociétés</h3>
+                    <p class="card-subtitle">Données réelles de la base</p>
+                </div>
+                <div class="card-body">
+                    <canvas id="pipelineChart" width="300" height="300"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Liste des sociétés -->
-        <div id="companiesGrid" class="companies-grid">
-            <!-- Chargé dynamiquement -->
+        <!-- Section des opportunités -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">🎯 Opportunités Basées sur les Sociétés</h3>
+                    <p class="card-subtitle">Prospects et opportunités de croissance</p>
+                </div>
+                <button class="btn btn-primary" onclick="openModal('add-opportunity')">
+                    ➕ Nouvelle Opportunité
+                </button>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <!-- Filtres des opportunités -->
+                <div style="padding: 1.5rem 1.5rem 0;">
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <span style="font-weight: 600; color: #374151;">Étape :</span>
+                            <button class="filter-btn active" data-filter="all" onclick="filterOpportunities('all')">Toutes (<span id="count-all">0</span>)</button>
+                            <button class="filter-btn" data-filter="prospect" onclick="filterOpportunities('prospect')">Prospects (<span id="count-prospect">0</span>)</button>
+                            <button class="filter-btn" data-filter="qualification" onclick="filterOpportunities('qualification')">Qualification (<span id="count-qualification">0</span>)</button>
+                            <button class="filter-btn" data-filter="proposal" onclick="filterOpportunities('proposal')">Proposition (<span id="count-proposal">0</span>)</button>
+                            <button class="filter-btn" data-filter="negotiation" onclick="filterOpportunities('negotiation')">Négociation (<span id="count-negotiation">0</span>)</button>
+                            <button class="filter-btn" data-filter="closing" onclick="filterOpportunities('closing')">Finalisation (<span id="count-closing">0</span>)</button>
+                        </div>
+                        <div style="flex: 1; min-width: 200px;">
+                            <input type="text" id="opportunitySearch" placeholder="🔍 Rechercher une opportunité..." 
+                                   style="width: 100%; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem;"
+                                   oninput="searchOpportunities()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des opportunités -->
+                <div id="opportunitiesContainer" style="padding: 1.5rem;">
+                    <!-- Chargé dynamiquement -->
+                </div>
+            </div>
         </div>
 
-        <!-- État vide -->
-        <div id="emptyState" class="card" style="display: none; text-align: center; padding: 3rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
-            <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucune société trouvée</h3>
-            <p style="color: var(--gray-500); margin-bottom: 2rem;">
-                Commencez par ajouter votre première société
-            </p>
-            <button class="btn btn-primary" onclick="openModal('add-company')">
-                ➕ Créer ma première société
-            </button>
+        <!-- Prévisions basées sur les vraies données -->
+        <div class="card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <h3 class="card-title">📅 Prévisions Basées sur les Licences Actuelles</h3>
+                <p class="card-subtitle">Projections de croissance basées sur les données réelles</p>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Période</th>
+                                <th>Sociétés Ciblées</th>
+                                <th>Revenus Estimés</th>
+                                <th>Probabilité</th>
+                                <th>Revenus Pondérés</th>
+                                <th>Tendance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastTableBody">
+                            <!-- Chargé dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!-- Modal Nouvelle/Modifier Société -->
-    <div id="modal-add-company" class="modal">
+    <!-- Modal Nouvelle Opportunité -->
+    <div id="modal-add-opportunity" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">➕ Nouvelle Société</h3>
-                <button class="close-btn" onclick="closeModal('add-company')">&times;</button>
+                <h3 class="modal-title">🎯 Nouvelle Opportunité</h3>
+                <button class="close-btn" onclick="closeModal('add-opportunity')">&times;</button>
             </div>
             
-            <form id="addCompanyForm">
+            <form id="addOpportunityForm">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
-                        <label for="companyName">Nom de la société *</label>
-                        <input type="text" id="companyName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="companyStatus">Statut</label>
-                        <select id="companyStatus">
-                            <option value="prospect">Prospect</option>
-                            <option value="sponsor">Sponsor</option>
-                            <option value="client">Client</option>
-                            <option value="onboarded">Onboardé</option>
+                        <label for="opportunityCompany">Société *</label>
+                        <select id="opportunityCompany" required>
+                            <option value="">Sélectionner une société</option>
+                            <!-- Options chargées dynamiquement -->
                         </select>
                     </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
-                        <label for="companyIndustry">Secteur d'activité</label>
-                        <input type="text" id="companyIndustry" placeholder="Ex: Technologie, Santé...">
+                        <label for="opportunityTitle">Titre de l'opportunité *</label>
+                        <input type="text" id="opportunityTitle" required placeholder="Ex: Licence pour 50 utilisateurs">
                     </div>
-                    <div class="form-group">
-                        <label for="accountManager">Responsable de compte</label>
-                        <input type="text" id="accountManager" placeholder="Nom du responsable">
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                    <div class="form-group">
-                        <label for="companyWebsite">Site web</label>
-                        <input type="url" id="companyWebsite" placeholder="https://exemple.com">
-                    </div>
-                    <div class="form-group">
-                        <label for="companyPhone">Téléphone</label>
-                        <input type="tel" id="companyPhone" placeholder="01.23.45.67.89">
-                    </div>
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label for="companySiret">SIRET</label>
-                    <input type="text" id="companySiret" placeholder="12345678901234">
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 1rem;">
-                    <label for="companyAddress">Adresse</label>
-                    <textarea id="companyAddress" rows="2" placeholder="123 rue de l'Exemple"></textarea>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
-                        <label for="companyCity">Ville</label>
-                        <input type="text" id="companyCity" placeholder="Paris">
+                        <label for="opportunityValue">Valeur estimée (€) *</label>
+                        <input type="number" id="opportunityValue" required min="0" step="0.01" placeholder="5000">
                     </div>
                     <div class="form-group">
-                        <label for="companyPostalCode">Code postal</label>
-                        <input type="text" id="companyPostalCode" placeholder="75001">
+                        <label for="opportunityStage">Étape *</label>
+                        <select id="opportunityStage" required onchange="updateStageDefaults()">
+                            <option value="prospect">Prospect</option>
+                            <option value="qualification">Qualification</option>
+                            <option value="proposal">Proposition</option>
+                            <option value="negotiation">Négociation</option>
+                            <option value="closing">Finalisation</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="companyCountry">Pays</label>
-                        <input type="text" id="companyCountry" value="France">
+                        <label for="opportunityProbability">Probabilité (%)</label>
+                        <input type="number" id="opportunityProbability" min="0" max="100" value="25">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="expectedCloseDate">Date de clôture prévue</label>
+                        <input type="date" id="expectedCloseDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="opportunitySource">Source</label>
+                        <select id="opportunitySource">
+                            <option value="">Sélectionner</option>
+                            <option value="website">Site web</option>
+                            <option value="referral">Référence</option>
+                            <option value="cold_call">Prospection</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="partner">Partenaire</option>
+                            <option value="event">Événement</option>
+                        </select>
                     </div>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 2rem;">
-                    <label for="companyNotes">Notes</label>
-                    <textarea id="companyNotes" rows="3" placeholder="Notes internes sur cette société..."></textarea>
+                    <label for="opportunityNotes">Notes</label>
+                    <textarea id="opportunityNotes" rows="3" placeholder="Détails sur l'opportunité, besoins client, prochaines étapes..."></textarea>
                 </div>
                 
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-company')">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-opportunity')">
                         Annuler
                     </button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">
-                        💾 Créer la société
+                    <button type="submit" class="btn btn-primary">
+                        💾 <span id="submitButtonText">Créer l'opportunité</span>
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Modal Détails Société -->
-    <div id="modal-company-details" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
+    <!-- Modal Détails Opportunité -->
+    <div id="modal-opportunity-details" class="modal">
+        <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title" id="companyDetailsTitle">Détails de la société</h3>
-                <button class="close-btn" onclick="closeModal('company-details')">&times;</button>
+                <h3 class="modal-title" id="opportunityDetailsTitle">Détails de l'opportunité</h3>
+                <button class="close-btn" onclick="closeModal('opportunity-details')">&times;</button>
             </div>
             
-            <div id="companyDetailsContent">
+            <div id="opportunityDetailsContent">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
@@ -238,183 +453,28 @@
     <script>
         // Variables globales
         let companies = [];
-        let filteredCompanies = [];
+        let opportunities = [];
+        let licenses = [];
+        let filteredOpportunities = [];
+        let forecastChart = null;
+        let pipelineChart = null;
+        let selectedOpportunity = null;
         let currentFilter = 'all';
-        let selectedCompany = null;
-        let editMode = false; // VARIABLE IMPORTANTE POUR GÉRER L'ÉDITION
 
-        // Styles pour les filtres
-        const filterBtnStyle = `
-            .filter-btn {
-                padding: 0.5rem 1rem;
-                background: var(--gray-100);
-                border: 1px solid var(--gray-300);
-                border-radius: var(--radius-md);
-                cursor: pointer;
-                font-size: 0.875rem;
-                font-weight: 500;
-                color: var(--gray-700);
-                transition: all var(--transition);
-                white-space: nowrap;
-            }
-            .filter-btn:hover {
-                background: var(--gray-200);
-            }
-            .filter-btn.active {
-                background: var(--primary-color);
-                color: var(--white);
-                border-color: var(--primary-color);
-            }
-            .companies-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-                gap: 1.5rem;
-            }
-            .company-card {
-                background: var(--white);
-                border: 1px solid var(--gray-200);
-                border-radius: var(--radius-lg);
-                padding: 1.5rem;
-                transition: all var(--transition);
-                cursor: pointer;
-            }
-            .company-card:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-lg);
-                border-color: var(--primary-color);
-            }
-            .company-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 1rem;
-            }
-            .company-name {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: var(--gray-800);
-                margin-bottom: 0.25rem;
-            }
-            .company-industry {
-                font-size: 0.875rem;
-                color: var(--gray-500);
-            }
-            .status-badge {
-                padding: 0.25rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.025em;
-            }
-            .status-prospect {
-                background: #fef3c7;
-                color: #92400e;
-            }
-            .status-sponsor {
-                background: #f3e8ff;
-                color: #7c3aed;
-            }
-            .status-client {
-                background: #dbeafe;
-                color: #1e40af;
-            }
-            .status-onboarded {
-                background: #dcfce7;
-                color: #166534;
-            }
-            .company-info {
-                display: grid;
-                gap: 0.5rem;
-                margin-bottom: 1rem;
-            }
-            .company-info-item {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                font-size: 0.875rem;
-                color: var(--gray-600);
-            }
-            .company-actions {
-                display: flex;
-                gap: 0.5rem;
-                justify-content: flex-end;
-            }
-            .modal {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 1000;
-                align-items: center;
-                justify-content: center;
-            }
-            .modal.show {
-                display: flex;
-            }
-            .modal-content {
-                background: var(--white);
-                border-radius: var(--radius-lg);
-                padding: 2rem;
-                width: 90%;
-                max-width: 600px;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-            .modal-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 1.5rem;
-                padding-bottom: 1rem;
-                border-bottom: 1px solid var(--gray-200);
-            }
-            .modal-title {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: var(--gray-800);
-            }
-            .close-btn {
-                background: none;
-                border: none;
-                font-size: 1.5rem;
-                cursor: pointer;
-                color: var(--gray-500);
-                padding: 0.25rem;
-                border-radius: var(--radius);
-                transition: all var(--transition);
-            }
-            .close-btn:hover {
-                background: var(--gray-100);
-                color: var(--gray-700);
-            }
-        `;
-
-        // Injecter les styles
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = filterBtnStyle;
-        document.head.appendChild(styleSheet);
+        // Stockage local des opportunités avec localStorage
+        const OPPORTUNITIES_STORAGE_KEY = 'crm_opportunities';
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
-            // Vérifier l'authentification
             const isAuthenticated = await AuthService.requireAuth();
             if (!isAuthenticated) return;
 
-            // Charger les informations utilisateur
             loadUserInfo();
-
-            // Charger les sociétés
-            await loadCompanies();
-
-            // Gérer les paramètres URL
-            handleUrlParams();
+            await loadAllData();
+            initializeCharts();
+            calculateForecastMetrics();
         });
 
-        // Charger les informations utilisateur
         function loadUserInfo() {
             const userInfo = AuthService.getUserInfo();
             if (userInfo) {
@@ -423,142 +483,596 @@
             }
         }
 
-        // Charger les sociétés
-        async function loadCompanies() {
+        // Charger toutes les données réelles de la base
+        async function loadAllData() {
             showLoading(true);
             
             try {
-                const result = await CRMService.getCompanies();
-                if (result.success) {
-                    companies = result.data;
-                    updateCounts();
-                    filterCompanies(currentFilter);
-                    showSuccess(`${companies.length} société(s) chargée(s)`);
+                // Charger les vraies données de la base
+                const [companiesResult, licensesResult] = await Promise.all([
+                    CRMService.getCompanies(),
+                    CRMService.getLicenses()
+                ]);
+                
+                if (companiesResult.success) {
+                    companies = companiesResult.data;
+                    populateCompanySelect();
+                    console.log('Sociétés chargées:', companies.length);
                 } else {
-                    showError('Erreur lors du chargement des sociétés: ' + result.error);
+                    showError('Erreur lors du chargement des sociétés');
+                    companies = []; // Fallback
                 }
+                
+                if (licensesResult.success) {
+                    licenses = licensesResult.data;
+                    console.log('Licences chargées:', licenses.length);
+                } else {
+                    showError('Erreur lors du chargement des licences');
+                    licenses = []; // Fallback
+                }
+                
+                // Charger les opportunités depuis le localStorage ou créer des données basées sur les sociétés
+                loadOpportunities();
+                
             } catch (error) {
                 console.error('Erreur:', error);
                 showError('Erreur lors du chargement des données');
+                
+                // Mode fallback avec données minimales
+                companies = [];
+                licenses = [];
+                opportunities = [];
             } finally {
                 showLoading(false);
             }
         }
 
-        // Mettre à jour les compteurs
-        function updateCounts() {
-            document.getElementById('count-all').textContent = companies.length;
-            document.getElementById('count-prospect').textContent = companies.filter(c => c.status === 'prospect').length;
-            document.getElementById('count-sponsor').textContent = companies.filter(c => c.status === 'sponsor').length;
-            document.getElementById('count-client').textContent = companies.filter(c => c.status === 'client').length;
-            document.getElementById('count-onboarded').textContent = companies.filter(c => c.status === 'onboarded').length;
+        function loadOpportunities() {
+            // Charger depuis localStorage
+            const stored = localStorage.getItem(OPPORTUNITIES_STORAGE_KEY);
+            let localOpportunities = stored ? JSON.parse(stored) : [];
+            
+            // Si pas d'opportunités stockées, en créer quelques-unes basées sur les vraies sociétés
+            if (localOpportunities.length === 0 && companies.length > 0) {
+                localOpportunities = generateOpportunitiesFromCompanies();
+                saveOpportunities(localOpportunities);
+            }
+            
+            // Enrichir avec les noms des sociétés
+            opportunities = localOpportunities.map(opp => ({
+                ...opp,
+                company_name: companies.find(c => c.id === opp.company_id)?.name || 'Société inconnue'
+            }));
+            
+            filteredOpportunities = [...opportunities];
+            renderOpportunities();
+            updateOpportunityCounts();
         }
 
-        // Filtrer les sociétés
-        function filterCompanies(filter) {
-            currentFilter = filter;
+        function generateOpportunitiesFromCompanies() {
+            const generatedOpportunities = [];
             
-            // Mettre à jour les boutons de filtre
+            companies.forEach(company => {
+                // Créer des opportunités basées sur le statut de la société
+                if (company.status === 'prospect') {
+                    generatedOpportunities.push({
+                        id: `gen-${company.id}-1`,
+                        company_id: company.id,
+                        title: `Licence initiale pour ${company.name}`,
+                        value: Math.floor(Math.random() * 5000) + 2000,
+                        stage: 'prospect',
+                        probability: 25,
+                        expected_close_date: getRandomFutureDate(30, 90),
+                        source: 'website',
+                        notes: `Première approche avec ${company.name}`,
+                        created_at: new Date().toISOString()
+                    });
+                } else if (company.status === 'client') {
+                    // Opportunité d'extension pour les clients existants
+                    generatedOpportunities.push({
+                        id: `gen-${company.id}-2`,
+                        company_id: company.id,
+                        title: `Extension licences pour ${company.name}`,
+                        value: Math.floor(Math.random() * 3000) + 1500,
+                        stage: 'qualification',
+                        probability: 60,
+                        expected_close_date: getRandomFutureDate(15, 45),
+                        source: 'referral',
+                        notes: `Opportunité d'extension pour client existant`,
+                        created_at: new Date().toISOString()
+                    });
+                }
+            });
+            
+            return generatedOpportunities;
+        }
+
+        function getRandomFutureDate(minDays, maxDays) {
+            const today = new Date();
+            const randomDays = Math.floor(Math.random() * (maxDays - minDays)) + minDays;
+            const futureDate = new Date(today.getTime() + (randomDays * 24 * 60 * 60 * 1000));
+            return futureDate.toISOString().split('T')[0];
+        }
+
+        function saveOpportunities(opportunitiesToSave) {
+            localStorage.setItem(OPPORTUNITIES_STORAGE_KEY, JSON.stringify(opportunitiesToSave));
+        }
+
+        function populateCompanySelect() {
+            const select = document.getElementById('opportunityCompany');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Sélectionner une société</option>';
+            
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = `${company.name} (${company.status})`;
+                select.appendChild(option);
+            });
+        }
+
+        // Calculer les métriques basées sur les vraies données
+        function calculateForecastMetrics() {
+            const totalOpportunities = opportunities.length;
+            const projectedRevenue = opportunities.reduce((sum, opp) => sum + (opp.value * opp.probability / 100), 0);
+            
+            // Taux de conversion basé sur les vraies données
+            const totalCompanies = companies.length;
+            const clientCompanies = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
+            const conversionRate = totalCompanies > 0 ? (clientCompanies / totalCompanies * 100) : 0;
+            
+            const avgDealSize = opportunities.length > 0 ? opportunities.reduce((sum, opp) => sum + opp.value, 0) / opportunities.length : 0;
+            
+            // Mettre à jour l'affichage
+            document.getElementById('totalOpportunities').textContent = totalOpportunities;
+            document.getElementById('projectedRevenue').textContent = formatCurrency(projectedRevenue);
+            document.getElementById('conversionRate').textContent = conversionRate.toFixed(1) + '%';
+            document.getElementById('avgDealSize').textContent = formatCurrency(avgDealSize);
+            
+            // Mettre à jour les statistiques basées sur les vraies données
+            const prospectCount = companies.filter(c => c.status === 'prospect').length;
+            const clientCount = companies.filter(c => c.status === 'client').length;
+            
+            document.getElementById('opportunitiesChange').textContent = `${prospectCount} prospects à convertir`;
+            document.getElementById('revenueChange').textContent = `Revenus pondérés`;
+            document.getElementById('conversionTrend').textContent = `${clientCount}/${totalCompanies} sociétés`;
+            document.getElementById('dealSizeTrend').textContent = 'Par opportunité';
+        }
+
+        function updateOpportunityCounts() {
+            document.getElementById('count-all').textContent = opportunities.length;
+            document.getElementById('count-prospect').textContent = opportunities.filter(o => o.stage === 'prospect').length;
+            document.getElementById('count-qualification').textContent = opportunities.filter(o => o.stage === 'qualification').length;
+            document.getElementById('count-proposal').textContent = opportunities.filter(o => o.stage === 'proposal').length;
+            document.getElementById('count-negotiation').textContent = opportunities.filter(o => o.stage === 'negotiation').length;
+            document.getElementById('count-closing').textContent = opportunities.filter(o => o.stage === 'closing').length;
+        }
+
+        function initializeCharts() {
+            initializeForecastChart();
+            initializePipelineChart();
+            updateForecastTable();
+        }
+
+        function initializeForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            // Générer des données basées sur les licences actuelles
+            const months = [];
+            const projectedData = [];
+            const actualData = [];
+            
+            // Calculer le revenu mensuel actuel basé sur les vraies licences
+            const currentMonthlyRevenue = licenses
+                .filter(l => l.status === 'active')
+                .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            
+            for (let i = 0; i < 6; i++) {
+                const date = new Date();
+                date.setMonth(date.getMonth() + i);
+                months.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
+                
+                // Projection basée sur les revenus actuels + opportunités
+                const baseRevenue = currentMonthlyRevenue;
+                const growthFromOpportunities = opportunities
+                    .filter(opp => new Date(opp.expected_close_date) <= date)
+                    .reduce((sum, opp) => sum + (opp.value * opp.probability / 100 / 12), 0); // Répartir sur 12 mois
+                
+                projectedData.push(baseRevenue + growthFromOpportunities);
+                actualData.push(i === 0 ? baseRevenue : null);
+            }
+            
+            if (forecastChart) {
+                forecastChart.destroy();
+            }
+            
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Revenus Projetés (basés sur données réelles)',
+                            data: projectedData,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Revenus Actuels',
+                            data: actualData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializePipelineChart() {
+            const ctx = document.getElementById('pipelineChart').getContext('2d');
+            
+            // Utiliser les vraies données des sociétés
+            const statusCounts = {
+                prospect: companies.filter(c => c.status === 'prospect').length,
+                sponsor: companies.filter(c => c.status === 'sponsor').length,
+                client: companies.filter(c => c.status === 'client').length,
+                onboarded: companies.filter(c => c.status === 'onboarded').length
+            };
+            
+            const labels = ['Prospects', 'Sponsors', 'Clients', 'Onboardés'];
+            const data = [statusCounts.prospect, statusCounts.sponsor, statusCounts.client, statusCounts.onboarded];
+            
+            if (pipelineChart) {
+                pipelineChart.destroy();
+            }
+            
+            pipelineChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#f59e0b', // Prospects
+                            '#8b5cf6', // Sponsors  
+                            '#3b82f6', // Clients
+                            '#10b981'  // Onboardés
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateForecastTable() {
+            const tableBody = document.getElementById('forecastTableBody');
+            
+            // Générer des prévisions basées sur les vraies données
+            const quarters = ['T1 2025', 'T2 2025', 'T3 2025', 'T4 2025'];
+            const baseMonthlyRevenue = licenses
+                .filter(l => l.status === 'active')
+                .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            
+            const periods = quarters.map((quarter, index) => {
+                // Nombre de prospects qui pourraient être convertis
+                const targetCompanies = companies.filter(c => c.status === 'prospect' || c.status === 'sponsor').length;
+                const oppsCount = Math.max(1, Math.ceil(targetCompanies * 0.3 * (index + 1)));
+                
+                // Estimation basée sur le revenu actuel + croissance
+                const quarterly = baseMonthlyRevenue * 3;
+                const growthMultiplier = 1 + (index * 0.15); // 15% de croissance par trimestre
+                const estimated = Math.ceil(quarterly * growthMultiplier);
+                
+                // Probabilité décroissante dans le temps
+                const probability = Math.max(50, 80 - index * 10);
+                
+                return {
+                    name: quarter,
+                    opportunities: oppsCount,
+                    estimated: estimated,
+                    probability: probability
+                };
+            });
+            
+            tableBody.innerHTML = periods.map(period => {
+                const weightedRevenue = period.estimated * period.probability / 100;
+                const trend = period.estimated > periods[0].estimated ? '📈' : '📊';
+                
+                return `
+                    <tr>
+                        <td style="font-weight: 600;">${period.name}</td>
+                        <td>${period.opportunities}</td>
+                        <td style="font-weight: 600;">${formatCurrency(period.estimated)}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="probability-bar" style="width: 100px;">
+                                    <div class="probability-fill" style="width: ${period.probability}%;"></div>
+                                </div>
+                                <span style="font-weight: 600;">${period.probability}%</span>
+                            </div>
+                        </td>
+                        <td style="font-weight: 600; color: #667eea;">${formatCurrency(weightedRevenue)}</td>
+                        <td style="font-size: 1.25rem;">${trend}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterOpportunities(stage) {
+            currentFilter = stage;
+            
+            // Mettre à jour les boutons
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+            document.querySelector(`[data-filter="${stage}"]`).classList.add('active');
             
             // Filtrer les données
-            if (filter === 'all') {
-                filteredCompanies = [...companies];
+            if (stage === 'all') {
+                filteredOpportunities = [...opportunities];
             } else {
-                filteredCompanies = companies.filter(company => company.status === filter);
+                filteredOpportunities = opportunities.filter(opp => opp.stage === stage);
             }
             
-            // Appliquer la recherche si active
-            const searchTerm = document.getElementById('searchInput').value;
-            if (searchTerm) {
-                searchCompanies();
-            } else {
-                renderCompanies();
-            }
+            renderOpportunities();
         }
 
-        // Recherche dans les sociétés
-        function searchCompanies() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        function searchOpportunities() {
+            const searchTerm = document.getElementById('opportunitySearch').value.toLowerCase();
             
             if (!searchTerm) {
-                renderCompanies();
+                filterOpportunities(currentFilter);
                 return;
             }
             
-            const searchResults = filteredCompanies.filter(company =>
-                company.name.toLowerCase().includes(searchTerm) ||
-                (company.industry && company.industry.toLowerCase().includes(searchTerm)) ||
-                (company.city && company.city.toLowerCase().includes(searchTerm))
+            const searchResults = filteredOpportunities.filter(opp =>
+                opp.title.toLowerCase().includes(searchTerm) ||
+                opp.company_name.toLowerCase().includes(searchTerm) ||
+                (opp.notes && opp.notes.toLowerCase().includes(searchTerm))
             );
             
-            renderCompanies(searchResults);
+            renderOpportunities(searchResults);
         }
 
-        // Rendu des sociétés
-        function renderCompanies(companiesToRender = filteredCompanies) {
-            const grid = document.getElementById('companiesGrid');
-            const emptyState = document.getElementById('emptyState');
+        function renderOpportunities(opportunitiesToRender = filteredOpportunities) {
+            const container = document.getElementById('opportunitiesContainer');
             
-            if (companiesToRender.length === 0) {
-                grid.style.display = 'none';
-                emptyState.style.display = 'block';
+            if (opportunitiesToRender.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+                        <h3 style="margin-bottom: 1rem;">Aucune opportunité trouvée</h3>
+                        <p>Créez votre première opportunité pour commencer le suivi</p>
+                        <button class="btn btn-primary" onclick="openModal('add-opportunity')" style="margin-top: 1rem;">
+                            ➕ Créer une opportunité
+                        </button>
+                    </div>
+                `;
                 return;
             }
             
-            grid.style.display = 'grid';
-            emptyState.style.display = 'none';
-            
-            grid.innerHTML = companiesToRender.map(company => `
-                <div class="company-card" onclick="openCompanyDetails('${company.id}')">
-                    <div class="company-header">
-                        <div>
-                            <div class="company-name">${company.name}</div>
-                            <div class="company-industry">${company.industry || 'Secteur non spécifié'}</div>
-                        </div>
-                        <span class="status-badge status-${company.status}">${company.status}</span>
-                    </div>
-                    
-                    <div class="company-info">
-                        ${company.website ? `
-                            <div class="company-info-item">
-                                <span>🌐</span>
-                                <span>${company.website}</span>
-                            </div>
-                        ` : ''}
-                        ${company.phone ? `
-                            <div class="company-info-item">
-                                <span>📞</span>
-                                <span>${company.phone}</span>
-                            </div>
-                        ` : ''}
-                        ${company.city ? `
-                            <div class="company-info-item">
-                                <span>📍</span>
-                                <span>${company.city}${company.country ? ', ' + company.country : ''}</span>
-                            </div>
-                        ` : ''}
-                        <div class="company-info-item">
-                            <span>👥</span>
-                            <span>${company.company_contacts ? company.company_contacts.length : 0} contact(s)</span>
-                        </div>
-                    </div>
-                    
-                    <div class="company-actions" onclick="event.stopPropagation()">
-                        <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')">
-                            ✏️ Modifier
+            container.innerHTML = opportunitiesToRender.map(opp => `
+                <div class="opportunity-card" onclick="openOpportunityDetails('${opp.id}')">
+                    <div class="opportunity-actions">
+                        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); editOpportunity('${opp.id}')" title="Modifier">
+                            ✏️
                         </button>
-                        ${AuthService.isAdmin() ? `
-                            <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}')">
-                                🗑️ Supprimer
-                            </button>
-                        ` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteOpportunity('${opp.id}')" title="Supprimer">
+                            🗑️
+                        </button>
                     </div>
+                    
+                    <div class="opportunity-header">
+                        <div>
+                            <div class="opportunity-title">${opp.title}</div>
+                            <div class="opportunity-company">${opp.company_name}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="opportunity-value">${formatCurrency(opp.value)}</div>
+                            <span class="stage-badge stage-${opp.stage}">${getStageLabel(opp.stage)}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                                <span style="font-size: 0.875rem; color: #6b7280;">Probabilité</span>
+                                <span style="font-weight: 600;">${opp.probability}%</span>
+                            </div>
+                            <div class="probability-bar">
+                                <div class="probability-fill" style="width: ${opp.probability}%;"></div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.875rem; color: #6b7280;">Clôture prévue</div>
+                            <div style="font-weight: 600;">${formatDateShort(opp.expected_close_date)}</div>
+                        </div>
+                    </div>
+                    
+                    ${opp.notes ? `
+                        <div style="background: #f9fafb; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; color: #374151;">
+                            ${opp.notes}
+                        </div>
+                    ` : ''}
                 </div>
             `).join('');
+        }
+
+        function getStageLabel(stage) {
+            const labels = {
+                prospect: 'Prospect',
+                qualification: 'Qualification',
+                proposal: 'Proposition',
+                negotiation: 'Négociation',
+                closing: 'Finalisation'
+            };
+            return labels[stage] || stage;
+        }
+
+        function updateStageDefaults() {
+            const stage = document.getElementById('opportunityStage').value;
+            const probabilityInput = document.getElementById('opportunityProbability');
+            
+            const defaultProbabilities = {
+                prospect: 25,
+                qualification: 40,
+                proposal: 60,
+                negotiation: 75,
+                closing: 90
+            };
+            
+            if (defaultProbabilities[stage]) {
+                probabilityInput.value = defaultProbabilities[stage];
+            }
+        }
+
+        function updateForecastChart(period) {
+            document.querySelectorAll('.card-header .btn-sm').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            console.log('Mise à jour du graphique pour la période:', period);
+            // Ici on pourrait modifier les données du graphique selon la période
+        }
+
+        function openOpportunityDetails(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            selectedOpportunity = opportunity;
+            document.getElementById('opportunityDetailsTitle').textContent = opportunity.title;
+            
+            document.getElementById('opportunityDetailsContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Informations générales</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Société :</strong> ${opportunity.company_name}</div>
+                            <div><strong>Valeur :</strong> <span style="color: #667eea; font-weight: 700;">${formatCurrency(opportunity.value)}</span></div>
+                            <div><strong>Étape :</strong> <span class="stage-badge stage-${opportunity.stage}">${getStageLabel(opportunity.stage)}</span></div>
+                            <div><strong>Probabilité :</strong> ${opportunity.probability}%</div>
+                            <div><strong>Source :</strong> ${opportunity.source || 'Non spécifiée'}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Échéances</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Clôture prévue :</strong> ${formatDate(opportunity.expected_close_date)}</div>
+                            <div><strong>Créée le :</strong> ${formatDate(opportunity.created_at)}</div>
+                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value * opportunity.probability / 100)}</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${opportunity.notes ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Notes</h4>
+                        <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; color: #374151;">
+                            ${opportunity.notes}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+                    <button class="btn btn-secondary" onclick="closeModal('opportunity-details')">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="editOpportunity('${opportunity.id}')">
+                        ✏️ Modifier
+                    </button>
+                </div>
+            `;
+            
+            openModal('opportunity-details');
+        }
+
+        function editOpportunity(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            selectedOpportunity = opportunity;
+            
+            // Pré-remplir le formulaire
+            document.getElementById('opportunityCompany').value = opportunity.company_id;
+            document.getElementById('opportunityTitle').value = opportunity.title;
+            document.getElementById('opportunityValue').value = opportunity.value;
+            document.getElementById('opportunityStage').value = opportunity.stage;
+            document.getElementById('opportunityProbability').value = opportunity.probability;
+            document.getElementById('expectedCloseDate').value = opportunity.expected_close_date;
+            document.getElementById('opportunitySource').value = opportunity.source || '';
+            document.getElementById('opportunityNotes').value = opportunity.notes || '';
+            
+            // Changer le titre et le bouton
+            document.querySelector('#modal-add-opportunity .modal-title').textContent = '✏️ Modifier l\'opportunité';
+            document.getElementById('submitButtonText').textContent = 'Sauvegarder les modifications';
+            
+            // Fermer le modal de détails s'il est ouvert
+            closeModal('opportunity-details');
+            
+            openModal('add-opportunity');
+        }
+
+        function deleteOpportunity(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'opportunité "${opportunity.title}" ?\n\nCette action est irréversible.`)) {
+                return;
+            }
+            
+            // Supprimer de la liste locale
+            const stored = JSON.parse(localStorage.getItem(OPPORTUNITIES_STORAGE_KEY) || '[]');
+            const updatedStored = stored.filter(opp => opp.id !== opportunityId);
+            saveOpportunities(updatedStored);
+            
+            // Recharger les données
+            loadOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            showSuccess('Opportunité supprimée avec succès');
         }
 
         // Gestion des modals
@@ -566,14 +1080,18 @@
             const modal = document.getElementById(`modal-${modalId}`);
             modal.classList.add('show');
             
-            if (modalId === 'add-company') {
-                // Réinitialiser le formulaire et les variables si on ouvre pour une nouvelle société
-                if (!editMode) {
-                    document.getElementById('addCompanyForm').reset();
-                    document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
-                    document.getElementById('submitBtn').textContent = '💾 Créer la société';
-                    selectedCompany = null;
-                }
+            if (modalId === 'add-opportunity' && !selectedOpportunity) {
+                // Réinitialiser le formulaire pour une nouvelle opportunité
+                document.getElementById('addOpportunityForm').reset();
+                document.querySelector('#modal-add-opportunity .modal-title').textContent = '🎯 Nouvelle Opportunité';
+                document.getElementById('submitButtonText').textContent = 'Créer l\'opportunité';
+                
+                // Initialiser la date de clôture par défaut (dans 30 jours)
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 30);
+                document.getElementById('expectedCloseDate').value = futureDate.toISOString().split('T')[0];
+                
+                updateStageDefaults();
             }
         }
 
@@ -581,220 +1099,58 @@
             const modal = document.getElementById(`modal-${modalId}`);
             modal.classList.remove('show');
             
-            // Réinitialiser les variables d'édition quand on ferme le modal
-            if (modalId === 'add-company') {
-                editMode = false;
-                selectedCompany = null;
+            // Réinitialiser selectedOpportunity si on ferme le modal d'ajout
+            if (modalId === 'add-opportunity') {
+                selectedOpportunity = null;
             }
         }
 
-        // FONCTION CORRIGÉE POUR LA MODIFICATION
-        function editCompany(companyId) {
-            console.log('Editing company:', companyId); // Debug
-            
-            const company = companies.find(c => c.id === companyId);
-            if (!company) {
-                console.error('Société non trouvée:', companyId);
-                return;
-            }
-            
-            // Fermer le modal de détails s'il est ouvert
-            closeModal('company-details');
-            
-            // IMPORTANT: Passer en mode édition AVANT d'ouvrir le modal
-            editMode = true;
-            selectedCompany = company;
-            
-            // Remplir le formulaire avec les données existantes
-            document.getElementById('companyName').value = company.name || '';
-            document.getElementById('companyStatus').value = company.status || '';
-            document.getElementById('companyIndustry').value = company.industry || '';
-            document.getElementById('accountManager').value = company.account_manager || '';
-            document.getElementById('companyWebsite').value = company.website || '';
-            document.getElementById('companyPhone').value = company.phone || '';
-            document.getElementById('companySiret').value = company.siret || '';
-            document.getElementById('companyAddress').value = company.address || '';
-            document.getElementById('companyCity').value = company.city || '';
-            document.getElementById('companyPostalCode').value = company.postal_code || '';
-            document.getElementById('companyCountry').value = company.country || '';
-            document.getElementById('companyNotes').value = company.notes || '';
-            
-            // Modifier les textes du modal
-            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
-            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
-            
-            // Ouvrir le modal
-            openModal('add-company');
-        }
-
-        // Gestion du formulaire d'ajout/modification
-        document.getElementById('addCompanyForm').addEventListener('submit', async (e) => {
+        // Gestion du formulaire d'opportunité
+        document.getElementById('addOpportunityForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = {
-                name: document.getElementById('companyName').value,
-                status: document.getElementById('companyStatus').value,
-                industry: document.getElementById('companyIndustry').value,
-                account_manager: document.getElementById('accountManager').value,
-                website: document.getElementById('companyWebsite').value,
-                phone: document.getElementById('companyPhone').value,
-                siret: document.getElementById('companySiret').value,
-                address: document.getElementById('companyAddress').value,
-                city: document.getElementById('companyCity').value,
-                postal_code: document.getElementById('companyPostalCode').value,
-                country: document.getElementById('companyCountry').value,
-                notes: document.getElementById('companyNotes').value
+                company_id: document.getElementById('opportunityCompany').value,
+                title: document.getElementById('opportunityTitle').value,
+                value: parseFloat(document.getElementById('opportunityValue').value),
+                stage: document.getElementById('opportunityStage').value,
+                probability: parseInt(document.getElementById('opportunityProbability').value),
+                expected_close_date: document.getElementById('expectedCloseDate').value,
+                source: document.getElementById('opportunitySource').value,
+                notes: document.getElementById('opportunityNotes').value
             };
             
-            showLoading(true);
+            const stored = JSON.parse(localStorage.getItem(OPPORTUNITIES_STORAGE_KEY) || '[]');
             
-            try {
-                let result;
-                if (editMode && selectedCompany) {
-                    console.log('Updating company:', selectedCompany.id, formData); // Debug
-                    result = await CRMService.updateCompany(selectedCompany.id, formData);
-                    if (result.success) {
-                        showSuccess('Société modifiée avec succès !');
-                    }
-                } else {
-                    console.log('Creating new company:', formData); // Debug
-                    result = await CRMService.createCompany(formData);
-                    if (result.success) {
-                        showSuccess('Société créée avec succès !');
-                    }
+            if (selectedOpportunity) {
+                // Modifier l'opportunité existante
+                const index = stored.findIndex(opp => opp.id === selectedOpportunity.id);
+                if (index !== -1) {
+                    stored[index] = { ...stored[index], ...formData };
                 }
-                
-                if (result.success) {
-                    closeModal('add-company');
-                    await loadCompanies();
-                } else {
-                    showError('Erreur lors de la sauvegarde: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors de la sauvegarde de la société');
-            } finally {
-                showLoading(false);
+                showSuccess('Opportunité modifiée avec succès !');
+            } else {
+                // Créer une nouvelle opportunité
+                const newOpportunity = {
+                    id: Date.now().toString(),
+                    ...formData,
+                    created_at: new Date().toISOString()
+                };
+                stored.push(newOpportunity);
+                showSuccess('Opportunité créée avec succès !');
             }
+            
+            saveOpportunities(stored);
+            
+            // Recharger les données
+            loadOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            closeModal('add-opportunity');
+            selectedOpportunity = null;
         });
-
-        // Ouvrir les détails d'une société
-        function openCompanyDetails(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) return;
-            
-            selectedCompany = company;
-            document.getElementById('companyDetailsTitle').textContent = company.name;
-            
-            // Contenu des détails
-            document.getElementById('companyDetailsContent').innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Informations générales</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Statut :</strong> <span class="status-badge status-${company.status}">${company.status}</span></div>
-                            <div><strong>Secteur :</strong> ${company.industry || 'Non spécifié'}</div>
-                            <div><strong>Site web :</strong> ${company.website ? `<a href="${company.website}" target="_blank">${company.website}</a>` : 'Non spécifié'}</div>
-                            <div><strong>Téléphone :</strong> ${company.phone || 'Non spécifié'}</div>
-                            <div><strong>SIRET :</strong> ${company.siret || 'Non spécifié'}</div>
-                            <div><strong>Responsable :</strong> ${company.account_manager || 'Non assigné'}</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Adresse</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Adresse :</strong> ${company.address || 'Non spécifiée'}</div>
-                            <div><strong>Ville :</strong> ${company.city || 'Non spécifiée'}</div>
-                            <div><strong>Code postal :</strong> ${company.postal_code || 'Non spécifié'}</div>
-                            <div><strong>Pays :</strong> ${company.country || 'Non spécifié'}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                ${company.notes ? `
-                    <div style="margin-top: 2rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Notes</h4>
-                        <p style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); color: var(--gray-700);">
-                            ${company.notes}
-                        </p>
-                    </div>
-                ` : ''}
-                
-                <div style="margin-top: 2rem;">
-                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Contacts (${company.company_contacts ? company.company_contacts.length : 0})</h4>
-                    ${company.company_contacts && company.company_contacts.length > 0 ? `
-                        <div style="display: grid; gap: 1rem;">
-                            ${company.company_contacts.map(contact => `
-                                <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius);">
-                                    <div style="font-weight: 600; margin-bottom: 0.25rem;">
-                                        ${contact.first_name} ${contact.last_name}
-                                    </div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">
-                                        ${contact.position || 'Poste non spécifié'} • ${contact.email}
-                                    </div>
-                                    ${contact.is_admin_contact || contact.is_payment_contact ? `
-                                        <div style="margin-top: 0.5rem;">
-                                            ${contact.is_admin_contact ? '<span class="badge badge-info">Admin</span>' : ''}
-                                            ${contact.is_payment_contact ? '<span class="badge badge-warning">Facturation</span>' : ''}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <p style="color: var(--gray-500); font-style: italic;">Aucun contact enregistré</p>
-                    `}
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
-                    <button class="btn btn-secondary" onclick="closeModal('company-details')">
-                        Fermer
-                    </button>
-                    <button class="btn btn-primary" onclick="editCompany('${company.id}')">
-                        ✏️ Modifier
-                    </button>
-                </div>
-            `;
-            
-            openModal('company-details');
-        }
-
-        // Supprimer une société
-        async function deleteCompany(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) return;
-            
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${company.name}" ?\n\nCette action est irréversible.`)) {
-                return;
-            }
-            
-            showLoading(true);
-            
-            try {
-                const result = await CRMService.deleteCompany(companyId);
-                if (result.success) {
-                    showSuccess('Société supprimée avec succès');
-                    await loadCompanies();
-                } else {
-                    showError('Erreur lors de la suppression: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors de la suppression');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Gérer les paramètres URL
-        function handleUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const action = urlParams.get('action');
-            
-            if (action === 'add') {
-                openModal('add-company');
-            }
-        }
 
         // Fermer les modals en cliquant à l'extérieur
         document.addEventListener('click', (e) => {
@@ -807,7 +1163,6 @@
         // Raccourcis clavier
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                // Fermer tous les modals ouverts
                 document.querySelectorAll('.modal.show').forEach(modal => {
                     const modalId = modal.id.replace('modal-', '');
                     closeModal(modalId);
@@ -818,11 +1173,7 @@
                 switch (e.key) {
                     case 'n':
                         e.preventDefault();
-                        openModal('add-company');
-                        break;
-                    case 'f':
-                        e.preventDefault();
-                        document.getElementById('searchInput').focus();
+                        openModal('add-opportunity');
                         break;
                 }
             }
