@@ -1,889 +1,818 @@
-// ===================================
-// CONFIGURATION SUPABASE
-// ===================================
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Gestion des Sociétés</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
+            </a>
+            
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Accueil
+                </a>
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link active">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="forecast.html" class="nav-link">
+                    <span class="nav-icon">📈</span>
+                    Forecast
+                </a>
+                <a href="onboarding.html" class="nav-link">
+                    <span class="nav-icon">🎯</span>
+                    Onboarding
+                </a>
+                <a href="licenses.html" class="nav-link">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <div>
+                        <div class="user-name" id="userName">Utilisateur</div>
+                        <div class="user-role" id="userRole">user</div>
+                    </div>
+                </div>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
+                </button>
+            </div>
+        </div>
+    </nav>
 
-// Configuration avec tes vraies clés Supabase
-const SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDM0MTgsImV4cCI6MjA2NTk3OTQxOH0.Wy_jbUB7D5Bly-rZB6oc2bXUHzZQ8MivDL4vdM1jcE0';
+    <!-- Contenu principal -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        <!-- En-tête de page -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
+                    🏢 Gestion des Sociétés
+                </h1>
+                <p style="color: var(--gray-600);">
+                    Gérez vos prospects, clients et sociétés onboardées
+                </p>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('add-company')">
+                ➕ Nouvelle Société
+            </button>
+        </div>
 
-// Initialisation du client Supabase avec gestion d'erreur
-let supabase = null;
+        <!-- Filtres et recherche -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-body" style="padding: 1.5rem;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <!-- Filtres par statut -->
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
+                        <button class="filter-btn active" data-filter="all" onclick="filterCompanies('all')">
+                            Toutes (<span id="count-all">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="prospect" onclick="filterCompanies('prospect')">
+                            Prospects (<span id="count-prospect">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="sponsor" onclick="filterCompanies('sponsor')">
+                            Sponsors (<span id="count-sponsor">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="client" onclick="filterCompanies('client')">
+                            Clients (<span id="count-client">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="onboarded" onclick="filterCompanies('onboarded')">
+                            Onboardés (<span id="count-onboarded">0</span>)
+                        </button>
+                    </div>
+                    
+                    <!-- Barre de recherche -->
+                    <div style="flex: 1; min-width: 200px;">
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
+                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"
+                               oninput="searchCompanies()">
+                    </div>
+                </div>
+            </div>
+        </div>
 
-try {
-    if (typeof window !== 'undefined' && window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Connexion Supabase initialisée');
-        
-        // Test de connexion
-        supabase.auth.getSession().then(({ data, error }) => {
-            if (error && error.message.includes('Invalid API key')) {
-                console.error('🚨 Clé API Supabase invalide');
-            } else {
-                console.log('✅ Connexion Supabase validée');
-            }
-        }).catch(err => {
-            console.warn('⚠️ Test de connexion Supabase échoué:', err.message);
-        });
-    } else {
-        console.warn('⚠️ Supabase client non disponible, mode démo activé');
-    }
-} catch (error) {
-    console.warn('⚠️ Erreur initialisation Supabase, mode démo activé:', error.message);
-}
+        <!-- Liste des sociétés -->
+        <div id="companiesGrid" class="companies-grid">
+            <!-- Chargé dynamiquement -->
+        </div>
 
-// ===================================
-// GESTION DE L'AUTHENTIFICATION
-// ===================================
+        <!-- État vide -->
+        <div id="emptyState" class="card" style="display: none; text-align: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
+            <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucune société trouvée</h3>
+            <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                Commencez par ajouter votre première société
+            </p>
+            <button class="btn btn-primary" onclick="openModal('add-company')">
+                ➕ Créer ma première société
+            </button>
+        </div>
+    </main>
 
-class AuthService {
-    static async getCurrentUser() {
-        try {
-            if (!supabase) {
-                // Mode démo - simuler un utilisateur connecté
-                const demoUser = localStorage.getItem('demoUser');
-                return demoUser ? JSON.parse(demoUser) : null;
-            }
+    <!-- Modal Nouvelle/Modifier Société -->
+    <div id="modal-add-company" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">➕ Nouvelle Société</h3>
+                <button class="close-btn" onclick="closeModal('add-company')">&times;</button>
+            </div>
             
-            const { data: { user }, error } = await supabase.auth.getUser();
-            if (error) throw error;
-            return user;
-        } catch (error) {
-            console.error('Erreur récupération utilisateur:', error);
-            return null;
-        }
-    }
-    
-    static async login(email, password) {
-        try {
-            if (!supabase) {
-                // Mode démo - validation simple
-                if (email && password) {
-                    const demoUser = {
-                        id: 'demo-user-id',
-                        email: email,
-                        role: email.includes('admin') ? 'admin' : 'user'
-                    };
-                    localStorage.setItem('demoUser', JSON.stringify(demoUser));
-                    localStorage.setItem('userInfo', JSON.stringify(demoUser));
-                    return { success: true, user: demoUser };
-                } else {
-                    return { success: false, error: 'Email et mot de passe requis' };
-                }
-            }
-            
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
-            
-            if (error) throw error;
-            
-            // Sauvegarder les infos utilisateur
-            if (data.user) {
-                const userInfo = {
-                    id: data.user.id,
-                    email: data.user.email,
-                    role: data.user.user_metadata?.role || 'user'
-                };
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-            }
-            
-            return { success: true, user: data.user };
-        } catch (error) {
-            console.error('Erreur connexion:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async logout() {
-        try {
-            if (!supabase) {
-                // Mode démo
-                localStorage.removeItem('demoUser');
-                localStorage.removeItem('userInfo');
-                window.location.href = 'index.html';
-                return;
-            }
-            
-            const { error } = await supabase.auth.signOut();
-            if (error) throw error;
-            
-            // Nettoyer le localStorage
-            localStorage.removeItem('userInfo');
-            
-            // Rediriger vers la page de connexion
-            window.location.href = 'index.html';
-        } catch (error) {
-            console.error('Erreur déconnexion:', error);
-            showError('Erreur lors de la déconnexion');
-        }
-    }
-    
-    static getUserInfo() {
-        const userInfo = localStorage.getItem('userInfo');
-        return userInfo ? JSON.parse(userInfo) : null;
-    }
-    
-    static isAdmin() {
-        const userInfo = this.getUserInfo();
-        return userInfo && userInfo.role === 'admin';
-    }
-    
-    static async requireAuth() {
-        const user = await this.getCurrentUser();
-        if (!user) {
-            window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    }
-}
-
-// ===================================
-// SERVICE DE DONNÉES CRM
-// ===================================
-
-class CRMService {
-    // Données de démonstration intégrées
-    static getDemoData() {
-        return {
-            companies: [
-                {
-                    id: '1',
-                    name: 'TechCorp Solutions',
-                    status: 'client',
-                    industry: 'Technologie',
-                    employees: 150,
-                    revenue: 2500000,
-                    website: 'https://techcorp.example.com',
-                    created_at: '2024-01-15T09:00:00Z',
-                    company_contacts: [
-                        {
-                            id: '1',
-                            first_name: 'Jean',
-                            last_name: 'Dupont',
-                            email: 'j.dupont@techcorp.com',
-                            position: 'CTO',
-                            is_admin_contact: true,
-                            is_payment_contact: false
-                        }
-                    ]
-                },
-                {
-                    id: '2',
-                    name: 'Innovation Ltd',
-                    status: 'client',
-                    industry: 'Consulting',
-                    employees: 75,
-                    revenue: 1200000,
-                    website: 'https://innovation.example.com',
-                    created_at: '2024-03-01T10:00:00Z',
-                    company_contacts: [
-                        {
-                            id: '2',
-                            first_name: 'Marie',
-                            last_name: 'Martin',
-                            email: 'm.martin@innovation.com',
-                            position: 'CEO',
-                            is_admin_contact: true,
-                            is_payment_contact: true
-                        }
-                    ]
-                },
-                {
-                    id: '3',
-                    name: 'StartupX',
-                    status: 'prospect',
-                    industry: 'E-commerce',
-                    employees: 25,
-                    revenue: 500000,
-                    website: 'https://startupx.example.com',
-                    created_at: '2024-05-15T14:30:00Z',
-                    company_contacts: []
-                }
-            ],
-            licenses: [
-                {
-                    id: '1',
-                    company_id: '1',
-                    plan_id: '2',
-                    license_count: 5,
-                    start_date: '2024-01-15',
-                    end_date: '2025-01-15',
-                    renewal_date: '2024-12-15',
-                    status: 'active',
-                    payment_method: 'stripe',
-                    monthly_cost: 299.95,
-                    companies: { id: '1', name: 'TechCorp Solutions', status: 'active' },
-                    license_plans: { id: '2', name: 'Professional', price_per_user: 59.99 }
-                },
-                {
-                    id: '2',
-                    company_id: '2',
-                    plan_id: '3',
-                    license_count: 10,
-                    start_date: '2024-03-01',
-                    end_date: '2025-03-01',
-                    renewal_date: '2025-02-01',
-                    status: 'active',
-                    payment_method: 'bank_transfer',
-                    monthly_cost: 999.90,
-                    companies: { id: '2', name: 'Innovation Ltd', status: 'active' },
-                    license_plans: { id: '3', name: 'Enterprise', price_per_user: 99.99 }
-                }
-            ],
-            licensePlans: [
-                { id: '1', name: 'Starter', price_per_user: 29.99, is_active: true },
-                { id: '2', name: 'Professional', price_per_user: 59.99, is_active: true },
-                { id: '3', name: 'Enterprise', price_per_user: 99.99, is_active: true },
-                { id: '4', name: 'Premium', price_per_user: 149.99, is_active: true }
-            ]
-        };
-    }
-    
-    // ========== SOCIÉTÉS ==========
-    
-    static async getCompanies() {
-        try {
-            if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                return { success: true, data: demoData.companies };
-            }
-            
-            const { data, error } = await supabase
-                .from('companies')
-                .select(`
-                    *,
-                    company_contacts (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        is_admin_contact,
-                        is_payment_contact
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération sociétés:', error);
-            
-            // Fallback en mode démo si erreur
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.companies };
-        }
-    }
-    
-    static async createCompany(companyData) {
-        try {
-            if (!supabase) {
-                // Mode démo - simuler la création
-                const newCompany = {
-                    ...companyData,
-                    id: Date.now().toString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    company_contacts: []
-                };
-                return { success: true, data: newCompany };
-            }
-            
-            const { data, error } = await supabase
-                .from('companies')
-                .insert([{
-                    ...companyData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur création société:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateCompany(id, companyData) {
-        try {
-            if (!supabase) {
-                // Mode démo
-                return { success: true, data: { ...companyData, id } };
-            }
-            
-            const { data, error } = await supabase
-                .from('companies')
-                .update({
-                    ...companyData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur mise à jour société:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteCompany(id) {
-        try {
-            if (!supabase) {
-                // Mode démo
-                return { success: true };
-            }
-            
-            const { error } = await supabase
-                .from('companies')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            return { success: true };
-        } catch (error) {
-            console.error('Erreur suppression société:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== CONTACTS ==========
-    
-    static async getContacts(companyId = null) {
-        try {
-            if (!supabase) {
-                // Mode démo - extraire les contacts des sociétés
-                const demoData = this.getDemoData();
-                let allContacts = [];
+            <form id="addCompanyForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="companyName">Nom de la société *</label>
+                        <input type="text" id="companyName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="companyStatus">Statut</label>
+                        <select id="companyStatus">
+                            <option value="prospect">Prospect</option>
+                            <option value="sponsor">Sponsor</option>
+                            <option value="client">Client</option>
+                            <option value="onboarded">Onboardé</option>
+                        </select>
+                    </div>
+                </div>
                 
-                demoData.companies.forEach(company => {
-                    if (company.company_contacts) {
-                        company.company_contacts.forEach(contact => {
-                            allContacts.push({
-                                ...contact,
-                                company_id: company.id,
-                                company_name: company.name,
-                                created_at: company.created_at,
-                                updated_at: company.created_at
-                            });
-                        });
-                    }
-                });
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="companyIndustry">Secteur d'activité</label>
+                        <input type="text" id="companyIndustry" placeholder="Ex: Technologie, Santé...">
+                    </div>
+                    <div class="form-group">
+                        <label for="accountManager">Responsable de compte</label>
+                        <input type="text" id="accountManager" placeholder="Nom du responsable">
+                    </div>
+                </div>
                 
-                // Ajouter quelques contacts supplémentaires pour la démo
-                allContacts.push({
-                    id: '3',
-                    first_name: 'Sophie',
-                    last_name: 'Durand',
-                    email: 's.durand@freelance.com',
-                    phone: '+33 6 12 34 56 78',
-                    position: 'Consultant',
-                    company_id: null,
-                    company_name: null,
-                    is_admin_contact: false,
-                    is_payment_contact: false,
-                    notes: 'Contact freelance intéressé par nos services',
-                    created_at: '2024-06-01T15:30:00Z',
-                    updated_at: '2024-06-01T15:30:00Z'
-                });
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="companyWebsite">Site web</label>
+                        <input type="url" id="companyWebsite" placeholder="https://exemple.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyPhone">Téléphone</label>
+                        <input type="tel" id="companyPhone" placeholder="01.23.45.67.89">
+                    </div>
+                </div>
                 
-                if (companyId) {
-                    allContacts = allContacts.filter(c => c.company_id === companyId);
-                }
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="companySiret">SIRET</label>
+                    <input type="text" id="companySiret" placeholder="12345678901234">
+                </div>
                 
-                return { success: true, data: allContacts };
-            }
-            
-            let query = supabase
-                .from('company_contacts')
-                .select('*')
-                .order('created_at', { ascending: false });
-            
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-            
-            const { data, error } = await query;
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération contacts:', error);
-            
-            // Fallback en mode démo
-            const demoData = this.getDemoData();
-            let allContacts = [];
-            
-            demoData.companies.forEach(company => {
-                if (company.company_contacts) {
-                    company.company_contacts.forEach(contact => {
-                        allContacts.push({
-                            ...contact,
-                            company_id: company.id,
-                            company_name: company.name,
-                            created_at: company.created_at,
-                            updated_at: company.created_at
-                        });
-                    });
-                }
-            });
-            
-            return { success: true, data: allContacts };
-        }
-    }
-    
-    static async createContact(contactData) {
-        try {
-            if (!supabase) {
-                // Mode démo - simuler la création
-                const newContact = {
-                    ...contactData,
-                    id: Date.now().toString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                };
-                return { success: true, data: newContact };
-            }
-            
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .insert([{
-                    ...contactData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur création contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateContact(id, contactData) {
-        try {
-            if (!supabase) {
-                // Mode démo
-                return { success: true, data: { ...contactData, id } };
-            }
-            
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .update({
-                    ...contactData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur mise à jour contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteContact(id) {
-        try {
-            if (!supabase) {
-                // Mode démo
-                return { success: true };
-            }
-            
-            const { error } = await supabase
-                .from('company_contacts')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            return { success: true };
-        } catch (error) {
-            console.error('Erreur suppression contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== LICENCES ==========
-    
-    static async getLicenses() {
-        try {
-            if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                return { success: true, data: demoData.licenses };
-            }
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération licences:', error);
-            
-            // Fallback en mode démo
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.licenses };
-        }
-    }
-    
-    static async getLicensePlans() {
-        try {
-            if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                return { success: true, data: demoData.licensePlans };
-            }
-            
-            const { data, error } = await supabase
-                .from('license_plans')
-                .select('*')
-                .eq('is_active', true)
-                .order('price_per_user', { ascending: true });
-            
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération plans:', error);
-            
-            // Fallback en mode démo
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.licensePlans };
-        }
-    }
-    
-    // ========== STATISTIQUES ==========
-    
-    static async getStats() {
-        try {
-            const [companiesResult, licensesResult] = await Promise.all([
-                this.getCompanies(),
-                this.getLicenses()
-            ]);
-            
-            if (!companiesResult.success || !licensesResult.success) {
-                throw new Error('Erreur récupération données');
-            }
-            
-            const companies = companiesResult.data;
-            const licenses = licensesResult.data;
-            
-            const stats = {
-                totalCompanies: companies.length,
-                prospects: companies.filter(c => c.status === 'prospect').length,
-                clients: companies.filter(c => c.status === 'client').length,
-                onboarded: companies.filter(c => c.status === 'onboarded').length,
-                activeLicenses: licenses.filter(l => l.status === 'active').length,
-                totalLicenseCount: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + l.license_count, 0),
-                monthlyRevenue: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.monthly_cost || 0), 0),
-                expiringLicenses: licenses.filter(l => {
-                    if (l.status !== 'active') return false;
-                    const renewalDate = new Date(l.renewal_date);
-                    const now = new Date();
-                    const diffTime = renewalDate - now;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    return diffDays <= 30 && diffDays >= 0;
-                }).length
-            };
-            
-            return { success: true, data: stats };
-        } catch (error) {
-            console.error('Erreur calcul statistiques:', error);
-            
-            // Statistiques par défaut en cas d'erreur
-            return {
-                success: true,
-                data: {
-                    totalCompanies: 3,
-                    prospects: 1,
-                    clients: 2,
-                    onboarded: 0,
-                    activeLicenses: 2,
-                    totalLicenseCount: 15,
-                    monthlyRevenue: 1299.85,
-                    expiringLicenses: 1
-                }
-            };
-        }
-    }
-}
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="companyAddress">Adresse</label>
+                    <textarea id="companyAddress" rows="2" placeholder="123 rue de l'Exemple"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="companyCity">Ville</label>
+                        <input type="text" id="companyCity" placeholder="Paris">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyPostalCode">Code postal</label>
+                        <input type="text" id="companyPostalCode" placeholder="75001">
+                    </div>
+                    <div class="form-group">
+                        <label for="companyCountry">Pays</label>
+                        <input type="text" id="companyCountry" value="France">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label for="companyNotes">Notes</label>
+                    <textarea id="companyNotes" rows="3" placeholder="Notes internes sur cette société..."></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-company')">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        💾 Créer la société
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-// ===================================
-// UTILITAIRES GÉNÉRAUX
-// ===================================
+    <!-- Modal Détails Société -->
+    <div id="modal-company-details" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="companyDetailsTitle">Détails de la société</h3>
+                <button class="close-btn" onclick="closeModal('company-details')">&times;</button>
+            </div>
+            
+            <div id="companyDetailsContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+        </div>
+    </div>
 
-// Formatage des dates
-function formatDate(dateString) {
-    if (!dateString) return 'Non défini';
-    
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    } catch (error) {
-        return 'Date invalide';
-    }
-}
+    <script src="config.js"></script>
+    <script>
+        // Variables globales
+        let companies = [];
+        let filteredCompanies = [];
+        let currentFilter = 'all';
+        let selectedCompany = null;
+        let editMode = false;
 
-function formatDateShort(dateString) {
-    if (!dateString) return 'Non défini';
-    
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR');
-    } catch (error) {
-        return 'Date invalide';
-    }
-}
-
-// Formatage des montants
-function formatCurrency(amount) {
-    if (amount === null || amount === undefined || isNaN(amount)) return '0,00 €';
-    
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR'
-    }).format(amount);
-}
-
-// Génération d'initiales
-function getInitials(firstName, lastName) {
-    if (!firstName && !lastName) return '??';
-    
-    const first = firstName ? firstName.charAt(0).toUpperCase() : '';
-    const last = lastName ? lastName.charAt(0).toUpperCase() : '';
-    return first + last || '?';
-}
-
-// Gestion des erreurs avec retry automatique
-function showError(message, duration = 5000) {
-    console.error('Erreur:', message);
-    
-    // Créer ou réutiliser le conteneur d'erreurs
-    let errorContainer = document.getElementById('error-container');
-    if (!errorContainer) {
-        errorContainer = document.createElement('div');
-        errorContainer.id = 'error-container';
-        errorContainer.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(errorContainer);
-    }
-    
-    // Créer le message d'erreur
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'notification error';
-    errorDiv.style.pointerEvents = 'auto';
-    errorDiv.textContent = message;
-    
-    // Ajouter le bouton de fermeture
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `
-        float: right;
-        background: none;
-        border: none;
-        font-size: 1.25rem;
-        cursor: pointer;
-        margin-left: 0.5rem;
-        color: inherit;
-        opacity: 0.8;
-    `;
-    closeBtn.onclick = () => errorDiv.remove();
-    
-    errorDiv.appendChild(closeBtn);
-    errorContainer.appendChild(errorDiv);
-    
-    // Auto-suppression
-    if (duration > 0) {
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.remove();
+        // Styles pour les filtres
+        const filterBtnStyle = `
+            .filter-btn {
+                padding: 0.5rem 1rem;
+                background: var(--gray-100);
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                cursor: pointer;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--gray-700);
+                transition: all var(--transition);
+                white-space: nowrap;
             }
-        }, duration);
-    }
-}
-
-// Gestion des succès
-function showSuccess(message, duration = 3000) {
-    console.log('Succès:', message);
-    
-    let successContainer = document.getElementById('success-container');
-    if (!successContainer) {
-        successContainer = document.createElement('div');
-        successContainer.id = 'success-container';
-        successContainer.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(successContainer);
-    }
-    
-    const successDiv = document.createElement('div');
-    successDiv.className = 'notification success';
-    successDiv.style.pointerEvents = 'auto';
-    successDiv.textContent = message;
-    
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `
-        float: right;
-        background: none;
-        border: none;
-        font-size: 1.25rem;
-        cursor: pointer;
-        margin-left: 0.5rem;
-        color: inherit;
-        opacity: 0.8;
-    `;
-    closeBtn.onclick = () => successDiv.remove();
-    
-    successDiv.appendChild(closeBtn);
-    successContainer.appendChild(successDiv);
-    
-    if (duration > 0) {
-        setTimeout(() => {
-            if (successDiv.parentNode) {
-                successDiv.remove();
+            .filter-btn:hover {
+                background: var(--gray-200);
             }
-        }, duration);
-    }
-}
-
-// Loading overlay optimisé
-function showLoading(show = true) {
-    let loader = document.getElementById('global-loader');
-    
-    if (show) {
-        if (!loader) {
-            loader = document.createElement('div');
-            loader.id = 'global-loader';
-            loader.style.cssText = `
+            .filter-btn.active {
+                background: var(--primary-color);
+                color: var(--white);
+                border-color: var(--primary-color);
+            }
+            .companies-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                gap: 1.5rem;
+            }
+            .company-card {
+                background: var(--white);
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius-lg);
+                padding: 1.5rem;
+                transition: all var(--transition);
+                cursor: pointer;
+            }
+            .company-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+                border-color: var(--primary-color);
+            }
+            .company-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 1rem;
+            }
+            .company-name {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--gray-800);
+                margin-bottom: 0.25rem;
+            }
+            .company-industry {
+                font-size: 0.875rem;
+                color: var(--gray-500);
+            }
+            .status-badge {
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.025em;
+            }
+            .status-prospect {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            .status-sponsor {
+                background: #f3e8ff;
+                color: #7c3aed;
+            }
+            .status-client {
+                background: #dbeafe;
+                color: #1e40af;
+            }
+            .status-onboarded {
+                background: #dcfce7;
+                color: #166534;
+            }
+            .company-info {
+                display: grid;
+                gap: 0.5rem;
+                margin-bottom: 1rem;
+            }
+            .company-info-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.875rem;
+                color: var(--gray-600);
+            }
+            .company-actions {
+                display: flex;
+                gap: 0.5rem;
+                justify-content: flex-end;
+            }
+            .modal {
+                display: none;
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background: rgba(255, 255, 255, 0.9);
-                display: flex;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
                 align-items: center;
                 justify-content: center;
-                z-index: 10000;
-                backdrop-filter: blur(3px);
-            `;
+            }
+            .modal.show {
+                display: flex;
+            }
+            .modal-content {
+                background: var(--white);
+                border-radius: var(--radius-lg);
+                padding: 2rem;
+                width: 90%;
+                max-width: 600px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--gray-200);
+            }
+            .modal-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--gray-800);
+            }
+            .close-btn {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: var(--gray-500);
+                padding: 0.25rem;
+                border-radius: var(--radius);
+                transition: all var(--transition);
+            }
+            .close-btn:hover {
+                background: var(--gray-100);
+                color: var(--gray-700);
+            }
+        `;
+
+        // Injecter les styles
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = filterBtnStyle;
+        document.head.appendChild(styleSheet);
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier l'authentification
+            const isAuthenticated = await AuthService.requireAuth();
+            if (!isAuthenticated) return;
+
+            // Charger les informations utilisateur
+            loadUserInfo();
+
+            // Charger les sociétés
+            await loadCompanies();
+
+            // Gérer les paramètres URL
+            handleUrlParams();
+        });
+
+        // Charger les informations utilisateur
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            }
+        }
+
+        // Charger les sociétés
+        async function loadCompanies() {
+            showLoading(true);
             
-            const spinner = document.createElement('div');
-            spinner.style.cssText = `
-                width: 3rem;
-                height: 3rem;
-                border: 3px solid var(--gray-200);
-                border-top: 3px solid var(--primary-color);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            `;
+            try {
+                const result = await CRMService.getCompanies();
+                if (result.success) {
+                    companies = result.data;
+                    updateCounts();
+                    filterCompanies(currentFilter);
+                    showSuccess(`${companies.length} société(s) chargée(s)`);
+                } else {
+                    showError('Erreur lors du chargement des sociétés: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors du chargement des données');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Mettre à jour les compteurs
+        function updateCounts() {
+            document.getElementById('count-all').textContent = companies.length;
+            document.getElementById('count-prospect').textContent = companies.filter(c => c.status === 'prospect').length;
+            document.getElementById('count-sponsor').textContent = companies.filter(c => c.status === 'sponsor').length;
+            document.getElementById('count-client').textContent = companies.filter(c => c.status === 'client').length;
+            document.getElementById('count-onboarded').textContent = companies.filter(c => c.status === 'onboarded').length;
+        }
+
+        // Filtrer les sociétés
+        function filterCompanies(filter) {
+            currentFilter = filter;
             
-            loader.appendChild(spinner);
+            // Mettre à jour les boutons de filtre
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
             
-            // Ajout des keyframes pour l'animation
-            if (!document.getElementById('spinner-styles')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-styles';
-                style.textContent = `
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `;
-                document.head.appendChild(style);
+            // Filtrer les données
+            if (filter === 'all') {
+                filteredCompanies = [...companies];
+            } else {
+                filteredCompanies = companies.filter(company => company.status === filter);
             }
             
-            document.body.appendChild(loader);
+            // Appliquer la recherche si active
+            const searchTerm = document.getElementById('searchInput').value;
+            if (searchTerm) {
+                searchCompanies();
+            } else {
+                renderCompanies();
+            }
         }
-        loader.style.display = 'flex';
-    } else {
-        if (loader) {
-            loader.style.display = 'none';
+
+        // Recherche dans les sociétés
+        function searchCompanies() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderCompanies();
+                return;
+            }
+            
+            const searchResults = filteredCompanies.filter(company =>
+                company.name.toLowerCase().includes(searchTerm) ||
+                (company.industry && company.industry.toLowerCase().includes(searchTerm)) ||
+                (company.city && company.city.toLowerCase().includes(searchTerm))
+            );
+            
+            renderCompanies(searchResults);
         }
-    }
-}
 
-// Gestion des timeouts pour éviter les blocages
-function withTimeout(promise, timeoutMs = 10000) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), timeoutMs)
-        )
-    ]);
-}
+        // Rendu des sociétés
+        function renderCompanies(companiesToRender = filteredCompanies) {
+            const grid = document.getElementById('companiesGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (companiesToRender.length === 0) {
+                grid.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            grid.style.display = 'grid';
+            emptyState.style.display = 'none';
+            
+            grid.innerHTML = companiesToRender.map(company => `
+                <div class="company-card" onclick="openCompanyDetails('${company.id}')">
+                    <div class="company-header">
+                        <div>
+                            <div class="company-name">${company.name}</div>
+                            <div class="company-industry">${company.industry || 'Secteur non spécifié'}</div>
+                        </div>
+                        <span class="status-badge status-${company.status}">${company.status}</span>
+                    </div>
+                    
+                    <div class="company-info">
+                        ${company.website ? `
+                            <div class="company-info-item">
+                                <span>🌐</span>
+                                <span>${company.website}</span>
+                            </div>
+                        ` : ''}
+                        ${company.phone ? `
+                            <div class="company-info-item">
+                                <span>📞</span>
+                                <span>${company.phone}</span>
+                            </div>
+                        ` : ''}
+                        ${company.city ? `
+                            <div class="company-info-item">
+                                <span>📍</span>
+                                <span>${company.city}${company.country ? ', ' + company.country : ''}</span>
+                            </div>
+                        ` : ''}
+                        <div class="company-info-item">
+                            <span>👥</span>
+                            <span>${company.company_contacts ? company.company_contacts.length : 0} contact(s)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="company-actions" onclick="event.stopPropagation()">
+                        <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')">
+                            ✏️ Modifier
+                        </button>
+                        ${AuthService.isAdmin() ? `
+                            <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}')">
+                                🗑️ Supprimer
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
 
-// ===================================
-// EXPORT GLOBAL
-// ===================================
+        // Gestion des modals
+        function openModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.add('show');
+            
+            if (modalId === 'add-company') {
+                // Mode création - réinitialiser le formulaire
+                document.getElementById('addCompanyForm').reset();
+                document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
+                document.getElementById('submitBtn').textContent = '💾 Créer la société';
+                editMode = false;
+                selectedCompany = null;
+            }
+        }
 
-// Rendre les services disponibles globalement
-window.AuthService = AuthService;
-window.CRMService = CRMService;
-window.formatDate = formatDate;
-window.formatDateShort = formatDateShort;
-window.formatCurrency = formatCurrency;
-window.getInitials = getInitials;
-window.showError = showError;
-window.showSuccess = showSuccess;
-window.showLoading = showLoading;
-window.withTimeout = withTimeout;
+        function closeModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.remove('show');
+        }
 
-// Gestion globale des erreurs
-window.addEventListener('error', (e) => {
-    console.error('Erreur globale:', e.error);
-    if (e.error?.message?.includes('Supabase')) {
-        console.warn('Mode démo activé suite à erreur Supabase');
-    }
-});
+        // Gestion du formulaire d'ajout/modification
+        document.getElementById('addCompanyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('companyName').value,
+                status: document.getElementById('companyStatus').value,
+                industry: document.getElementById('companyIndustry').value,
+                account_manager: document.getElementById('accountManager').value,
+                website: document.getElementById('companyWebsite').value,
+                phone: document.getElementById('companyPhone').value,
+                siret: document.getElementById('companySiret').value,
+                address: document.getElementById('companyAddress').value,
+                city: document.getElementById('companyCity').value,
+                postal_code: document.getElementById('companyPostalCode').value,
+                country: document.getElementById('companyCountry').value,
+                notes: document.getElementById('companyNotes').value
+            };
+            
+            showLoading(true);
+            
+            try {
+                let result;
+                if (editMode && selectedCompany) {
+                    result = await CRMService.updateCompany(selectedCompany.id, formData);
+                    if (result.success) {
+                        showSuccess('Société modifiée avec succès !');
+                    }
+                } else {
+                    result = await CRMService.createCompany(formData);
+                    if (result.success) {
+                        showSuccess('Société créée avec succès !');
+                    }
+                }
+                
+                if (result.success) {
+                    closeModal('add-company');
+                    await loadCompanies();
+                } else {
+                    showError('Erreur lors de la sauvegarde: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors de la sauvegarde de la société');
+            } finally {
+                showLoading(false);
+            }
+        });
 
-window.addEventListener('unhandledrejection', (e) => {
-    console.error('Promise rejetée:', e.reason);
-    if (e.reason?.message?.includes('Supabase')) {
-        console.warn('Mode démo activé suite à erreur Supabase');
-    }
-});
+        // Ouvrir les détails d'une société
+        function openCompanyDetails(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            selectedCompany = company;
+            document.getElementById('companyDetailsTitle').textContent = company.name;
+            
+            // Contenu des détails
+            document.getElementById('companyDetailsContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Informations générales</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Statut :</strong> <span class="status-badge status-${company.status}">${company.status}</span></div>
+                            <div><strong>Secteur :</strong> ${company.industry || 'Non spécifié'}</div>
+                            <div><strong>Site web :</strong> ${company.website ? `<a href="${company.website}" target="_blank">${company.website}</a>` : 'Non spécifié'}</div>
+                            <div><strong>Téléphone :</strong> ${company.phone || 'Non spécifié'}</div>
+                            <div><strong>SIRET :</strong> ${company.siret || 'Non spécifié'}</div>
+                            <div><strong>Responsable :</strong> ${company.account_manager || 'Non assigné'}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Adresse</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Adresse :</strong> ${company.address || 'Non spécifiée'}</div>
+                            <div><strong>Ville :</strong> ${company.city || 'Non spécifiée'}</div>
+                            <div><strong>Code postal :</strong> ${company.postal_code || 'Non spécifié'}</div>
+                            <div><strong>Pays :</strong> ${company.country || 'Non spécifié'}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${company.notes ? `
+                    <div style="margin-top: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Notes</h4>
+                        <p style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); color: var(--gray-700);">
+                            ${company.notes}
+                        </p>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-top: 2rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Contacts (${company.company_contacts ? company.company_contacts.length : 0})</h4>
+                    ${company.company_contacts && company.company_contacts.length > 0 ? `
+                        <div style="display: grid; gap: 1rem;">
+                            ${company.company_contacts.map(contact => `
+                                <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius);">
+                                    <div style="font-weight: 600; margin-bottom: 0.25rem;">
+                                        ${contact.first_name} ${contact.last_name}
+                                    </div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">
+                                        ${contact.position || 'Poste non spécifié'} • ${contact.email}
+                                    </div>
+                                    ${contact.is_admin_contact || contact.is_payment_contact ? `
+                                        <div style="margin-top: 0.5rem;">
+                                            ${contact.is_admin_contact ? '<span class="badge badge-info">Admin</span>' : ''}
+                                            ${contact.is_payment_contact ? '<span class="badge badge-warning">Facturation</span>' : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <p style="color: var(--gray-500); font-style: italic;">Aucun contact enregistré</p>
+                    `}
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="closeModal('company-details')">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="editCompany('${company.id}')">
+                        ✏️ Modifier
+                    </button>
+                </div>
+            `;
+            
+            openModal('company-details');
+        }
 
-console.log('🚀 Configuration CRM Pro chargée avec succès');
+        // Modifier une société
+        function editCompany(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            // Fermer le modal de détails s'il est ouvert
+            closeModal('company-details');
+            
+            // Passer en mode édition
+            editMode = true;
+            selectedCompany = company;
+            
+            // Remplir le formulaire avec les données existantes
+            document.getElementById('companyName').value = company.name || '';
+            document.getElementById('companyStatus').value = company.status || '';
+            document.getElementById('companyIndustry').value = company.industry || '';
+            document.getElementById('accountManager').value = company.account_manager || '';
+            document.getElementById('companyWebsite').value = company.website || '';
+            document.getElementById('companyPhone').value = company.phone || '';
+            document.getElementById('companySiret').value = company.siret || '';
+            document.getElementById('companyAddress').value = company.address || '';
+            document.getElementById('companyCity').value = company.city || '';
+            document.getElementById('companyPostalCode').value = company.postal_code || '';
+            document.getElementById('companyCountry').value = company.country || '';
+            document.getElementById('companyNotes').value = company.notes || '';
+            
+            // Modifier les textes du modal
+            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
+            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
+            
+            // Ouvrir le modal
+            openModal('add-company');
+        }
+
+        // Supprimer une société
+        async function deleteCompany(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${company.name}" ?\n\nCette action est irréversible.`)) {
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const result = await CRMService.deleteCompany(companyId);
+                if (result.success) {
+                    showSuccess('Société supprimée avec succès');
+                    await loadCompanies();
+                } else {
+                    showError('Erreur lors de la suppression: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors de la suppression');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Gérer les paramètres URL
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
+            
+            if (action === 'add') {
+                openModal('add-company');
+            }
+        }
+
+        // Fermer les modals en cliquant à l'extérieur
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                const modalId = e.target.id.replace('modal-', '');
+                closeModal(modalId);
+            }
+        });
+
+        // Raccourcis clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // Fermer tous les modals ouverts
+                document.querySelectorAll('.modal.show').forEach(modal => {
+                    const modalId = modal.id.replace('modal-', '');
+                    closeModal(modalId);
+                });
+            }
+            
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'n':
+                        e.preventDefault();
+                        openModal('add-company');
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        document.getElementById('searchInput').focus();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
