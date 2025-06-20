@@ -32,6 +32,86 @@ try {
 }
 
 // ===================================
+// STOCKAGE LOCAL DES DONNÉES (MODE DÉMO)
+// ===================================
+
+// Gestionnaire du stockage local pour le mode démo
+class LocalStorageManager {
+    static getKey(table) {
+        return `crm_demo_${table}`;
+    }
+    
+    static getData(table) {
+        try {
+            const data = localStorage.getItem(this.getKey(table));
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error(`Erreur lecture ${table}:`, error);
+            return [];
+        }
+    }
+    
+    static setData(table, data) {
+        try {
+            localStorage.setItem(this.getKey(table), JSON.stringify(data));
+            return true;
+        } catch (error) {
+            console.error(`Erreur écriture ${table}:`, error);
+            return false;
+        }
+    }
+    
+    static addItem(table, item) {
+        const data = this.getData(table);
+        const newItem = {
+            ...item,
+            id: item.id || Date.now().toString(),
+            created_at: item.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        data.push(newItem);
+        this.setData(table, data);
+        return newItem;
+    }
+    
+    static updateItem(table, id, updates) {
+        const data = this.getData(table);
+        const index = data.findIndex(item => item.id === id);
+        if (index !== -1) {
+            data[index] = {
+                ...data[index],
+                ...updates,
+                updated_at: new Date().toISOString()
+            };
+            this.setData(table, data);
+            return data[index];
+        }
+        return null;
+    }
+    
+    static deleteItem(table, id) {
+        const data = this.getData(table);
+        const filteredData = data.filter(item => item.id !== id);
+        this.setData(table, filteredData);
+        return true;
+    }
+    
+    static initializeDemo() {
+        // Initialiser les données démo si le localStorage est vide
+        const tables = ['companies', 'contacts', 'licenses', 'license_plans'];
+        
+        tables.forEach(table => {
+            if (this.getData(table).length === 0) {
+                const demoData = CRMService.getDemoData();
+                if (demoData[table]) {
+                    this.setData(table, demoData[table]);
+                }
+            }
+        });
+    }
+}
+
+// ===================================
 // GESTION DE L'AUTHENTIFICATION
 // ===================================
 
@@ -341,40 +421,10 @@ class CRMService {
                 }
             ],
             licenses: [
-                {
-                    id: '1',
-                    company_id: '1',
-                    plan_id: '2',
-                    license_count: 5,
-                    start_date: '2024-01-15',
-                    end_date: '2025-01-15',
-                    renewal_date: '2024-12-15',
-                    status: 'active',
-                    payment_method: 'stripe',
-                    monthly_cost: 299.95,
-                    companies: { id: '1', name: 'TechCorp Solutions', status: 'active' },
-                    license_plans: { id: '2', name: 'Professional', price_per_user: 59.99 }
-                },
-                {
-                    id: '2',
-                    company_id: '2',
-                    plan_id: '3',
-                    license_count: 10,
-                    start_date: '2024-03-01',
-                    end_date: '2025-03-01',
-                    renewal_date: '2025-02-01',
-                    status: 'active',
-                    payment_method: 'bank_transfer',
-                    monthly_cost: 999.90,
-                    companies: { id: '2', name: 'Innovation Ltd', status: 'active' },
-                    license_plans: { id: '3', name: 'Enterprise', price_per_user: 99.99 }
-                }
+                // Tableau vide pour les licences - elles seront chargées depuis Supabase uniquement
             ],
-            licensePlans: [
-                { id: '1', name: 'Starter', price_per_user: 29.99, is_active: true },
-                { id: '2', name: 'Professional', price_per_user: 59.99, is_active: true },
-                { id: '3', name: 'Enterprise', price_per_user: 99.99, is_active: true },
-                { id: '4', name: 'Premium', price_per_user: 149.99, is_active: true }
+            license_plans: [
+                // Tableau vide pour les plans - ils seront chargés depuis Supabase uniquement
             ]
         };
     }
@@ -384,9 +434,10 @@ class CRMService {
     static async getCompanies() {
         try {
             if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                return { success: true, data: demoData.companies };
+                // Mode démo avec localStorage
+                LocalStorageManager.initializeDemo();
+                const data = LocalStorageManager.getData('companies');
+                return { success: true, data };
             }
             
             const { data, error } = await supabase
@@ -420,14 +471,8 @@ class CRMService {
     static async createCompany(companyData) {
         try {
             if (!supabase) {
-                // Mode démo - simuler la création
-                const newCompany = {
-                    ...companyData,
-                    id: Date.now().toString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    company_contacts: []
-                };
+                // Mode démo avec localStorage
+                const newCompany = LocalStorageManager.addItem('companies', companyData);
                 return { success: true, data: newCompany };
             }
             
@@ -451,8 +496,9 @@ class CRMService {
     static async updateCompany(id, companyData) {
         try {
             if (!supabase) {
-                // Mode démo
-                return { success: true, data: { ...companyData, id } };
+                // Mode démo avec localStorage
+                const updatedCompany = LocalStorageManager.updateItem('companies', id, companyData);
+                return { success: true, data: updatedCompany };
             }
             
             const { data, error } = await supabase
@@ -475,7 +521,8 @@ class CRMService {
     static async deleteCompany(id) {
         try {
             if (!supabase) {
-                // Mode démo
+                // Mode démo avec localStorage
+                LocalStorageManager.deleteItem('companies', id);
                 return { success: true };
             }
             
@@ -497,9 +544,9 @@ class CRMService {
     static async getContacts(companyId = null) {
         try {
             if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                let allContacts = demoData.contacts;
+                // Mode démo avec localStorage
+                LocalStorageManager.initializeDemo();
+                let allContacts = LocalStorageManager.getData('contacts');
                 
                 if (companyId) {
                     allContacts = allContacts.filter(c => c.company_id === companyId);
@@ -532,13 +579,8 @@ class CRMService {
     static async createContact(contactData) {
         try {
             if (!supabase) {
-                // Mode démo - simuler la création
-                const newContact = {
-                    ...contactData,
-                    id: Date.now().toString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                };
+                // Mode démo avec localStorage
+                const newContact = LocalStorageManager.addItem('contacts', contactData);
                 return { success: true, data: newContact };
             }
             
@@ -562,8 +604,9 @@ class CRMService {
     static async updateContact(id, contactData) {
         try {
             if (!supabase) {
-                // Mode démo
-                return { success: true, data: { ...contactData, id } };
+                // Mode démo avec localStorage
+                const updatedContact = LocalStorageManager.updateItem('contacts', id, contactData);
+                return { success: true, data: updatedContact };
             }
             
             const { data, error } = await supabase
@@ -586,7 +629,8 @@ class CRMService {
     static async deleteContact(id) {
         try {
             if (!supabase) {
-                // Mode démo
+                // Mode démo avec localStorage
+                LocalStorageManager.deleteItem('contacts', id);
                 return { success: true };
             }
             
@@ -608,9 +652,8 @@ class CRMService {
     static async getLicenses() {
         try {
             if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                return { success: true, data: demoData.licenses };
+                // Mode démo avec localStorage - retourne un tableau vide pour les licences
+                return { success: true, data: [] };
             }
             
             const { data, error } = await supabase
@@ -634,19 +677,87 @@ class CRMService {
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('Erreur récupération licences:', error);
+            // En cas d'erreur, retourner un tableau vide
+            return { success: true, data: [] };
+        }
+    }
+    
+    static async createLicense(licenseData) {
+        try {
+            if (!supabase) {
+                // Mode démo avec localStorage
+                const newLicense = LocalStorageManager.addItem('licenses', licenseData);
+                return { success: true, data: newLicense };
+            }
             
-            // Fallback en mode démo
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.licenses };
+            const { data, error } = await supabase
+                .from('company_licenses')
+                .insert([{
+                    ...licenseData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur création licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateLicense(id, licenseData) {
+        try {
+            if (!supabase) {
+                // Mode démo avec localStorage
+                const updatedLicense = LocalStorageManager.updateItem('licenses', id, licenseData);
+                return { success: true, data: updatedLicense };
+            }
+            
+            const { data, error } = await supabase
+                .from('company_licenses')
+                .update({
+                    ...licenseData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur mise à jour licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteLicense(id) {
+        try {
+            if (!supabase) {
+                // Mode démo avec localStorage
+                LocalStorageManager.deleteItem('licenses', id);
+                return { success: true };
+            }
+            
+            const { error } = await supabase
+                .from('company_licenses')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur suppression licence:', error);
+            return { success: false, error: error.message };
         }
     }
     
     static async getLicensePlans() {
         try {
             if (!supabase) {
-                // Mode démo
-                const demoData = this.getDemoData();
-                return { success: true, data: demoData.licensePlans };
+                // Mode démo avec localStorage - retourne un tableau vide pour les plans
+                return { success: true, data: [] };
             }
             
             const { data, error } = await supabase
@@ -659,10 +770,8 @@ class CRMService {
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('Erreur récupération plans:', error);
-            
-            // Fallback en mode démo
-            const demoData = this.getDemoData();
-            return { success: true, data: demoData.licensePlans };
+            // En cas d'erreur, retourner un tableau vide
+            return { success: true, data: [] };
         }
     }
     
@@ -718,10 +827,10 @@ class CRMService {
                     sponsors: 1,
                     clients: 2,
                     onboarded: 0,
-                    activeLicenses: 2,
-                    totalLicenseCount: 15,
-                    monthlyRevenue: 1299.85,
-                    expiringLicenses: 1
+                    activeLicenses: 0,
+                    totalLicenseCount: 0,
+                    monthlyRevenue: 0,
+                    expiringLicenses: 0
                 }
             };
         }
@@ -984,12 +1093,25 @@ function withTimeout(promise, timeoutMs = 10000) {
 }
 
 // ===================================
+// INITIALISATION
+// ===================================
+
+// Initialiser le localStorage en mode démo au chargement
+document.addEventListener('DOMContentLoaded', () => {
+    if (!supabase) {
+        LocalStorageManager.initializeDemo();
+        console.log('📦 Mode démo initialisé avec localStorage');
+    }
+});
+
+// ===================================
 // EXPORT GLOBAL
 // ===================================
 
 // Rendre les services disponibles globalement
 window.AuthService = AuthService;
 window.CRMService = CRMService;
+window.LocalStorageManager = LocalStorageManager;
 window.formatDate = formatDate;
 window.formatDateShort = formatDateShort;
 window.formatCurrency = formatCurrency;
