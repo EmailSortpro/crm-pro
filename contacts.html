@@ -34,6 +34,7 @@
             display: flex;
             gap: 1rem;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .search-box {
@@ -44,7 +45,7 @@
             padding: 0.75rem 1rem 0.75rem 2.5rem;
             border: 1px solid var(--gray-300);
             border-radius: var(--radius);
-            width: 300px;
+            width: 250px;
             font-size: 0.875rem;
             transition: var(--transition);
         }
@@ -63,6 +64,61 @@
             transform: translateY(-50%);
             font-size: 1rem;
             color: var(--gray-400);
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: var(--gray-700);
+            white-space: nowrap;
+        }
+
+        .filter-select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            background: white;
+            font-size: 0.875rem;
+            min-width: 150px;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
         }
 
         .btn-add {
@@ -134,11 +190,37 @@
         .badge-admin {
             background: #fef3c7;
             color: #92400e;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
 
         .badge-payment {
             background: #d1fae5;
             color: #065f46;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-technical {
+            background: #e0f2fe;
+            color: #0277bd;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-commercial {
+            background: #f3e8ff;
+            color: #7c3aed;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
 
         .contact-actions {
@@ -294,6 +376,16 @@
                 width: 100%;
             }
 
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
             .table th,
             .table td {
                 padding: 0.75rem 0.5rem;
@@ -385,6 +477,46 @@
             </div>
         </div>
 
+        <!-- Filtres avancés -->
+        <div class="filter-section">
+            <div class="filter-group">
+                <span class="filter-label">Société :</span>
+                <select id="companyFilter" class="filter-select" onchange="applyFilters()">
+                    <option value="">Toutes les sociétés</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">Type :</span>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="filter-btn active" data-filter="all" onclick="filterByType('all')">
+                        Tous (<span id="count-all">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="admin" onclick="filterByType('admin')">
+                        Admin (<span id="count-admin">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="technical" onclick="filterByType('technical')">
+                        Technique (<span id="count-technical">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="commercial" onclick="filterByType('commercial')">
+                        Commercial (<span id="count-commercial">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="payment" onclick="filterByType('payment')">
+                        Facturation (<span id="count-payment">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="unassigned" onclick="filterByType('unassigned')">
+                        Non assignés (<span id="count-unassigned">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <button class="btn btn-secondary btn-sm" onclick="clearFilters()">
+                    🔄 Réinitialiser
+                </button>
+            </div>
+        </div>
+
         <!-- Statistiques -->
         <div class="stats-grid" style="margin-bottom: 2rem;">
             <div class="stat-card">
@@ -417,6 +549,7 @@
                                 <th>Position</th>
                                 <th>Email</th>
                                 <th>Téléphone</th>
+                                <th>Type</th>
                                 <th>Rôles</th>
                                 <th>Actions</th>
                             </tr>
@@ -476,13 +609,26 @@
                         <input type="text" id="position" name="position" placeholder="ex: Directeur IT">
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="companyId">Société</label>
-                    <select id="companyId" name="companyId">
-                        <option value="">-- Sélectionner une société --</option>
-                        <!-- Les sociétés seront chargées ici -->
-                    </select>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="companyId">Société</label>
+                        <select id="companyId" name="companyId">
+                            <option value="">-- Sélectionner une société --</option>
+                            <!-- Les sociétés seront chargées ici -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactType">Type de contact</label>
+                        <select id="contactType" name="contactType">
+                            <option value="">-- Sélectionner un type --</option>
+                            <option value="admin">Administrateur</option>
+                            <option value="technical">Technique</option>
+                            <option value="commercial">Commercial</option>
+                            <option value="support">Support</option>
+                            <option value="other">Autre</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -516,7 +662,10 @@
         // Variables globales
         let contacts = [];
         let companies = [];
+        let filteredContacts = [];
         let currentEditId = null;
+        let currentTypeFilter = 'all';
+        let currentCompanyFilter = '';
 
         // Initialisation optimisée
         document.addEventListener('DOMContentLoaded', async () => {
@@ -630,6 +779,7 @@
                     email: 'j.dupont@techcorp.com',
                     phone: '+33 1 23 45 67 89',
                     position: 'CTO',
+                    contact_type: 'technical',
                     company_id: '1',
                     company_name: 'TechCorp Solutions',
                     is_admin_contact: true,
@@ -644,6 +794,7 @@
                     email: 'm.martin@innovation.com',
                     phone: '+33 1 98 76 54 32',
                     position: 'CEO',
+                    contact_type: 'commercial',
                     company_id: '2',
                     company_name: 'Innovation Ltd',
                     is_admin_contact: true,
@@ -658,6 +809,7 @@
                     email: 's.durand@freelance.com',
                     phone: '+33 6 12 34 56 78',
                     position: 'Consultant',
+                    contact_type: 'commercial',
                     company_id: null,
                     company_name: null,
                     is_admin_contact: false,
@@ -681,6 +833,7 @@
             updateStats();
             updateContactsTable();
             updateCompanySelect();
+            updateCompanyFilter();
         }
 
         // Mettre à jour les statistiques
@@ -696,6 +849,106 @@
             document.getElementById('adminContacts').textContent = stats.admin;
             document.getElementById('paymentContacts').textContent = stats.payment;
             document.getElementById('unassignedContacts').textContent = stats.unassigned;
+
+            // Mettre à jour les compteurs de type
+            updateTypeCounts();
+        }
+
+        // Mettre à jour les compteurs par type
+        function updateTypeCounts() {
+            document.getElementById('count-all').textContent = contacts.length;
+            document.getElementById('count-admin').textContent = contacts.filter(c => c.is_admin_contact).length;
+            document.getElementById('count-technical').textContent = contacts.filter(c => c.contact_type === 'technical').length;
+            document.getElementById('count-commercial').textContent = contacts.filter(c => c.contact_type === 'commercial').length;
+            document.getElementById('count-payment').textContent = contacts.filter(c => c.is_payment_contact).length;
+            document.getElementById('count-unassigned').textContent = contacts.filter(c => !c.company_id).length;
+        }
+
+        // Filtrer par type
+        function filterByType(type) {
+            currentTypeFilter = type;
+            
+            // Mettre à jour les boutons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-filter="${type}"]`).classList.add('active');
+            
+            applyFilters();
+        }
+
+        // Appliquer tous les filtres
+        function applyFilters() {
+            let filtered = [...contacts];
+
+            // Filtrer par société
+            if (currentCompanyFilter) {
+                filtered = filtered.filter(c => c.company_id === currentCompanyFilter);
+            }
+
+            // Filtrer par type
+            if (currentTypeFilter !== 'all') {
+                switch (currentTypeFilter) {
+                    case 'admin':
+                        filtered = filtered.filter(c => c.is_admin_contact);
+                        break;
+                    case 'technical':
+                        filtered = filtered.filter(c => c.contact_type === 'technical');
+                        break;
+                    case 'commercial':
+                        filtered = filtered.filter(c => c.contact_type === 'commercial');
+                        break;
+                    case 'payment':
+                        filtered = filtered.filter(c => c.is_payment_contact);
+                        break;
+                    case 'unassigned':
+                        filtered = filtered.filter(c => !c.company_id);
+                        break;
+                }
+            }
+
+            // Appliquer la recherche
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (searchTerm) {
+                filtered = filtered.filter(contact =>
+                    contact.first_name.toLowerCase().includes(searchTerm) ||
+                    contact.last_name.toLowerCase().includes(searchTerm) ||
+                    contact.email.toLowerCase().includes(searchTerm) ||
+                    (contact.company_name && contact.company_name.toLowerCase().includes(searchTerm)) ||
+                    (contact.position && contact.position.toLowerCase().includes(searchTerm)) ||
+                    (contact.phone && contact.phone.includes(searchTerm))
+                );
+            }
+
+            filteredContacts = filtered;
+            updateContactsTable();
+        }
+
+        // Réinitialiser les filtres
+        function clearFilters() {
+            currentTypeFilter = 'all';
+            currentCompanyFilter = '';
+            
+            document.getElementById('companyFilter').value = '';
+            document.getElementById('searchInput').value = '';
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('[data-filter="all"]').classList.add('active');
+            
+            applyFilters();
+        }
+
+        // Mettre à jour le filtre des sociétés
+        function updateCompanyFilter() {
+            const select = document.getElementById('companyFilter');
+            
+            select.innerHTML = '<option value="">Toutes les sociétés</option>' +
+                companies.map(company => `
+                    <option value="${company.id}">${company.name}</option>
+                `).join('');
+                
+            select.addEventListener('change', (e) => {
+                currentCompanyFilter = e.target.value;
+                applyFilters();
+            });
         }
 
         // Mettre à jour le tableau des contacts
@@ -703,7 +956,7 @@
             const tbody = document.getElementById('contactsTableBody');
             const emptyState = document.getElementById('emptyState');
 
-            if (contacts.length === 0) {
+            if (filteredContacts.length === 0) {
                 tbody.innerHTML = '';
                 emptyState.style.display = 'block';
                 return;
@@ -711,7 +964,7 @@
 
             emptyState.style.display = 'none';
 
-            tbody.innerHTML = contacts.map(contact => `
+            tbody.innerHTML = filteredContacts.map(contact => `
                 <tr>
                     <td>
                         <div class="contact-info">
@@ -737,9 +990,12 @@
                         ${contact.phone ? `<a href="tel:${contact.phone}" style="color: var(--primary-color); text-decoration: none;">${contact.phone}</a>` : '-'}
                     </td>
                     <td>
+                        ${contact.contact_type ? `<span class="badge-${contact.contact_type}">${contact.contact_type}</span>` : '-'}
+                    </td>
+                    <td>
                         <div class="contact-badges">
-                            ${contact.is_admin_contact ? '<span class="badge badge-admin">Admin</span>' : ''}
-                            ${contact.is_payment_contact ? '<span class="badge badge-payment">Facturation</span>' : ''}
+                            ${contact.is_admin_contact ? '<span class="badge-admin">Admin</span>' : ''}
+                            ${contact.is_payment_contact ? '<span class="badge-payment">Facturation</span>' : ''}
                         </div>
                     </td>
                     <td>
@@ -770,28 +1026,8 @@
         function setupSearch() {
             const searchInput = document.getElementById('searchInput');
             
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase().trim();
-                
-                if (!query) {
-                    updateContactsTable();
-                    return;
-                }
-
-                const filteredContacts = contacts.filter(contact =>
-                    contact.first_name.toLowerCase().includes(query) ||
-                    contact.last_name.toLowerCase().includes(query) ||
-                    contact.email.toLowerCase().includes(query) ||
-                    (contact.company_name && contact.company_name.toLowerCase().includes(query)) ||
-                    (contact.position && contact.position.toLowerCase().includes(query)) ||
-                    (contact.phone && contact.phone.includes(query))
-                );
-
-                // Temporairement remplacer contacts pour l'affichage
-                const originalContacts = [...contacts];
-                contacts = filteredContacts;
-                updateContactsTable();
-                contacts = originalContacts;
+            searchInput.addEventListener('input', () => {
+                applyFilters();
             });
         }
 
@@ -820,6 +1056,7 @@
                     document.getElementById('phone').value = contact.phone || '';
                     document.getElementById('position').value = contact.position || '';
                     document.getElementById('companyId').value = contact.company_id || '';
+                    document.getElementById('contactType').value = contact.contact_type || '';
                     document.getElementById('notes').value = contact.notes || '';
                     document.getElementById('isAdminContact').checked = contact.is_admin_contact || false;
                     document.getElementById('isPaymentContact').checked = contact.is_payment_contact || false;
@@ -866,6 +1103,7 @@
                     email: formData.get('email'),
                     phone: formData.get('phone') || null,
                     position: formData.get('position') || null,
+                    contact_type: formData.get('contactType') || null,
                     company_id: formData.get('companyId') || null,
                     notes: formData.get('notes') || null,
                     is_admin_contact: formData.get('isAdminContact') === 'on',
@@ -953,6 +1191,9 @@
                 closeContactModal();
             }
         });
+
+        // Initialiser les filtres au chargement
+        filteredContacts = contacts;
     </script>
 </body>
 </html>
