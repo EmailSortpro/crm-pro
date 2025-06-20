@@ -85,8 +85,8 @@
             <!-- Graphique évolution des sociétés -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">📈 Évolution des sociétés</h3>
-                    <p class="card-subtitle">Répartition par statut</p>
+                    <h3 class="card-title">📈 Répartition des sociétés</h3>
+                    <p class="card-subtitle">Par statut dans votre base</p>
                 </div>
                 <div class="card-body">
                     <canvas id="companiesChart" width="400" height="300"></canvas>
@@ -96,8 +96,8 @@
             <!-- Graphique revenus -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">💰 Revenus mensuels</h3>
-                    <p class="card-subtitle">Évolution des revenus récurrents</p>
+                    <h3 class="card-title">💰 Revenus actuels</h3>
+                    <p class="card-subtitle">Répartition par plan de licence</p>
                 </div>
                 <div class="card-body">
                     <canvas id="revenueChart" width="400" height="300"></canvas>
@@ -131,11 +131,11 @@
                 </div>
             </div>
 
-            <!-- Activité récente -->
+            <!-- Activité récente basée sur les vraies données -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">🕒 Activité récente</h3>
-                    <p class="card-subtitle">Dernières modifications</p>
+                    <h3 class="card-title">🕒 Données récentes</h3>
+                    <p class="card-subtitle">Derniers éléments créés</p>
                 </div>
                 <div class="card-body">
                     <div id="recentActivity">
@@ -180,8 +180,10 @@
 
     <script src="config.js"></script>
     <script>
-        // Variables globales
-        let stats = {};
+        // Variables globales pour les vraies données
+        let companies = [];
+        let licenses = [];
+        let contacts = [];
         let companiesChart = null;
         let revenueChart = null;
 
@@ -207,61 +209,146 @@
             }
         }
 
-        // Charger toutes les données du dashboard
+        // Charger toutes les données RÉELLES du dashboard
         async function loadDashboardData() {
             showLoading(true);
             
             try {
-                // Charger les statistiques
-                const statsResult = await CRMService.getStats();
-                if (statsResult.success) {
-                    stats = statsResult.data;
-                    renderStats();
-                    renderCharts();
-                    renderRenewalsTable();
-                    renderRecentActivity();
-                } else {
-                    showError('Erreur lors du chargement du dashboard: ' + statsResult.error);
+                // Charger les vraies données de la base
+                const [companiesResult, licensesResult, contactsResult] = await Promise.all([
+                    CRMService.getCompanies(),
+                    CRMService.getLicenses(),
+                    CRMService.getContacts()
+                ]);
+                
+                if (companiesResult.success) {
+                    companies = companiesResult.data;
+                    console.log('Sociétés chargées:', companies.length);
                 }
+                
+                if (licensesResult.success) {
+                    licenses = licensesResult.data;
+                    console.log('Licences chargées:', licenses.length);
+                }
+                
+                if (contactsResult.success) {
+                    contacts = contactsResult.data;
+                    console.log('Contacts chargés:', contacts.length);
+                }
+                
+                // Calculer les vraies statistiques
+                const realStats = calculateRealStats();
+                
+                // Afficher les données
+                renderStats(realStats);
+                renderCharts();
+                renderRenewalsTable();
+                renderRecentActivity();
+                
             } catch (error) {
                 console.error('Erreur dashboard:', error);
                 showError('Erreur lors du chargement des données');
+                
+                // Affichage de base en cas d'erreur
+                renderEmptyStats();
             } finally {
                 showLoading(false);
             }
         }
 
-        // Rendu des statistiques principales
-        function renderStats() {
+        // Calculer les vraies statistiques basées sur les données de la base
+        function calculateRealStats() {
+            // Statistiques des sociétés
+            const totalCompanies = companies.length;
+            const prospects = companies.filter(c => c.status === 'prospect').length;
+            const sponsors = companies.filter(c => c.status === 'sponsor').length;
+            const clients = companies.filter(c => c.status === 'client').length;
+            const onboarded = companies.filter(c => c.status === 'onboarded').length;
+            
+            // Statistiques des licences
+            const activeLicenses = licenses.filter(l => l.status === 'active').length;
+            const totalLicenseCount = licenses
+                .filter(l => l.status === 'active')
+                .reduce((sum, l) => sum + (l.license_count || 0), 0);
+            const monthlyRevenue = licenses
+                .filter(l => l.status === 'active')
+                .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            
+            // Licences expirant dans les 30 jours
+            const now = new Date();
+            const in30Days = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+            const expiringLicenses = licenses.filter(l => {
+                if (l.status !== 'active' || !l.renewal_date) return false;
+                const renewalDate = new Date(l.renewal_date);
+                return renewalDate >= now && renewalDate <= in30Days;
+            });
+            
+            // Statistiques des contacts
+            const totalContacts = contacts.length;
+            const adminContacts = contacts.filter(c => c.is_admin_contact).length;
+            const paymentContacts = contacts.filter(c => c.is_payment_contact).length;
+            
+            return {
+                totalCompanies,
+                prospects,
+                sponsors,
+                clients,
+                onboarded,
+                activeLicenses,
+                totalLicenseCount,
+                monthlyRevenue,
+                expiringLicenses,
+                totalContacts,
+                adminContacts,
+                paymentContacts
+            };
+        }
+
+        // Rendu des statistiques principales avec les vraies données
+        function renderStats(stats) {
             const container = document.getElementById('statsContainer');
+            
+            // Calculs des pourcentages
+            const prospectPercent = stats.totalCompanies > 0 ? Math.round(stats.prospects / stats.totalCompanies * 100) : 0;
+            const clientPercent = stats.totalCompanies > 0 ? Math.round(stats.clients / stats.totalCompanies * 100) : 0;
+            const sponsorPercent = stats.totalCompanies > 0 ? Math.round(stats.sponsors / stats.totalCompanies * 100) : 0;
+            const onboardedPercent = stats.totalCompanies > 0 ? Math.round(stats.onboarded / stats.totalCompanies * 100) : 0;
+            
             container.innerHTML = `
                 <div class="stat-card">
                     <div class="stat-number">${stats.totalCompanies}</div>
                     <div class="stat-label">Total Sociétés</div>
-                </div>
-                
-                <div class="stat-card success">
-                    <div class="stat-number">${stats.prospects}</div>
-                    <div class="stat-label">Prospects</div>
-                    <div class="stat-change">+${Math.round(stats.prospects / stats.totalCompanies * 100)}% du total</div>
+                    <div class="stat-change">${stats.totalContacts} contacts</div>
                 </div>
                 
                 <div class="stat-card warning">
-                    <div class="stat-number">${stats.clients}</div>
-                    <div class="stat-label">Clients</div>
-                    <div class="stat-change">+${Math.round(stats.clients / stats.totalCompanies * 100)}% du total</div>
+                    <div class="stat-number">${stats.prospects}</div>
+                    <div class="stat-label">Prospects</div>
+                    <div class="stat-change">${prospectPercent}% du total</div>
                 </div>
                 
-                <div class="stat-card error">
+                <div class="stat-card info">
+                    <div class="stat-number">${stats.sponsors}</div>
+                    <div class="stat-label">Sponsors</div>
+                    <div class="stat-change">${sponsorPercent}% du total</div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-number">${stats.clients}</div>
+                    <div class="stat-label">Clients</div>
+                    <div class="stat-change">${clientPercent}% du total</div>
+                </div>
+                
+                <div class="stat-card primary">
                     <div class="stat-number">${stats.onboarded}</div>
                     <div class="stat-label">Onboardés</div>
-                    <div class="stat-change">+${Math.round(stats.onboarded / stats.totalCompanies * 100)}% du total</div>
+                    <div class="stat-change">${onboardedPercent}% du total</div>
                 </div>
                 
                 <div class="stat-card">
                     <div class="stat-number">${stats.totalLicenseCount}</div>
                     <div class="stat-label">Licences Actives</div>
-                    <div class="stat-change">${stats.activeLicenses} sociétés</div>
+                    <div class="stat-change">${stats.activeLicenses} société(s)</div>
                 </div>
                 
                 <div class="stat-card success">
@@ -269,16 +356,22 @@
                     <div class="stat-label">Revenus Mensuels</div>
                     <div class="stat-change">MRR (Monthly Recurring Revenue)</div>
                 </div>
+                
+                <div class="stat-card error">
+                    <div class="stat-number">${stats.expiringLicenses.length}</div>
+                    <div class="stat-label">Licences à renouveler</div>
+                    <div class="stat-change">Dans les 30 jours</div>
+                </div>
             `;
         }
 
-        // Rendu des graphiques
+        // Rendu des graphiques avec les vraies données
         function renderCharts() {
             renderCompaniesChart();
             renderRevenueChart();
         }
 
-        // Graphique répartition des sociétés
+        // Graphique répartition des sociétés avec vraies données
         function renderCompaniesChart() {
             const ctx = document.getElementById('companiesChart').getContext('2d');
             
@@ -286,17 +379,55 @@
                 companiesChart.destroy();
             }
             
+            // Calculer la répartition réelle
+            const prospects = companies.filter(c => c.status === 'prospect').length;
+            const sponsors = companies.filter(c => c.status === 'sponsor').length;
+            const clients = companies.filter(c => c.status === 'client').length;
+            const onboarded = companies.filter(c => c.status === 'onboarded').length;
+            
+            // Ne montrer que les statuts qui ont des données
+            const labels = [];
+            const data = [];
+            const colors = [];
+            
+            if (prospects > 0) {
+                labels.push('Prospects');
+                data.push(prospects);
+                colors.push('#f59e0b');
+            }
+            if (sponsors > 0) {
+                labels.push('Sponsors');
+                data.push(sponsors);
+                colors.push('#8b5cf6');
+            }
+            if (clients > 0) {
+                labels.push('Clients');
+                data.push(clients);
+                colors.push('#3b82f6');
+            }
+            if (onboarded > 0) {
+                labels.push('Onboardés');
+                data.push(onboarded);
+                colors.push('#10b981');
+            }
+            
+            // Si aucune donnée, afficher un message
+            if (data.length === 0) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#6b7280';
+                ctx.textAlign = 'center';
+                ctx.fillText('Aucune société dans la base', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+            
             companiesChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Prospects', 'Clients', 'Onboardés'],
+                    labels: labels,
                     datasets: [{
-                        data: [stats.prospects, stats.clients, stats.onboarded],
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2',
-                            '#48bb78'
-                        ],
+                        data: data,
+                        backgroundColor: colors,
                         borderWidth: 2,
                         borderColor: '#ffffff'
                     }]
@@ -317,7 +448,7 @@
             });
         }
 
-        // Graphique évolution des revenus (simulé)
+        // Graphique revenus par plan avec vraies données
         function renderRevenueChart() {
             const ctx = document.getElementById('revenueChart').getContext('2d');
             
@@ -325,33 +456,45 @@
                 revenueChart.destroy();
             }
             
-            // Données simulées pour les 6 derniers mois
-            const currentRevenue = stats.monthlyRevenue;
-            const revenueData = [];
-            const labels = [];
+            // Grouper les revenus par plan de licence
+            const revenueByPlan = {};
+            licenses.filter(l => l.status === 'active').forEach(license => {
+                const planName = license.license_plans?.name || 'Plan inconnu';
+                if (!revenueByPlan[planName]) {
+                    revenueByPlan[planName] = 0;
+                }
+                revenueByPlan[planName] += license.monthly_cost || 0;
+            });
             
-            for (let i = 5; i >= 0; i--) {
-                const date = new Date();
-                date.setMonth(date.getMonth() - i);
-                labels.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
-                
-                // Simulation d'une croissance progressive
-                const growth = 1 + (5 - i) * 0.1; // Croissance de 10% par mois
-                revenueData.push(Math.round(currentRevenue * growth));
+            const planNames = Object.keys(revenueByPlan);
+            const planRevenues = Object.values(revenueByPlan);
+            
+            // Si aucune donnée, afficher un message
+            if (planNames.length === 0) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#6b7280';
+                ctx.textAlign = 'center';
+                ctx.fillText('Aucune licence active', ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
             }
             
             revenueChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: planNames,
                     datasets: [{
-                        label: 'Revenus (€)',
-                        data: revenueData,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4
+                        label: 'Revenus (€/mois)',
+                        data: planRevenues,
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2', 
+                            '#48bb78',
+                            '#ed8936',
+                            '#9f7aea'
+                        ].slice(0, planNames.length),
+                        borderWidth: 1,
+                        borderColor: '#ffffff'
                     }]
                 },
                 options: {
@@ -376,11 +519,20 @@
             });
         }
 
-        // Tableau des licences à renouveler
+        // Tableau des licences à renouveler avec vraies données
         function renderRenewalsTable() {
             const tableBody = document.getElementById('renewalsTableBody');
             
-            if (!stats.expiringLicenses || stats.expiringLicenses.length === 0) {
+            // Licences expirant dans les 30 jours
+            const now = new Date();
+            const in30Days = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+            const expiringLicenses = licenses.filter(l => {
+                if (l.status !== 'active' || !l.renewal_date) return false;
+                const renewalDate = new Date(l.renewal_date);
+                return renewalDate >= now && renewalDate <= in30Days;
+            });
+            
+            if (expiringLicenses.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="3" style="text-align: center; color: var(--gray-500); padding: 2rem;">
@@ -391,16 +543,15 @@
                 return;
             }
             
-            tableBody.innerHTML = stats.expiringLicenses.map(license => {
+            tableBody.innerHTML = expiringLicenses.map(license => {
                 const renewalDate = new Date(license.renewal_date);
-                const now = new Date();
                 const diffTime = renewalDate - now;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
                 let urgencyClass = '';
-                if (diffDays <= 7) urgencyClass = 'badge-error';
-                else if (diffDays <= 15) urgencyClass = 'badge-warning';
-                else urgencyClass = 'badge-info';
+                if (diffDays <= 7) urgencyClass = 'stat-card error';
+                else if (diffDays <= 15) urgencyClass = 'stat-card warning';
+                else urgencyClass = 'stat-card info';
                 
                 return `
                     <tr onclick="window.location.href='licenses.html#${license.id}'" style="cursor: pointer;">
@@ -410,7 +561,7 @@
                             <small style="color: var(--gray-500);">${license.license_count} licence(s)</small>
                         </td>
                         <td>
-                            <span class="badge ${urgencyClass}">
+                            <span class="${urgencyClass}" style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
                                 ${diffDays} jour${diffDays > 1 ? 's' : ''}
                             </span>
                             <br>
@@ -426,45 +577,68 @@
             }).join('');
         }
 
-        // Activité récente (simulée)
+        // Activité récente basée sur les vraies données
         function renderRecentActivity() {
             const container = document.getElementById('recentActivity');
             
-            // Génération d'activités fictives basées sur les données réelles
-            const activities = [
-                {
-                    icon: '🏢',
-                    action: 'Nouvelle société ajoutée',
-                    details: 'TechCorp SAS - Prospect',
-                    time: '2 heures'
-                },
-                {
-                    icon: '🔑',
-                    action: 'Licence renouvelée',
-                    details: 'Digital Solutions - 5 licences',
-                    time: '4 heures'
-                },
-                {
-                    icon: '✅',
-                    action: 'Étape onboarding complétée',
-                    details: 'Innovation Inc - Tests fonctionnels',
-                    time: '1 jour'
-                },
-                {
-                    icon: '📧',
-                    action: 'Contact ajouté',
-                    details: 'Pierre Bernard - CTO',
-                    time: '2 jours'
-                },
-                {
-                    icon: '💰',
-                    action: 'Paiement reçu',
-                    details: formatCurrency(199) + ' - Innovation Inc',
-                    time: '3 jours'
-                }
-            ];
+            const activities = [];
             
-            container.innerHTML = activities.map(activity => `
+            // Dernières sociétés créées
+            companies
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 2)
+                .forEach(company => {
+                    activities.push({
+                        icon: company.status === 'prospect' ? '🏢' : '🤝',
+                        action: `Société ${company.status}`,
+                        details: company.name,
+                        time: getTimeAgo(company.created_at)
+                    });
+                });
+            
+            // Derniers contacts créés
+            contacts
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 2)
+                .forEach(contact => {
+                    activities.push({
+                        icon: '👤',
+                        action: 'Contact ajouté',
+                        details: `${contact.first_name} ${contact.last_name}${contact.company_name ? ' - ' + contact.company_name : ''}`,
+                        time: getTimeAgo(contact.created_at)
+                    });
+                });
+            
+            // Licences actives récentes
+            licenses
+                .filter(l => l.status === 'active')
+                .sort((a, b) => new Date(b.created_at || b.start_date) - new Date(a.created_at || a.start_date))
+                .slice(0, 1)
+                .forEach(license => {
+                    activities.push({
+                        icon: '🔑',
+                        action: 'Licence active',
+                        details: `${license.companies?.name || 'Société'} - ${license.license_count} licence(s)`,
+                        time: getTimeAgo(license.created_at || license.start_date)
+                    });
+                });
+            
+            // Trier par date et prendre les 5 plus récents
+            activities.sort((a, b) => new Date(b.actualDate) - new Date(a.actualDate));
+            const recentActivities = activities.slice(0, 5);
+            
+            if (recentActivities.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: var(--gray-500); padding: 2rem;">
+                        📂 Aucune activité récente
+                        <br>
+                        <small>Commencez par ajouter des sociétés ou contacts</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = recentActivities.map(activity => `
                 <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--gray-200);">
                     <div style="font-size: 1.5rem;">${activity.icon}</div>
                     <div style="flex: 1;">
@@ -476,10 +650,48 @@
                         </div>
                     </div>
                     <div style="color: var(--gray-500); font-size: 0.75rem;">
-                        Il y a ${activity.time}
+                        ${activity.time}
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Fonction pour calculer le temps écoulé
+        function getTimeAgo(dateString) {
+            if (!dateString) return 'Date inconnue';
+            
+            const now = new Date();
+            const date = new Date(dateString);
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return "Aujourd'hui";
+            if (diffDays === 1) return "Hier";
+            if (diffDays < 7) return `Il y a ${diffDays} jours`;
+            if (diffDays < 30) return `Il y a ${Math.ceil(diffDays / 7)} semaine(s)`;
+            return `Il y a ${Math.ceil(diffDays / 30)} mois`;
+        }
+
+        // Affichage par défaut si pas de données
+        function renderEmptyStats() {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Sociétés</div>
+                    <div class="stat-change">Aucune donnée</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Licences</div>
+                    <div class="stat-change">Aucune donnée</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0 €</div>
+                    <div class="stat-label">Revenus</div>
+                    <div class="stat-change">Aucune donnée</div>
+                </div>
+            `;
         }
 
         // Rafraîchir les données
