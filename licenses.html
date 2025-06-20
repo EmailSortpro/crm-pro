@@ -4,8 +4,537 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Gestion des Licences</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #2563eb;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --white: #ffffff;
+            --radius: 0.5rem;
+            --radius-md: 0.375rem;
+            --radius-lg: 0.75rem;
+            --transition: 0.2s ease;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header */
+        .page-header {
+            background: var(--white);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0;
+            gap: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--gray-900);
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 1rem;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            color: var(--gray-600);
+            border-radius: var(--radius);
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .nav-link.active {
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-200);
+        }
+
+        .btn-danger {
+            background: var(--error-color);
+            color: var(--white);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            text-align: center;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .stat-card.success {
+            border-left-color: var(--success-color);
+        }
+
+        .stat-card.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .stat-card.error {
+            border-left-color: var(--error-color);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--gray-600);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Filters */
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .table th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .table tr:hover {
+            background: var(--gray-50);
+        }
+
+        /* License Status */
+        .license-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .license-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .license-expired {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .license-suspended {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .license-cancelled {
+            background: var(--gray-200);
+            color: var(--gray-600);
+        }
+
+        .license-expiring {
+            background: #fed7aa;
+            color: #c2410c;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-400);
+            padding: 0.25rem;
+        }
+
+        .close-btn:hover {
+            color: var(--gray-600);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Utilities */
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-2 {
+            margin-bottom: 2rem;
+        }
+
+        .mt-2 {
+            margin-top: 2rem;
+        }
+
+        .d-flex {
+            display: flex;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .align-center {
+            align-items: center;
+        }
+
+        .gap-1 {
+            gap: 1rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-menu {
+                order: 2;
+                width: 100%;
+                justify-content: space-around;
+            }
+
+            .form-grid,
+            .form-grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            color: var(--white);
+            font-weight: 500;
+            z-index: 1100;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .notification.success {
+            background: var(--success-color);
+        }
+
+        .notification.error {
+            background: var(--error-color);
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
 </head>
 <body>
     <!-- Header de navigation -->
@@ -27,13 +556,13 @@
                 
                 <div class="user-menu">
                     <div class="user-info">
-                        <div class="user-avatar" id="userAvatar"></div>
+                        <div class="user-avatar" id="userAvatar">AD</div>
                         <div class="user-details">
-                            <div class="user-name" id="userName"></div>
-                            <div class="user-role" id="userRole"></div>
+                            <div class="user-name" id="userName">Admin</div>
+                            <div class="user-role" id="userRole">Administrateur</div>
                         </div>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="AuthService.logout()">
+                    <button class="btn btn-secondary btn-sm" onclick="logout()">
                         Déconnexion
                     </button>
                 </div>
@@ -44,7 +573,7 @@
     <!-- Contenu principal -->
     <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
         <!-- En-tête de page -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div class="d-flex justify-between align-center mb-2">
             <div>
                 <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
                     🔑 Gestion des Licences
@@ -53,13 +582,13 @@
                     Gérez les licences, utilisateurs, renouvellements et revenus récurrents
                 </p>
             </div>
-            <button class="btn btn-primary" onclick="openModal('add-license')">
+            <button class="btn btn-primary" onclick="openAddLicenseModal()">
                 ➕ Nouvelle Licence
             </button>
         </div>
 
         <!-- Statistiques des licences -->
-        <div class="stats-grid" style="margin-bottom: 2rem;">
+        <div class="stats-grid mb-2">
             <div class="stat-card">
                 <div class="stat-number" id="totalLicenses">0</div>
                 <div class="stat-label">Licences Actives</div>
@@ -79,11 +608,11 @@
         </div>
 
         <!-- Filtres et recherche -->
-        <div class="card" style="margin-bottom: 2rem;">
-            <div class="card-body" style="padding: 1.5rem;">
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="d-flex gap-1 align-center" style="flex-wrap: wrap;">
                     <!-- Filtres par statut -->
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div class="d-flex gap-1 align-center" style="gap: 0.5rem;">
                         <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
                         <button class="filter-btn active" data-filter="all" onclick="filterLicenses('all')">
                             Toutes (<span id="count-all">0</span>)
@@ -133,13 +662,13 @@
                 </div>
                 
                 <!-- État vide -->
-                <div id="emptyState" class="card" style="display: none; text-align: center; padding: 3rem; border: none; box-shadow: none;">
+                <div id="emptyState" class="text-center" style="display: none; padding: 3rem;">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">🔑</div>
                     <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucune licence trouvée</h3>
                     <p style="color: var(--gray-500); margin-bottom: 2rem;">
                         Commencez par créer votre première licence
                     </p>
-                    <button class="btn btn-primary" onclick="openModal('add-license')">
+                    <button class="btn btn-primary" onclick="openAddLicenseModal()">
                         ➕ Créer ma première licence
                     </button>
                 </div>
@@ -148,478 +677,219 @@
     </main>
 
     <!-- Modal Nouvelle/Modifier Licence -->
-    <div id="modal-add-license" class="modal">
+    <div id="licenseModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="licenseModalTitle">➕ Nouvelle Licence</h3>
-                <button class="close-btn" onclick="closeModal('add-license')">&times;</button>
+                <button class="close-btn" onclick="closeLicenseModal()">&times;</button>
             </div>
             
-            <form id="addLicenseForm">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                    <div class="form-group">
-                        <label for="licenseCompany">Société *</label>
-                        <select id="licenseCompany" required>
-                            <option value="">Sélectionner une société</option>
-                            <!-- Options chargées dynamiquement -->
-                        </select>
+            <div class="modal-body">
+                <form id="licenseForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="licenseCompany">Société *</label>
+                            <select id="licenseCompany" required>
+                                <option value="">Sélectionner une société</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="licensePlan">Plan *</label>
+                            <select id="licensePlan" required onchange="updatePricing()">
+                                <option value="">Sélectionner un plan</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="licensePlan">Plan *</label>
-                        <select id="licensePlan" required onchange="updatePricing()">
-                            <option value="">Sélectionner un plan</option>
-                            <!-- Options chargées dynamiquement -->
-                        </select>
+                    
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="licenseCount">Nombre de licences *</label>
+                            <input type="number" id="licenseCount" value="1" min="1" required onchange="updatePricing()">
+                        </div>
+                        <div class="form-group">
+                            <label for="startDate">Date de début *</label>
+                            <input type="date" id="startDate" required onchange="updateDates()">
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">Date de fin *</label>
+                            <input type="date" id="endDate" required>
+                        </div>
                     </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                    <div class="form-group">
-                        <label for="licenseCount">Nombre de licences *</label>
-                        <input type="number" id="licenseCount" value="1" min="1" required onchange="updatePricing()">
+                    
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="renewalDate">Date de renouvellement</label>
+                            <input type="date" id="renewalDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="licenseStatus">Statut</label>
+                            <select id="licenseStatus">
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspendue</option>
+                                <option value="expired">Expirée</option>
+                                <option value="cancelled">Annulée</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentMethod">Méthode de paiement</label>
+                            <select id="paymentMethod">
+                                <option value="">Sélectionner</option>
+                                <option value="stripe">Stripe</option>
+                                <option value="bank_transfer">Virement bancaire</option>
+                                <option value="check">Chèque</option>
+                                <option value="cash">Espèces</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="startDate">Date de début *</label>
-                        <input type="date" id="startDate" required onchange="updateDates()">
-                    </div>
-                    <div class="form-group">
-                        <label for="endDate">Date de fin *</label>
-                        <input type="date" id="endDate" required>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                    <div class="form-group">
-                        <label for="renewalDate">Date de renouvellement</label>
-                        <input type="date" id="renewalDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="licenseStatus">Statut</label>
-                        <select id="licenseStatus">
-                            <option value="active">Active</option>
-                            <option value="suspended">Suspendue</option>
-                            <option value="expired">Expirée</option>
-                            <option value="cancelled">Annulée</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="paymentMethod">Méthode de paiement</label>
-                        <select id="paymentMethod">
-                            <option value="">Sélectionner</option>
-                            <option value="stripe">Stripe</option>
-                            <option value="bank_transfer">Virement bancaire</option>
-                            <option value="check">Chèque</option>
-                            <option value="cash">Espèces</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <!-- Aperçu des coûts -->
-                <div id="pricingPreview" class="card" style="background: var(--gray-50); margin-bottom: 1rem; display: none;">
-                    <div class="card-body" style="padding: 1rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
-                            <div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
+                    
+                    <!-- Aperçu des coûts -->
+                    <div id="pricingPreview" class="card" style="background: var(--gray-50); margin-bottom: 1rem; display: none;">
+                        <div class="card-body">
+                            <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
+                            <div class="form-grid-3 text-center">
+                                <div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-license')">
-                        Annuler
-                    </button>
-                    <button type="submit" class="btn btn-primary" id="submitLicenseBtn">
-                        💾 Créer la licence
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal Détails Licence avec Utilisateurs -->
-    <div id="modal-license-details" class="modal">
-        <div class="modal-content" style="max-width: 1000px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="licenseDetailsTitle">Détails de la licence</h3>
-                <button class="close-btn" onclick="closeModal('license-details')">&times;</button>
-            </div>
-            
-            <div id="licenseDetailsContent">
-                <!-- Contenu chargé dynamiquement -->
+                    
+                    <div class="d-flex gap-1" style="justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">
+                            Annuler
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitLicenseBtn">
+                            💾 Créer la licence
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal Gestion des Utilisateurs -->
-    <div id="modal-manage-users" class="modal">
+    <!-- Modal Détails Licence -->
+    <div id="detailsModal" class="modal">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
-                <h3 class="modal-title">👥 Gestion des Utilisateurs</h3>
-                <button class="close-btn" onclick="closeModal('manage-users')">&times;</button>
+                <h3 class="modal-title" id="detailsModalTitle">Détails de la licence</h3>
+                <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
             </div>
             
-            <div id="userManagementContent">
+            <div class="modal-body" id="licenseDetailsContent">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
     </div>
 
-    <script src="config.js"></script>
     <script>
-        // Variables globales
-        let licenses = [];
-        let companies = [];
-        let licensePlans = [];
-        let licenseUsers = [];
+        // Données simulées
+        let licenses = [
+            {
+                id: '1',
+                company_id: '1',
+                company_name: 'TechCorp Solutions',
+                plan_id: '2',
+                plan_name: 'Professional',
+                plan_price: 59.99,
+                license_count: 5,
+                start_date: '2024-01-15',
+                end_date: '2025-01-15',
+                renewal_date: '2024-12-15',
+                status: 'active',
+                payment_method: 'stripe',
+                monthly_cost: 299.95,
+                users_count: 4
+            },
+            {
+                id: '2',
+                company_id: '2',
+                company_name: 'Innovation Ltd',
+                plan_id: '3',
+                plan_name: 'Enterprise',
+                plan_price: 99.99,
+                license_count: 10,
+                start_date: '2024-03-01',
+                end_date: '2025-03-01',
+                renewal_date: '2025-02-01',
+                status: 'active',
+                payment_method: 'bank_transfer',
+                monthly_cost: 999.90,
+                users_count: 8
+            },
+            {
+                id: '3',
+                company_id: '3',
+                company_name: 'Digital Marketing Pro',
+                plan_id: '1',
+                plan_name: 'Starter',
+                plan_price: 29.99,
+                license_count: 3,
+                start_date: '2024-06-15',
+                end_date: '2025-06-15',
+                renewal_date: '2024-12-31',
+                status: 'active',
+                payment_method: 'stripe',
+                monthly_cost: 89.97,
+                users_count: 3
+            },
+            {
+                id: '4',
+                company_id: '4',
+                company_name: 'StartupX',
+                plan_id: '1',
+                plan_name: 'Starter',
+                plan_price: 29.99,
+                license_count: 2,
+                start_date: '2023-12-01',
+                end_date: '2024-12-01',
+                renewal_date: '2024-11-01',
+                status: 'expired',
+                payment_method: 'check',
+                monthly_cost: 59.98,
+                users_count: 1
+            }
+        ];
+
+        const companies = [
+            { id: '1', name: 'TechCorp Solutions', status: 'active' },
+            { id: '2', name: 'Innovation Ltd', status: 'active' },
+            { id: '3', name: 'Digital Marketing Pro', status: 'active' },
+            { id: '4', name: 'StartupX', status: 'prospect' },
+            { id: '5', name: 'Enterprise Global', status: 'active' }
+        ];
+
+        const licensePlans = [
+            { id: '1', name: 'Starter', price_per_user: 29.99 },
+            { id: '2', name: 'Professional', price_per_user: 59.99 },
+            { id: '3', name: 'Enterprise', price_per_user: 99.99 },
+            { id: '4', name: 'Premium', price_per_user: 149.99 }
+        ];
+
         let filteredLicenses = [];
         let currentFilter = 'all';
-        let selectedLicense = null;
-        let isEditMode = false;
-
-        // Service CRM simulé (remplace le CRMService manquant)
-        const CRMService = {
-            async getLicenses() {
-                // Données simulées réalistes
-                const mockLicenses = [
-                    {
-                        id: '1',
-                        company_id: '1',
-                        plan_id: '2',
-                        license_count: 5,
-                        start_date: '2024-01-15T00:00:00Z',
-                        end_date: '2025-01-15T00:00:00Z',
-                        renewal_date: '2024-12-15T00:00:00Z',
-                        status: 'active',
-                        payment_method: 'stripe',
-                        monthly_cost: 299.95,
-                        created_at: '2024-01-15T10:00:00Z'
-                    },
-                    {
-                        id: '2',
-                        company_id: '2',
-                        plan_id: '3',
-                        license_count: 10,
-                        start_date: '2024-03-01T00:00:00Z',
-                        end_date: '2025-03-01T00:00:00Z',
-                        renewal_date: '2025-02-01T00:00:00Z',
-                        status: 'active',
-                        payment_method: 'bank_transfer',
-                        monthly_cost: 999.90,
-                        created_at: '2024-03-01T09:00:00Z'
-                    },
-                    {
-                        id: '3',
-                        company_id: '3',
-                        plan_id: '1',
-                        license_count: 3,
-                        start_date: '2024-06-15T00:00:00Z',
-                        end_date: '2025-06-15T00:00:00Z',
-                        renewal_date: '2024-12-31T00:00:00Z',
-                        status: 'active',
-                        payment_method: 'stripe',
-                        monthly_cost: 89.97,
-                        created_at: '2024-06-15T14:30:00Z'
-                    },
-                    {
-                        id: '4',
-                        company_id: '4',
-                        plan_id: '1',
-                        license_count: 2,
-                        start_date: '2023-12-01T00:00:00Z',
-                        end_date: '2024-12-01T00:00:00Z',
-                        renewal_date: '2024-11-01T00:00:00Z',
-                        status: 'expired',
-                        payment_method: 'check',
-                        monthly_cost: 59.98,
-                        created_at: '2023-12-01T11:15:00Z'
-                    }
-                ];
-                return { success: true, data: mockLicenses };
-            },
-
-            async getCompanies() {
-                const mockCompanies = [
-                    { id: '1', name: 'TechCorp Solutions', status: 'active' },
-                    { id: '2', name: 'Innovation Ltd', status: 'active' },
-                    { id: '3', name: 'Digital Marketing Pro', status: 'active' },
-                    { id: '4', name: 'StartupX', status: 'prospect' },
-                    { id: '5', name: 'Enterprise Global', status: 'active' }
-                ];
-                return { success: true, data: mockCompanies };
-            },
-
-            async getLicensePlans() {
-                const mockPlans = [
-                    { id: '1', name: 'Starter', price_per_user: 29.99 },
-                    { id: '2', name: 'Professional', price_per_user: 59.99 },
-                    { id: '3', name: 'Enterprise', price_per_user: 99.99 },
-                    { id: '4', name: 'Premium', price_per_user: 149.99 }
-                ];
-                return { success: true, data: mockPlans };
-            },
-
-            async getLicenseUsers() {
-                const mockUsers = [
-                    { id: '1', license_id: '1', email: 'john.doe@techcorp.com', name: 'John Doe', status: 'active', last_login: '2024-06-19T14:30:00Z' },
-                    { id: '2', license_id: '1', email: 'jane.smith@techcorp.com', name: 'Jane Smith', status: 'active', last_login: '2024-06-18T09:15:00Z' },
-                    { id: '3', license_id: '1', email: 'mike.wilson@techcorp.com', name: 'Mike Wilson', status: 'active', last_login: '2024-06-17T16:45:00Z' },
-                    { id: '4', license_id: '1', email: 'sarah.brown@techcorp.com', name: 'Sarah Brown', status: 'inactive', last_login: '2024-05-15T10:20:00Z' },
-                    { id: '5', license_id: '2', email: 'alex.martin@innovation.com', name: 'Alex Martin', status: 'active', last_login: '2024-06-19T15:20:00Z' },
-                    { id: '6', license_id: '2', email: 'lisa.taylor@innovation.com', name: 'Lisa Taylor', status: 'active', last_login: '2024-06-19T08:30:00Z' },
-                    { id: '7', license_id: '3', email: 'marketing@digitalpro.com', name: 'Marketing Team', status: 'active', last_login: '2024-06-19T16:00:00Z' },
-                    { id: '8', license_id: '3', email: 'sales@digitalpro.com', name: 'Sales Team', status: 'active', last_login: '2024-06-19T09:45:00Z' }
-                ];
-                return { success: true, data: mockUsers };
-            },
-
-            async createLicense(data) {
-                return { success: true, data: { id: Date.now().toString(), ...data } };
-            },
-
-            async updateLicense(id, data) {
-                return { success: true, data: { id, ...data } };
-            },
-
-            async deleteLicense(id) {
-                return { success: true };
-            }
-        };
-
-        // Service d'authentification simulé
-        const AuthService = {
-            requireAuth() {
-                return true; // Simulation d'authentification réussie
-            },
-            getUserInfo() {
-                return { email: 'admin@crmexample.com', role: 'Administrateur' };
-            },
-            logout() {
-                alert('Déconnexion simulée');
-            }
-        };
-
-        // Styles pour les licences
-        const licenseStyles = `
-            .filter-btn {
-                padding: 0.5rem 1rem;
-                background: var(--gray-100);
-                border: 1px solid var(--gray-300);
-                border-radius: var(--radius-md);
-                cursor: pointer;
-                font-size: 0.875rem;
-                font-weight: 500;
-                color: var(--gray-700);
-                transition: all var(--transition);
-                white-space: nowrap;
-            }
-            .filter-btn:hover {
-                background: var(--gray-200);
-            }
-            .filter-btn.active {
-                background: var(--primary-color);
-                color: var(--white);
-                border-color: var(--primary-color);
-            }
-            .license-status {
-                padding: 0.25rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.025em;
-            }
-            .license-active {
-                background: #dcfce7;
-                color: #166534;
-            }
-            .license-expired {
-                background: #fee2e2;
-                color: #991b1b;
-            }
-            .license-suspended {
-                background: #fef3c7;
-                color: #92400e;
-            }
-            .license-cancelled {
-                background: #f3f4f6;
-                color: #6b7280;
-            }
-            .license-expiring {
-                background: #fed7aa;
-                color: #c2410c;
-                animation: pulse 2s infinite;
-            }
-            .user-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 1rem;
-                border: 1px solid var(--gray-200);
-                border-radius: var(--radius);
-                margin-bottom: 0.75rem;
-                background: var(--white);
-            }
-            .user-info {
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-            }
-            .user-avatar {
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                background: var(--primary-color);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: var(--white);
-                font-weight: 600;
-            }
-            .user-status {
-                padding: 0.25rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.75rem;
-                font-weight: 600;
-            }
-            .status-active {
-                background: #dcfce7;
-                color: #166534;
-            }
-            .status-inactive {
-                background: #fee2e2;
-                color: #991b1b;
-            }
-        `;
-
-        // Injecter les styles
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = licenseStyles;
-        document.head.appendChild(styleSheet);
+        let editingLicense = null;
 
         // Initialisation
-        document.addEventListener('DOMContentLoaded', async () => {
-            const isAuthenticated = await AuthService.requireAuth();
-            if (!isAuthenticated) return;
-
-            loadUserInfo();
-            await loadAllData();
+        document.addEventListener('DOMContentLoaded', () => {
+            initializePage();
         });
 
-        function loadUserInfo() {
-            const userInfo = AuthService.getUserInfo();
-            if (userInfo) {
-                document.getElementById('userName').textContent = userInfo.email;
-                document.getElementById('userRole').textContent = userInfo.role;
-                document.getElementById('userAvatar').textContent = getInitials(userInfo.email, '');
-            }
-        }
-
-        async function loadAllData() {
-            showLoading(true);
-            
-            try {
-                const [licensesResult, companiesResult, plansResult, usersResult] = await Promise.all([
-                    CRMService.getLicenses(),
-                    CRMService.getCompanies(),
-                    CRMService.getLicensePlans(),
-                    CRMService.getLicenseUsers()
-                ]);
-                
-                if (licensesResult.success) {
-                    licenses = licensesResult.data;
-                } else {
-                    showError('Erreur chargement licences: ' + licensesResult.error);
-                }
-                
-                if (companiesResult.success) {
-                    companies = companiesResult.data;
-                    populateCompanySelect();
-                } else {
-                    showError('Erreur chargement sociétés: ' + companiesResult.error);
-                }
-                
-                if (plansResult.success) {
-                    licensePlans = plansResult.data;
-                    populatePlanSelect();
-                } else {
-                    showError('Erreur chargement plans: ' + plansResult.error);
-                }
-
-                if (usersResult.success) {
-                    licenseUsers = usersResult.data;
-                }
-                
-                // Enrichir les licences avec les données des sociétés et plans
-                licenses = licenses.map(license => ({
-                    ...license,
-                    companies: companies.find(c => c.id === license.company_id),
-                    license_plans: licensePlans.find(p => p.id === license.plan_id)
-                }));
-                
-                updateStats();
-                updateCounts();
-                filterLicenses(currentFilter);
-                
-                showSuccess(`${licenses.length} licence(s) chargée(s)`);
-                
-            } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors du chargement des données');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function updateStats() {
-            const activeLicenses = licenses.filter(l => l.status === 'active');
-            const totalUsers = licenseUsers.filter(u => u.status === 'active').length;
-            const monthlyRevenue = activeLicenses.reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
-            
-            const now = new Date();
-            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-            const expiringLicenses = activeLicenses.filter(l => {
-                const renewalDate = new Date(l.renewal_date);
-                return renewalDate <= thirtyDaysFromNow;
-            });
-            
-            document.getElementById('totalLicenses').textContent = activeLicenses.length;
-            document.getElementById('totalUsers').textContent = totalUsers;
-            document.getElementById('monthlyRevenue').textContent = formatCurrency(monthlyRevenue);
-            document.getElementById('expiringLicenses').textContent = expiringLicenses.length;
-        }
-
-        function updateCounts() {
-            const now = new Date();
-            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-            
-            const counts = {
-                all: licenses.length,
-                active: licenses.filter(l => l.status === 'active').length,
-                expired: licenses.filter(l => l.status === 'expired').length,
-                expiring: licenses.filter(l => {
-                    if (l.status !== 'active') return false;
-                    const renewalDate = new Date(l.renewal_date);
-                    return renewalDate <= thirtyDaysFromNow;
-                }).length
-            };
-            
-            Object.keys(counts).forEach(key => {
-                const element = document.getElementById(`count-${key}`);
-                if (element) {
-                    element.textContent = counts[key];
-                }
-            });
+        function initializePage() {
+            populateCompanySelect();
+            populatePlanSelect();
+            updateStats();
+            updateCounts();
+            filterLicenses('all');
+            initializeDates();
         }
 
         function populateCompanySelect() {
@@ -689,6 +959,47 @@
             document.getElementById('pricingPreview').style.display = 'block';
         }
 
+        function updateStats() {
+            const activeLicenses = licenses.filter(l => l.status === 'active');
+            const totalUsers = licenses.reduce((sum, l) => sum + l.users_count, 0);
+            const monthlyRevenue = activeLicenses.reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const expiringLicenses = activeLicenses.filter(l => {
+                const renewalDate = new Date(l.renewal_date);
+                return renewalDate <= thirtyDaysFromNow;
+            });
+            
+            document.getElementById('totalLicenses').textContent = activeLicenses.length;
+            document.getElementById('totalUsers').textContent = totalUsers;
+            document.getElementById('monthlyRevenue').textContent = formatCurrency(monthlyRevenue);
+            document.getElementById('expiringLicenses').textContent = expiringLicenses.length;
+        }
+
+        function updateCounts() {
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            
+            const counts = {
+                all: licenses.length,
+                active: licenses.filter(l => l.status === 'active').length,
+                expired: licenses.filter(l => l.status === 'expired').length,
+                expiring: licenses.filter(l => {
+                    if (l.status !== 'active') return false;
+                    const renewalDate = new Date(l.renewal_date);
+                    return renewalDate <= thirtyDaysFromNow;
+                }).length
+            };
+            
+            Object.keys(counts).forEach(key => {
+                const element = document.getElementById(`count-${key}`);
+                if (element) {
+                    element.textContent = counts[key];
+                }
+            });
+        }
+
         function filterLicenses(filter) {
             currentFilter = filter;
             
@@ -736,11 +1047,8 @@
             }
             
             const searchResults = filteredLicenses.filter(license => {
-                const companyName = license.companies?.name || '';
-                const planName = license.license_plans?.name || '';
-                
-                return companyName.toLowerCase().includes(searchTerm) ||
-                       planName.toLowerCase().includes(searchTerm);
+                return license.company_name.toLowerCase().includes(searchTerm) ||
+                       license.plan_name.toLowerCase().includes(searchTerm);
             });
             
             renderLicenses(searchResults);
@@ -759,28 +1067,22 @@
             emptyState.style.display = 'none';
             
             tableBody.innerHTML = licensesToRender.map(license => {
-                const companyName = license.companies?.name || 'Société inconnue';
-                const planName = license.license_plans?.name || 'Plan inconnu';
                 const isExpiring = isLicenseExpiring(license);
                 const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
-                const statusText = isExpiring ? 'À renouveler' : license.status;
-                const usersForLicense = licenseUsers.filter(u => u.license_id === license.id);
+                const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
                 
                 return `
                     <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;">
                         <td>
-                            <div style="font-weight: 600;">${companyName}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">${license.companies?.status || ''}</div>
+                            <div style="font-weight: 600;">${license.company_name}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
                         </td>
                         <td>
-                            <div style="font-weight: 500;">${planName}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.license_plans?.price_per_user || 0)}/mois</div>
+                            <div style="font-weight: 500;">${license.plan_name}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/mois</div>
                         </td>
                         <td>
-                            <span style="font-weight: 600; font-size: 1.125rem;">${usersForLicense.length}/${license.license_count}</span>
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); manageUsers('${license.id}')" title="Gérer les utilisateurs">
-                                👥
-                            </button>
+                            <span style="font-weight: 600; font-size: 1.125rem;">${license.users_count}/${license.license_count}</span>
                         </td>
                         <td>
                             <div>${formatDateShort(license.start_date)}</div>
@@ -840,187 +1142,48 @@
             }
         }
 
-        function openModal(modalId) {
-            const modal = document.getElementById(`modal-${modalId}`);
-            modal.classList.add('show');
-            
-            if (modalId === 'add-license') {
-                resetLicenseForm();
-                initializeDates();
-            }
+        function getStatusText(status) {
+            const statusMap = {
+                'active': 'Active',
+                'expired': 'Expirée',
+                'suspended': 'Suspendue',
+                'cancelled': 'Annulée'
+            };
+            return statusMap[status] || status;
         }
 
-        function closeModal(modalId) {
-            const modal = document.getElementById(`modal-${modalId}`);
-            modal.classList.remove('show');
-            
-            if (modalId === 'add-license') {
-                selectedLicense = null;
-                isEditMode = false;
-            }
-        }
-
-        function resetLicenseForm() {
-            document.getElementById('addLicenseForm').reset();
-            document.getElementById('pricingPreview').style.display = 'none';
+        // Gestion des modals
+        function openAddLicenseModal() {
+            resetLicenseForm();
             document.getElementById('licenseModalTitle').textContent = '➕ Nouvelle Licence';
             document.getElementById('submitLicenseBtn').textContent = '💾 Créer la licence';
-            isEditMode = false;
-            selectedLicense = null;
+            editingLicense = null;
+            document.getElementById('licenseModal').classList.add('show');
         }
 
-        document.getElementById('addLicenseForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const planSelect = document.getElementById('licensePlan');
-            const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
-            const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
-            const licenseCount = parseInt(document.getElementById('licenseCount').value);
-            
-            const formData = {
-                company_id: document.getElementById('licenseCompany').value,
-                plan_id: document.getElementById('licensePlan').value,
-                license_count: licenseCount,
-                start_date: document.getElementById('startDate').value,
-                end_date: document.getElementById('endDate').value,
-                renewal_date: document.getElementById('renewalDate').value,
-                status: document.getElementById('licenseStatus').value,
-                payment_method: document.getElementById('paymentMethod').value,
-                monthly_cost: pricePerUser * licenseCount
-            };
-            
-            showLoading(true);
-            
-            try {
-                let result;
-                if (isEditMode && selectedLicense) {
-                    result = await CRMService.updateLicense(selectedLicense.id, formData);
-                    if (result.success) {
-                        // Mettre à jour la licence dans le tableau
-                        const index = licenses.findIndex(l => l.id === selectedLicense.id);
-                        if (index !== -1) {
-                            licenses[index] = {
-                                ...licenses[index],
-                                ...formData,
-                                companies: companies.find(c => c.id === formData.company_id),
-                                license_plans: licensePlans.find(p => p.id === formData.plan_id)
-                            };
-                        }
-                        showSuccess('Licence modifiée avec succès !');
-                    }
-                } else {
-                    result = await CRMService.createLicense(formData);
-                    if (result.success) {
-                        // Ajouter la nouvelle licence au tableau
-                        const newLicense = {
-                            ...result.data,
-                            companies: companies.find(c => c.id === formData.company_id),
-                            license_plans: licensePlans.find(p => p.id === formData.plan_id)
-                        };
-                        licenses.push(newLicense);
-                        showSuccess('Licence créée avec succès !');
-                    }
-                }
-                
-                if (result.success) {
-                    closeModal('add-license');
-                    updateStats();
-                    updateCounts();
-                    filterLicenses(currentFilter);
-                } else {
-                    showError('Erreur: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors de l\'opération');
-            } finally {
-                showLoading(false);
-            }
-        });
-
-        function editLicense(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            selectedLicense = license;
-            isEditMode = true;
-            
-            // Pré-remplir le formulaire
-            document.getElementById('licenseCompany').value = license.company_id;
-            document.getElementById('licensePlan').value = license.plan_id;
-            document.getElementById('licenseCount').value = license.license_count;
-            document.getElementById('startDate').value = license.start_date.split('T')[0];
-            document.getElementById('endDate').value = license.end_date.split('T')[0];
-            document.getElementById('renewalDate').value = license.renewal_date.split('T')[0];
-            document.getElementById('licenseStatus').value = license.status;
-            document.getElementById('paymentMethod').value = license.payment_method || '';
-            
-            // Mettre à jour le titre et le bouton
-            document.getElementById('licenseModalTitle').textContent = '✏️ Modifier la Licence';
-            document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
-            
-            // Calculer les coûts
-            updatePricing();
-            
-            openModal('add-license');
-        }
-
-        async function deleteLicense(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const companyName = license.companies?.name || 'Société inconnue';
-            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${companyName}" ?\n\nCette action est irréversible et supprimera aussi tous les utilisateurs associés.`);
-            if (!confirmed) return;
-            
-            showLoading(true);
-            
-            try {
-                const result = await CRMService.deleteLicense(licenseId);
-                if (result.success) {
-                    // Supprimer la licence du tableau
-                    licenses = licenses.filter(l => l.id !== licenseId);
-                    // Supprimer les utilisateurs associés
-                    licenseUsers = licenseUsers.filter(u => u.license_id !== licenseId);
-                    
-                    showSuccess('Licence supprimée avec succès');
-                    updateStats();
-                    updateCounts();
-                    filterLicenses(currentFilter);
-                } else {
-                    showError('Erreur lors de la suppression: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors de la suppression');
-            } finally {
-                showLoading(false);
-            }
+        function closeLicenseModal() {
+            document.getElementById('licenseModal').classList.remove('show');
+            resetLicenseForm();
         }
 
         function openLicenseDetails(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            selectedLicense = license;
-            const companyName = license.companies?.name || 'Société inconnue';
-            const planName = license.license_plans?.name || 'Plan inconnu';
-            const users = licenseUsers.filter(u => u.license_id === licenseId);
-            
-            document.getElementById('licenseDetailsTitle').textContent = `${companyName} - ${planName}`;
+            document.getElementById('detailsModalTitle').textContent = `${license.company_name} - ${license.plan_name}`;
             
             const isExpiring = isLicenseExpiring(license);
             const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
-            const statusText = isExpiring ? 'À renouveler' : license.status;
+            const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
             
             document.getElementById('licenseDetailsContent').innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                <div class="form-grid mb-2">
                     <div>
                         <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📋 Informations générales</h4>
                         <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Société :</strong> ${companyName}</div>
-                            <div><strong>Plan :</strong> ${planName}</div>
-                            <div><strong>Nombre d'utilisateurs :</strong> ${users.length}/${license.license_count}</div>
+                            <div><strong>Société :</strong> ${license.company_name}</div>
+                            <div><strong>Plan :</strong> ${license.plan_name}</div>
+                            <div><strong>Nombre d'utilisateurs :</strong> ${license.users_count}/${license.license_count}</div>
                             <div><strong>Statut :</strong> <span class="license-status ${statusClass}">${statusText}</span></div>
                             <div><strong>Méthode de paiement :</strong> ${license.payment_method || 'Non spécifiée'}</div>
                         </div>
@@ -1031,7 +1194,6 @@
                             <div><strong>Début :</strong> ${formatDate(license.start_date)}</div>
                             <div><strong>Fin :</strong> ${formatDate(license.end_date)}</div>
                             <div><strong>Renouvellement :</strong> ${formatDate(license.renewal_date)}</div>
-                            <div><strong>Créée le :</strong> ${formatDate(license.created_at)}</div>
                             <div><strong>Échéance :</strong> <span style="font-weight: 600; color: ${isExpiring ? 'var(--error-color)' : 'var(--success-color)'};">${getDaysUntilRenewal(license.renewal_date)}</span></div>
                         </div>
                     </div>
@@ -1039,9 +1201,9 @@
                 
                 <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
                     <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Informations financières</h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; text-align: center;">
+                    <div class="form-grid-3 text-center">
                         <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(license.license_plans?.price_per_user || 0)}</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(license.plan_price || 0)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
                         </div>
                         <div>
@@ -1065,235 +1227,125 @@
                     </div>
                 ` : ''}
                 
-                <!-- Liste des utilisateurs -->
-                <div style="margin-bottom: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 style="color: var(--gray-800);">👥 Utilisateurs (${users.length}/${license.license_count})</h4>
-                        <button class="btn btn-primary btn-sm" onclick="manageUsers('${license.id}')">
-                            Gérer les utilisateurs
-                        </button>
-                    </div>
-                    
-                    ${users.length === 0 ? `
-                        <div style="text-align: center; padding: 2rem; background: var(--gray-50); border-radius: var(--radius); color: var(--gray-500);">
-                            Aucun utilisateur configuré pour cette licence
-                        </div>
-                    ` : `
-                        <div style="display: grid; gap: 0.75rem;">
-                            ${users.slice(0, 5).map(user => `
-                                <div class="user-item">
-                                    <div class="user-info">
-                                        <div class="user-avatar">${getInitials(user.name.split(' ')[0] || '', user.name.split(' ')[1] || '')}</div>
-                                        <div>
-                                            <div style="font-weight: 600;">${user.name}</div>
-                                            <div style="font-size: 0.875rem; color: var(--gray-500);">${user.email}</div>
-                                            <div style="font-size: 0.75rem; color: var(--gray-400);">
-                                                Dernière connexion: ${getTimeAgo(user.last_login)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span class="user-status status-${user.status}">${user.status}</span>
-                                </div>
-                            `).join('')}
-                            ${users.length > 5 ? `
-                                <div style="text-align: center; padding: 1rem; color: var(--gray-500);">
-                                    ... et ${users.length - 5} autre(s) utilisateur(s)
-                                </div>
-                            ` : ''}
-                        </div>
-                    `}
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
-                    <button class="btn btn-secondary" onclick="closeModal('license-details')">
+                <div class="d-flex gap-1" style="justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="closeDetailsModal()">
                         Fermer
                     </button>
-                    <button class="btn btn-primary" onclick="manageUsers('${license.id}')">
-                        👥 Gérer les utilisateurs
-                    </button>
-                    <button class="btn btn-secondary" onclick="editLicense('${license.id}')">
+                    <button class="btn btn-primary" onclick="editLicense('${license.id}')">
                         ✏️ Modifier la licence
                     </button>
                 </div>
             `;
             
-            openModal('license-details');
+            document.getElementById('detailsModal').classList.add('show');
         }
 
-        function manageUsers(licenseId) {
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('show');
+        }
+
+        function resetLicenseForm() {
+            document.getElementById('licenseForm').reset();
+            document.getElementById('pricingPreview').style.display = 'none';
+            editingLicense = null;
+            initializeDates();
+        }
+
+        function editLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            const users = licenseUsers.filter(u => u.license_id === licenseId);
-            const companyName = license.companies?.name || 'Société inconnue';
+            editingLicense = license;
             
-            document.getElementById('userManagementContent').innerHTML = `
-                <div style="margin-bottom: 2rem;">
-                    <h4 style="color: var(--gray-800); margin-bottom: 0.5rem;">
-                        Licence: ${companyName} - ${license.license_plans?.name || 'Plan inconnu'}
-                    </h4>
-                    <p style="color: var(--gray-600); margin-bottom: 1rem;">
-                        Utilisateurs: ${users.length}/${license.license_count} • 
-                        Places disponibles: ${license.license_count - users.length}
-                    </p>
-                    
-                    <!-- Formulaire d'ajout d'utilisateur -->
-                    <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                        <h5 style="margin-bottom: 1rem;">➕ Ajouter un utilisateur</h5>
-                        <form id="addUserForm" onsubmit="addUser(event, '${licenseId}')">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="userName">Nom complet *</label>
-                                    <input type="text" id="userName" required placeholder="Ex: Jean Dupont">
-                                </div>
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="userEmail">Email *</label>
-                                    <input type="email" id="userEmail" required placeholder="jean.dupont@entreprise.com">
-                                </div>
-                                <button type="submit" class="btn btn-primary" ${users.length >= license.license_count ? 'disabled' : ''}>
-                                    Ajouter
-                                </button>
-                            </div>
-                        </form>
-                        ${users.length >= license.license_count ? `
-                            <div style="margin-top: 1rem; padding: 0.75rem; background: #fef3c7; border: 1px solid #f59e0b; border-radius: var(--radius); color: #92400e;">
-                                ⚠️ Limite d'utilisateurs atteinte. Mettez à niveau votre licence pour ajouter plus d'utilisateurs.
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-                
-                <!-- Liste des utilisateurs -->
-                <div style="margin-bottom: 2rem;">
-                    <h5 style="margin-bottom: 1rem;">👥 Utilisateurs actuels</h5>
-                    
-                    ${users.length === 0 ? `
-                        <div style="text-align: center; padding: 3rem; background: var(--gray-50); border-radius: var(--radius); color: var(--gray-500);">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">👤</div>
-                            <p>Aucun utilisateur configuré</p>
-                            <p style="font-size: 0.875rem;">Ajoutez le premier utilisateur ci-dessus</p>
-                        </div>
-                    ` : `
-                        <div style="display: grid; gap: 1rem;">
-                            ${users.map(user => `
-                                <div class="user-item">
-                                    <div class="user-info">
-                                        <div class="user-avatar">${getInitials(user.name.split(' ')[0] || '', user.name.split(' ')[1] || '')}</div>
-                                        <div>
-                                            <div style="font-weight: 600;">${user.name}</div>
-                                            <div style="font-size: 0.875rem; color: var(--gray-500);">${user.email}</div>
-                                            <div style="font-size: 0.75rem; color: var(--gray-400);">
-                                                Dernière connexion: ${getTimeAgo(user.last_login)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 1rem;">
-                                        <span class="user-status status-${user.status}">${user.status}</span>
-                                        <div style="display: flex; gap: 0.5rem;">
-                                            <button class="btn btn-sm btn-secondary" onclick="toggleUserStatus('${user.id}')" title="Activer/Désactiver">
-                                                ${user.status === 'active' ? '⏸️' : '▶️'}
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="removeUser('${user.id}', '${licenseId}')" title="Supprimer">
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `}
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="closeModal('manage-users')">
-                        Fermer
-                    </button>
-                </div>
-            `;
+            // Fermer le modal de détails s'il est ouvert
+            closeDetailsModal();
             
-            // Fermer le modal des détails si ouvert
-            closeModal('license-details');
+            // Pré-remplir le formulaire
+            document.getElementById('licenseCompany').value = license.company_id;
+            document.getElementById('licensePlan').value = license.plan_id;
+            document.getElementById('licenseCount').value = license.license_count;
+            document.getElementById('startDate').value = license.start_date;
+            document.getElementById('endDate').value = license.end_date;
+            document.getElementById('renewalDate').value = license.renewal_date;
+            document.getElementById('licenseStatus').value = license.status;
+            document.getElementById('paymentMethod').value = license.payment_method || '';
             
-            openModal('manage-users');
+            // Mettre à jour le titre et le bouton
+            document.getElementById('licenseModalTitle').textContent = '✏️ Modifier la Licence';
+            document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
+            
+            // Calculer les coûts
+            updatePricing();
+            
+            // Ouvrir le modal
+            document.getElementById('licenseModal').classList.add('show');
         }
 
-        function addUser(event, licenseId) {
-            event.preventDefault();
-            
-            const name = document.getElementById('userName').value.trim();
-            const email = document.getElementById('userEmail').value.trim();
-            
-            if (!name || !email) {
-                showError('Veuillez remplir tous les champs requis');
-                return;
-            }
-            
-            // Vérifier si l'email existe déjà
-            const existingUser = licenseUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-            if (existingUser) {
-                showError('Cet email est déjà utilisé par un autre utilisateur');
-                return;
-            }
-            
-            // Vérifier la limite de licences
+        function deleteLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
-            const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
-            if (currentUsers.length >= license.license_count) {
-                showError('Limite d\'utilisateurs atteinte pour cette licence');
-                return;
-            }
+            if (!license) return;
             
-            // Ajouter le nouvel utilisateur
-            const newUser = {
-                id: Date.now().toString(),
-                license_id: licenseId,
-                email: email,
-                name: name,
-                status: 'active',
-                last_login: new Date().toISOString()
-            };
-            
-            licenseUsers.push(newUser);
-            
-            showSuccess(`Utilisateur ${name} ajouté avec succès`);
-            
-            // Recharger la gestion des utilisateurs
-            manageUsers(licenseId);
-            // Mettre à jour les stats
-            updateStats();
-        }
-
-        function removeUser(userId, licenseId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${user.name}" ?\n\nCette action est irréversible.`);
+            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${license.company_name}" ?\n\nCette action est irréversible.`);
             if (!confirmed) return;
             
-            // Supprimer l'utilisateur
-            licenseUsers = licenseUsers.filter(u => u.id !== userId);
+            // Supprimer la licence
+            licenses = licenses.filter(l => l.id !== licenseId);
             
-            showSuccess(`Utilisateur ${user.name} supprimé avec succès`);
-            
-            // Recharger la gestion des utilisateurs
-            manageUsers(licenseId);
-            // Mettre à jour les stats
+            showNotification('Licence supprimée avec succès', 'success');
             updateStats();
+            updateCounts();
+            filterLicenses(currentFilter);
         }
 
-        function toggleUserStatus(userId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
+        // Gestion du formulaire
+        document.getElementById('licenseForm').addEventListener('submit', (e) => {
+            e.preventDefault();
             
-            user.status = user.status === 'active' ? 'inactive' : 'active';
+            const planSelect = document.getElementById('licensePlan');
+            const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
+            const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
+            const licenseCount = parseInt(document.getElementById('licenseCount').value);
             
-            showSuccess(`Utilisateur ${user.name} ${user.status === 'active' ? 'activé' : 'désactivé'}`);
+            const companyId = document.getElementById('licenseCompany').value;
+            const planId = document.getElementById('licensePlan').value;
+            const company = companies.find(c => c.id === companyId);
+            const plan = licensePlans.find(p => p.id === planId);
             
-            // Recharger la gestion des utilisateurs
-            manageUsers(user.license_id);
-            // Mettre à jour les stats
+            const licenseData = {
+                id: editingLicense ? editingLicense.id : Date.now().toString(),
+                company_id: companyId,
+                company_name: company ? company.name : '',
+                plan_id: planId,
+                plan_name: plan ? plan.name : '',
+                plan_price: pricePerUser,
+                license_count: licenseCount,
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                renewal_date: document.getElementById('renewalDate').value,
+                status: document.getElementById('licenseStatus').value,
+                payment_method: document.getElementById('paymentMethod').value,
+                monthly_cost: pricePerUser * licenseCount,
+                users_count: editingLicense ? editingLicense.users_count : 0
+            };
+            
+            if (editingLicense) {
+                // Modification
+                const index = licenses.findIndex(l => l.id === editingLicense.id);
+                if (index !== -1) {
+                    licenses[index] = licenseData;
+                }
+                showNotification('Licence modifiée avec succès !', 'success');
+            } else {
+                // Création
+                licenses.push(licenseData);
+                showNotification('Licence créée avec succès !', 'success');
+            }
+            
+            closeLicenseModal();
             updateStats();
-        }
+            updateCounts();
+            filterLicenses(currentFilter);
+        });
 
         // Fonctions utilitaires
         function formatCurrency(amount) {
@@ -1315,61 +1367,45 @@
             return new Date(dateString).toLocaleDateString('fr-FR');
         }
 
-        function getInitials(firstName, lastName) {
-            return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-        }
-
-        function getTimeAgo(dateString) {
-            const now = new Date();
-            const date = new Date(dateString);
-            const diffTime = now - date;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-            const diffMinutes = Math.floor(diffTime / (1000 * 60));
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
             
-            if (diffDays > 0) {
-                return diffDays === 1 ? 'il y a 1 jour' : `il y a ${diffDays} jours`;
-            } else if (diffHours > 0) {
-                return diffHours === 1 ? 'il y a 1 heure' : `il y a ${diffHours} heures`;
-            } else if (diffMinutes > 0) {
-                return diffMinutes === 1 ? 'il y a 1 minute' : `il y a ${diffMinutes} minutes`;
-            } else {
-                return 'À l\'instant';
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function logout() {
+            if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+                showNotification('Déconnexion réussie', 'success');
+                // Ici, vous pourriez rediriger vers la page de connexion
             }
-        }
-
-        function showLoading(show) {
-            // Simuler un indicateur de chargement
-            if (show) {
-                console.log('Chargement...');
-            } else {
-                console.log('Chargement terminé');
-            }
-        }
-
-        function showSuccess(message) {
-            alert('✅ ' + message);
-        }
-
-        function showError(message) {
-            alert('❌ ' + message);
         }
 
         // Fermer les modals en cliquant en dehors
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
-                const modalId = e.target.id.replace('modal-', '');
-                closeModal(modalId);
+                if (e.target.id === 'licenseModal') {
+                    closeLicenseModal();
+                } else if (e.target.id === 'detailsModal') {
+                    closeDetailsModal();
+                }
             }
         });
 
         // Fermer les modals avec la touche Escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const openModal = document.querySelector('.modal.show');
-                if (openModal) {
-                    const modalId = openModal.id.replace('modal-', '');
-                    closeModal(modalId);
+                const licenseModal = document.getElementById('licenseModal');
+                const detailsModal = document.getElementById('detailsModal');
+                
+                if (licenseModal.classList.contains('show')) {
+                    closeLicenseModal();
+                } else if (detailsModal.classList.contains('show')) {
+                    closeDetailsModal();
                 }
             }
         });
