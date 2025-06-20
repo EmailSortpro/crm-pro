@@ -35,7 +35,7 @@ class AuthService {
             localStorage.removeItem('userInfo');
             
             // Rediriger vers la page de connexion
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         } catch (error) {
             console.error('Erreur déconnexion:', error);
             alert('Erreur lors de la déconnexion');
@@ -55,7 +55,7 @@ class AuthService {
     static async requireAuth() {
         const user = await this.getCurrentUser();
         if (!user) {
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
             return false;
         }
         return true;
@@ -145,142 +145,6 @@ class CRMService {
         }
     }
     
-    // ========== CONTACTS ==========
-    
-    static async getContacts(companyId = null) {
-        try {
-            let query = supabase
-                .from('company_contacts')
-                .select('*')
-                .order('created_at', { ascending: false });
-            
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-            
-            const { data, error } = await query;
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération contacts:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createContact(contactData) {
-        try {
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .insert([{
-                    ...contactData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur création contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateContact(id, contactData) {
-        try {
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .update({
-                    ...contactData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur mise à jour contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteContact(id) {
-        try {
-            const { error } = await supabase
-                .from('company_contacts')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            return { success: true };
-        } catch (error) {
-            console.error('Erreur suppression contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== ONBOARDING ==========
-    
-    static async getOnboardingSteps(companyId) {
-        try {
-            const { data, error } = await supabase
-                .from('onboarding_steps')
-                .select('*')
-                .eq('company_id', companyId)
-                .order('step_order', { ascending: true });
-            
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération étapes onboarding:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createDefaultOnboardingSteps(companyId) {
-        const defaultSteps = [
-            { company_id: companyId, step_name: 'Kick-off effectué', step_order: 1 },
-            { company_id: companyId, step_name: 'Prérequis réseaux', step_order: 2 },
-            { company_id: companyId, step_name: 'Intégration système', step_order: 3 },
-            { company_id: companyId, step_name: 'Adresses emails validées', step_order: 4 },
-            { company_id: companyId, step_name: 'Tests utilisateurs fonctionnels', step_order: 5 },
-            { company_id: companyId, step_name: 'Meeting de clôture', step_order: 6 }
-        ];
-        
-        try {
-            const { data, error } = await supabase
-                .from('onboarding_steps')
-                .insert(defaultSteps)
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data };
-        } catch (error) {
-            console.error('Erreur création étapes par défaut:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateOnboardingStep(id, stepData) {
-        try {
-            const { data, error } = await supabase
-                .from('onboarding_steps')
-                .update({
-                    ...stepData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur mise à jour étape onboarding:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
     // ========== LICENCES ==========
     
     static async getLicenses() {
@@ -306,75 +170,6 @@ class CRMService {
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('Erreur récupération licences:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async getLicensePlans() {
-        try {
-            const { data, error } = await supabase
-                .from('license_plans')
-                .select('*')
-                .eq('is_active', true)
-                .order('price_per_user', { ascending: true });
-            
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération plans:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createLicense(licenseData) {
-        try {
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .insert([{
-                    ...licenseData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur création licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateLicense(id, licenseData) {
-        try {
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .update({
-                    ...licenseData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) throw error;
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('Erreur mise à jour licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteLicense(id) {
-        try {
-            const { error } = await supabase
-                .from('company_licenses')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            return { success: true };
-        } catch (error) {
-            console.error('Erreur suppression licence:', error);
             return { success: false, error: error.message };
         }
     }
@@ -467,14 +262,8 @@ function getInitials(firstName, lastName) {
     return first + last || '??';
 }
 
-// Génération d'UUID simple (pour les IDs temporaires)
-function generateTempId() {
-    return 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
 // Gestion des erreurs
 function showError(message, duration = 5000) {
-    // Créer ou réutiliser le conteneur d'erreurs
     let errorContainer = document.getElementById('error-container');
     if (!errorContainer) {
         errorContainer = document.createElement('div');
@@ -489,7 +278,6 @@ function showError(message, duration = 5000) {
         document.body.appendChild(errorContainer);
     }
     
-    // Créer le message d'erreur
     const errorDiv = document.createElement('div');
     errorDiv.style.cssText = `
         background: #fee2e2;
@@ -503,7 +291,6 @@ function showError(message, duration = 5000) {
     `;
     errorDiv.textContent = message;
     
-    // Ajouter le bouton de fermeture
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '×';
     closeBtn.style.cssText = `
@@ -520,7 +307,6 @@ function showError(message, duration = 5000) {
     errorDiv.appendChild(closeBtn);
     errorContainer.appendChild(errorDiv);
     
-    // Auto-suppression
     if (duration > 0) {
         setTimeout(() => {
             if (errorDiv.parentNode) {
@@ -532,7 +318,6 @@ function showError(message, duration = 5000) {
 
 // Gestion des succès
 function showSuccess(message, duration = 3000) {
-    // Similaire à showError mais en vert
     let successContainer = document.getElementById('success-container');
     if (!successContainer) {
         successContainer = document.createElement('div');
@@ -639,7 +424,6 @@ window.formatDate = formatDate;
 window.formatDateShort = formatDateShort;
 window.formatCurrency = formatCurrency;
 window.getInitials = getInitials;
-window.generateTempId = generateTempId;
 window.showError = showError;
 window.showSuccess = showSuccess;
 window.showLoading = showLoading;
