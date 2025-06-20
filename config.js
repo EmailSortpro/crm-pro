@@ -2,12 +2,24 @@
 // CONFIGURATION SUPABASE
 // ===================================
 
-// 🔥 REMPLACE CES VALEURS PAR TES VRAIES CLÉS SUPABASE
-const SUPABASE_URL = 'https://TON-PROJECT-ID.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Ta vraie clé
+// Configuration avec tes vraies clés Supabase
+const SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDM0MTgsImV4cCI6MjA2NTk3OTQxOH0.Wy_jbUB7D5Bly-rZB6oc2bXUHzZQ8MivDL4vdM1jcE0';
 
 // Initialisation du client Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Test de connexion
+supabase.auth.getSession().then(({ data, error }) => {
+    if (error && error.message.includes('Invalid API key')) {
+        console.error('🚨 Clé API Supabase invalide');
+        alert('Clé API Supabase invalide. Vérifiez votre configuration.');
+    } else {
+        console.log('✅ Connexion Supabase OK');
+    }
+}).catch(err => {
+    console.error('🚨 Erreur de connexion Supabase:', err);
+});
 
 // ===================================
 // UTILITAIRES GLOBAUX
