@@ -201,100 +201,6 @@
             margin: 1rem 0;
         }
 
-        .user-card {
-            background: var(--white);
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius);
-            padding: 1rem;
-            margin-bottom: 0.75rem;
-            transition: var(--transition);
-        }
-
-        .user-card:hover {
-            box-shadow: var(--shadow);
-            border-color: var(--gray-300);
-        }
-
-        .user-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .user-info-details {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-avatar-large {
-            width: 50px;
-            height: 50px;
-            background: var(--primary-color);
-            color: var(--white);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1rem;
-        }
-
-        .user-status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-active {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .status-inactive {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .user-meta {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-            font-size: 0.875rem;
-            color: var(--gray-600);
-        }
-
-        .add-user-form {
-            background: var(--gray-50);
-            padding: 1.5rem;
-            border-radius: var(--radius);
-            margin-bottom: 2rem;
-            border: 2px dashed var(--gray-300);
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: var(--radius);
-            color: var(--white);
-            font-weight: 500;
-            z-index: 1100;
-            animation: slideInDown 0.3s ease;
-        }
-
-        .notification.success {
-            background: var(--success-color);
-        }
-
-        .notification.error {
-            background: var(--error-color);
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
             .form-grid,
@@ -304,10 +210,6 @@
 
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
-            }
-
-            .user-meta {
-                grid-template-columns: 1fr;
             }
         }
 
@@ -320,17 +222,6 @@
         @keyframes slideInUp {
             from {
                 transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideInDown {
-            from {
-                transform: translateY(-10px);
                 opacity: 0;
             }
             to {
@@ -602,41 +493,12 @@
         </div>
     </div>
 
-    <!-- Modal Détails Licence -->
-    <div id="detailsModal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="detailsModalTitle">Détails de la licence</h3>
-                <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body" id="licenseDetailsContent">
-                <!-- Contenu chargé dynamiquement -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Gestion des Utilisateurs -->
-    <div id="usersModal" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="usersModalTitle">👥 Gestion des Utilisateurs</h3>
-                <button class="close-btn" onclick="closeUsersModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body" id="usersModalContent">
-                <!-- Contenu chargé dynamiquement -->
-            </div>
-        </div>
-    </div>
-
     <script src="config.js"></script>
     <script>
         // Variables globales
         let licenses = [];
         let companies = [];
         let licensePlans = [];
-        let licenseUsers = [];
         let filteredLicenses = [];
         let currentFilter = 'all';
         let editingLicense = null;
@@ -676,73 +538,94 @@
             populateSelects();
             updateStats();
             updateCounts();
-            filterLicenses('all');
+            renderLicenses();
             initializeDates();
         }
 
         async function loadData() {
             try {
-                // Charger les données depuis la vraie base de données
+                console.log('🔄 Chargement des données...');
+                
+                // Charger toutes les données en parallèle
                 const [licensesResult, companiesResult, plansResult] = await Promise.all([
                     CRMService.getLicenses(),
                     CRMService.getCompanies(),
                     CRMService.getLicensePlans()
                 ]);
 
-                // Charger les licences (vide par défaut si aucune en base)
-                if (licensesResult.success) {
-                    licenses = licensesResult.data.map(license => ({
-                        id: license.id,
-                        company_id: license.company_id,
-                        company_name: license.companies?.name || 'Société inconnue',
-                        plan_id: license.plan_id,
-                        plan_name: license.license_plans?.name || 'Plan inconnu',
-                        plan_price: license.license_plans?.price_per_user || 0,
-                        license_count: license.license_count,
-                        start_date: license.start_date,
-                        end_date: license.end_date,
-                        renewal_date: license.renewal_date,
-                        status: license.status,
-                        payment_method: license.payment_method,
-                        monthly_cost: license.monthly_cost,
-                        users_count: 0
-                    }));
+                console.log('📊 Résultats bruts:', {
+                    licenses: licensesResult,
+                    companies: companiesResult,
+                    plans: plansResult
+                });
+
+                // Traiter les licences
+                if (licensesResult.success && licensesResult.data) {
+                    licenses = licensesResult.data.map(license => {
+                        console.log('📝 Traitement licence:', license);
+                        
+                        // Récupérer les infos de la société
+                        const companyInfo = license.companies || {};
+                        
+                        // Récupérer les infos du plan
+                        const planInfo = license.license_plans || {};
+                        
+                        return {
+                            id: license.id,
+                            company_id: license.company_id,
+                            company_name: companyInfo.name || 'Société inconnue',
+                            plan_id: license.plan_id,
+                            plan_name: planInfo.name || 'Plan inconnu',
+                            plan_price: planInfo.price_per_user || 0,
+                            license_count: license.license_count || 0,
+                            start_date: license.start_date,
+                            end_date: license.end_date,
+                            renewal_date: license.renewal_date,
+                            status: license.status || 'active',
+                            payment_method: license.payment_method,
+                            monthly_cost: license.monthly_cost || 0,
+                            users_count: 0 // Pas d'utilisateurs pour le moment
+                        };
+                    });
                 } else {
-                    licenses = []; // Tableau vide si pas de données
+                    console.log('❌ Pas de licences trouvées ou erreur');
+                    licenses = [];
                 }
 
-                // Charger les sociétés
-                if (companiesResult.success) {
+                // Traiter les sociétés
+                if (companiesResult.success && companiesResult.data) {
                     companies = companiesResult.data;
                 } else {
+                    console.log('❌ Pas de sociétés trouvées ou erreur');
                     companies = [];
                 }
 
-                // Charger les plans de licence
-                if (plansResult.success) {
+                // Traiter les plans
+                if (plansResult.success && plansResult.data) {
                     licensePlans = plansResult.data;
                 } else {
+                    console.log('❌ Pas de plans trouvés ou erreur');
                     licensePlans = [];
                 }
 
-                // Pas d'utilisateurs simulés - tableau vide
-                licenseUsers = [];
-
-                console.log('Données chargées:', {
+                console.log('✅ Données finales:', {
                     licenses: licenses.length,
                     companies: companies.length,
                     plans: licensePlans.length
                 });
 
+                // Initialiser les licences filtrées
+                filteredLicenses = [...licenses];
+
             } catch (error) {
-                console.error('Erreur chargement données:', error);
-                showError('Erreur lors du chargement des données');
+                console.error('❌ Erreur chargement données:', error);
+                showError('Erreur lors du chargement des données: ' + error.message);
                 
                 // En cas d'erreur, initialiser des tableaux vides
                 licenses = [];
                 companies = [];
                 licensePlans = [];
-                licenseUsers = [];
+                filteredLicenses = [];
             }
         }
 
@@ -820,14 +703,15 @@
 
         function updateStats() {
             const activeLicenses = licenses.filter(l => l.status === 'active');
-            const totalUsers = licenseUsers.filter(u => u.status === 'active').length;
+            const totalUsers = licenses.reduce((sum, l) => sum + (l.users_count || 0), 0);
             const monthlyRevenue = activeLicenses.reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
             
             const now = new Date();
             const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             const expiringLicenses = activeLicenses.filter(l => {
+                if (!l.renewal_date) return false;
                 const renewalDate = new Date(l.renewal_date);
-                return renewalDate <= thirtyDaysFromNow;
+                return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
             });
             
             document.getElementById('totalLicenses').textContent = activeLicenses.length;
@@ -845,9 +729,9 @@
                 active: licenses.filter(l => l.status === 'active').length,
                 expired: licenses.filter(l => l.status === 'expired').length,
                 expiring: licenses.filter(l => {
-                    if (l.status !== 'active') return false;
+                    if (l.status !== 'active' || !l.renewal_date) return false;
                     const renewalDate = new Date(l.renewal_date);
-                    return renewalDate <= thirtyDaysFromNow;
+                    return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
                 }).length
             };
             
@@ -882,9 +766,9 @@
                     break;
                 case 'expiring':
                     filteredLicenses = licenses.filter(l => {
-                        if (l.status !== 'active') return false;
+                        if (l.status !== 'active' || !l.renewal_date) return false;
                         const renewalDate = new Date(l.renewal_date);
-                        return renewalDate <= thirtyDaysFromNow;
+                        return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
                     });
                     break;
             }
@@ -917,6 +801,8 @@
             const tableBody = document.getElementById('licensesTableBody');
             const emptyState = document.getElementById('emptyState');
             
+            console.log('🎨 Rendu des licences:', licensesToRender);
+            
             if (licensesToRender.length === 0) {
                 tableBody.innerHTML = '';
                 emptyState.style.display = 'block';
@@ -942,7 +828,7 @@
                         </td>
                         <td>
                             <span style="font-weight: 600; font-size: 1.125rem;">${license.users_count}/${license.license_count}</span>
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openUsersModal('${license.id}')" title="Voir les utilisateurs" style="margin-left: 0.5rem;">
+                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); alert('Gestion des utilisateurs en cours de développement')" title="Voir les utilisateurs" style="margin-left: 0.5rem;">
                                 👥
                             </button>
                         </td>
@@ -976,16 +862,18 @@
         }
 
         function isLicenseExpiring(license) {
-            if (license.status !== 'active') return false;
+            if (license.status !== 'active' || !license.renewal_date) return false;
             
             const now = new Date();
             const renewalDate = new Date(license.renewal_date);
             const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             
-            return renewalDate <= thirtyDaysFromNow;
+            return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
         }
 
         function getDaysUntilRenewal(renewalDate) {
+            if (!renewalDate) return 'Non défini';
+            
             const now = new Date();
             const renewal = new Date(renewalDate);
             const diffTime = renewal - now;
@@ -1014,6 +902,13 @@
             return statusMap[status] || status;
         }
 
+        function openLicenseDetails(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            alert(`Détails de la licence ${license.company_name} - ${license.plan_name}\n\nCette fonctionnalité est en cours de développement.`);
+        }
+
         // Gestion des modals
         function openAddLicenseModal() {
             resetLicenseForm();
@@ -1031,134 +926,6 @@
             resetLicenseForm();
         }
 
-        function openLicenseDetails(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const users = licenseUsers.filter(u => u.license_id === licenseId);
-            
-            document.getElementById('detailsModalTitle').textContent = `${license.company_name} - ${license.plan_name}`;
-            
-            const isExpiring = isLicenseExpiring(license);
-            const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
-            const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
-            
-            document.getElementById('licenseDetailsContent').innerHTML = `
-                <div class="form-grid" style="margin-bottom: 2rem;">
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📋 Informations générales</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Société :</strong> ${license.company_name}</div>
-                            <div><strong>Plan :</strong> ${license.plan_name}</div>
-                            <div><strong>Nombre d'utilisateurs :</strong> ${users.length}/${license.license_count}</div>
-                            <div><strong>Statut :</strong> <span class="license-status ${statusClass}">${statusText}</span></div>
-                            <div><strong>Méthode de paiement :</strong> ${license.payment_method || 'Non spécifiée'}</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📅 Dates importantes</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Début :</strong> ${formatDate(license.start_date)}</div>
-                            <div><strong>Fin :</strong> ${formatDate(license.end_date)}</div>
-                            <div><strong>Renouvellement :</strong> ${formatDate(license.renewal_date)}</div>
-                            <div><strong>Échéance :</strong> <span style="font-weight: 600; color: ${isExpiring ? 'var(--error-color)' : 'var(--success-color)'};">${getDaysUntilRenewal(license.renewal_date)}</span></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
-                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Informations financières</h4>
-                    <div class="form-grid-3" style="text-align: center;">
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(license.plan_price || 0)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(license.monthly_cost || 0)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${formatCurrency((license.monthly_cost || 0) * 12)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
-                    <button class="btn btn-secondary" onclick="closeDetailsModal()">
-                        Fermer
-                    </button>
-                    <button class="btn btn-primary" onclick="openUsersModal('${license.id}')">
-                        👥 Gérer les utilisateurs
-                    </button>
-                    <button class="btn btn-secondary" onclick="editLicense('${license.id}')">
-                        ✏️ Modifier la licence
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('detailsModal').classList.add('show');
-        }
-
-        function closeDetailsModal() {
-            document.getElementById('detailsModal').classList.remove('show');
-        }
-
-        function openUsersModal(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const users = licenseUsers.filter(u => u.license_id === licenseId);
-            const activeUsers = users.filter(u => u.status === 'active');
-            const usagePercentage = (users.length / license.license_count) * 100;
-            
-            document.getElementById('usersModalTitle').textContent = `👥 ${license.company_name} - Utilisateurs`;
-            
-            document.getElementById('usersModalContent').innerHTML = `
-                <!-- En-tête avec statistiques -->
-                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                    <div class="form-grid-3" style="text-align: center;">
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${users.length}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);">Utilisateurs total</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">${activeUsers.length}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);">Actifs</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: ${usagePercentage >= 100 ? 'var(--error-color)' : usagePercentage >= 80 ? 'var(--warning-color)' : 'var(--success-color)'};">${license.license_count - users.length}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-600);">Places restantes</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Barre d'utilisation -->
-                    <div style="margin-top: 1rem;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                            <span style="font-size: 0.875rem; color: var(--gray-600);">Utilisation des licences</span>
-                            <span style="font-size: 0.875rem; font-weight: 600; color: var(--gray-800);">${Math.round(usagePercentage)}%</span>
-                        </div>
-                        <div class="license-usage-bar">
-                            <div class="license-usage-fill ${usagePercentage >= 100 ? 'danger' : usagePercentage >= 80 ? 'warning' : ''}" 
-                                 style="width: ${Math.min(usagePercentage, 100)}%"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button class="btn btn-secondary" onclick="closeUsersModal()">
-                        Fermer
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('usersModal').classList.add('show');
-        }
-
-        function closeUsersModal() {
-            document.getElementById('usersModal').classList.remove('show');
-        }
-
         function resetLicenseForm() {
             document.getElementById('licenseForm').reset();
             document.getElementById('pricingPreview').style.display = 'none';
@@ -1174,8 +941,6 @@
             if (!license) return;
             
             editingLicense = license;
-            
-            closeDetailsModal();
             
             document.getElementById('licenseCompany').value = license.company_id;
             document.getElementById('licensePlan').value = license.plan_id;
@@ -1204,20 +969,21 @@
             showLoading(true);
             
             try {
-                // En mode réel, appeler l'API pour supprimer
-                const result = await CRMService.deleteLicense?.(licenseId);
+                const result = await CRMService.deleteLicense(licenseId);
                 
-                // En mode démo, supprimer localement
-                licenses = licenses.filter(l => l.id !== licenseId);
-                
-                showSuccess('Licence supprimée avec succès');
-                updateStats();
-                updateCounts();
-                filterLicenses(currentFilter);
+                if (result.success) {
+                    showSuccess('Licence supprimée avec succès');
+                    await loadData();
+                    updateStats();
+                    updateCounts();
+                    renderLicenses();
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la suppression');
+                }
                 
             } catch (error) {
                 console.error('Erreur suppression licence:', error);
-                showError('Erreur lors de la suppression de la licence');
+                showError('Erreur lors de la suppression de la licence: ' + error.message);
             } finally {
                 showLoading(false);
             }
@@ -1245,9 +1011,6 @@
                 const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
                 const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
                 
-                const company = companies.find(c => c.id === companyId);
-                const plan = licensePlans.find(p => p.id === planId);
-                
                 const licenseData = {
                     company_id: companyId,
                     plan_id: planId,
@@ -1256,51 +1019,31 @@
                     end_date: endDate,
                     renewal_date: document.getElementById('renewalDate').value || endDate,
                     status: document.getElementById('licenseStatus').value || 'active',
-                    payment_method: document.getElementById('paymentMethod').value || '',
+                    payment_method: document.getElementById('paymentMethod').value || null,
                     monthly_cost: pricePerUser * licenseCount
                 };
                 
+                let result;
                 if (editingLicense) {
-                    // Mise à jour
-                    const result = await CRMService.updateLicense?.(editingLicense.id, licenseData);
-                    
-                    // En mode démo, mettre à jour localement
-                    const index = licenses.findIndex(l => l.id === editingLicense.id);
-                    if (index !== -1) {
-                        licenses[index] = {
-                            ...licenses[index],
-                            ...licenseData,
-                            company_name: company ? company.name : 'Société inconnue',
-                            plan_name: plan ? plan.name : 'Plan inconnu',
-                            plan_price: pricePerUser
-                        };
-                        showSuccess('Licence modifiée avec succès !');
-                    }
+                    result = await CRMService.updateLicense(editingLicense.id, licenseData);
                 } else {
-                    // Création
-                    const result = await CRMService.createLicense?.(licenseData);
-                    
-                    // En mode démo, ajouter localement
-                    const newLicense = {
-                        id: Date.now().toString(),
-                        ...licenseData,
-                        company_name: company ? company.name : 'Société inconnue',
-                        plan_name: plan ? plan.name : 'Plan inconnu',
-                        plan_price: pricePerUser,
-                        users_count: 0
-                    };
-                    licenses.push(newLicense);
-                    showSuccess('Licence créée avec succès !');
+                    result = await CRMService.createLicense(licenseData);
                 }
                 
-                closeLicenseModal();
-                updateStats();
-                updateCounts();
-                filterLicenses(currentFilter);
+                if (result.success) {
+                    showSuccess(editingLicense ? 'Licence modifiée avec succès !' : 'Licence créée avec succès !');
+                    closeLicenseModal();
+                    await loadData();
+                    updateStats();
+                    updateCounts();
+                    renderLicenses();
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la sauvegarde');
+                }
                 
             } catch (error) {
                 console.error('Erreur sauvegarde licence:', error);
-                showError('Erreur lors de la sauvegarde de la licence');
+                showError('Erreur lors de la sauvegarde de la licence: ' + error.message);
             } finally {
                 showLoading(false);
             }
@@ -1311,10 +1054,6 @@
             if (e.target.classList.contains('modal')) {
                 if (e.target.id === 'licenseModal') {
                     closeLicenseModal();
-                } else if (e.target.id === 'detailsModal') {
-                    closeDetailsModal();
-                } else if (e.target.id === 'usersModal') {
-                    closeUsersModal();
                 }
             }
         });
@@ -1323,15 +1062,9 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const licenseModal = document.getElementById('licenseModal');
-                const detailsModal = document.getElementById('detailsModal');
-                const usersModal = document.getElementById('usersModal');
                 
                 if (licenseModal.classList.contains('show')) {
                     closeLicenseModal();
-                } else if (detailsModal.classList.contains('show')) {
-                    closeDetailsModal();
-                } else if (usersModal.classList.contains('show')) {
-                    closeUsersModal();
                 }
             }
         });
