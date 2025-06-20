@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Contacts</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .contacts-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .contacts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .contacts-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .contacts-title h1 {
+            margin: 0;
+            color: #1f2937;
+            font-size: 2rem;
+        }
+
+        .contacts-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            width: 300px;
+            font-size: 0.875rem;
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-add:hover {
+            transform: translateY(-2px);
+        }
+
+        .contacts-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .contacts-grid {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .contacts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .contacts-table th,
+        .contacts-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .contacts-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .contacts-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .contact-details h3 {
+            margin: 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .contact-details p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .company-badge {
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .contact-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-admin {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-payment {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .contact-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            width: 2rem;
+            height: 2rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-edit {
+            background: #e0f2fe;
+            color: #0277bd;
+        }
+
+        .btn-edit:hover {
+            background: #b3e5fc;
+        }
+
+        .btn-delete {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .btn-delete:hover {
+            background: #ffcdd2;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+
+        .modal-close:hover {
+            background: #f3f4f6;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.875rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .contacts-container {
+                padding: 1rem;
+            }
+
+            .contacts-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .contacts-actions {
+                flex-direction: column;
+            }
+
+            .search-box input {
+                width: 100%;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .contacts-table {
+                font-size: 0.875rem;
+            }
+
+            .contacts-table th,
+            .contacts-table td {
+                padding: 0.75rem 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link active">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="licenses.html" class="nav-link">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
+                </div>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="contacts-container">
+        <!-- En-tête -->
+        <div class="contacts-header">
+            <div class="contacts-title">
+                <span style="font-size: 2rem;">👥</span>
+                <h1>Contacts</h1>
+            </div>
+            <div class="contacts-actions">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Rechercher un contact...">
+                </div>
+                <button class="btn-add" onclick="openContactModal()">
+                    <span>➕</span>
+                    Nouveau contact
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="contacts-stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalContacts">0</div>
+                <div class="stat-label">Total contacts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="adminContacts">0</div>
+                <div class="stat-label">Contacts admin</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="paymentContacts">0</div>
+                <div class="stat-label">Contacts facturation</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="unassignedContacts">0</div>
+                <div class="stat-label">Non assignés</div>
+            </div>
+        </div>
+
+        <!-- Tableau des contacts -->
+        <div class="contacts-grid">
+            <table class="contacts-table">
+                <thead>
+                    <tr>
+                        <th>Contact</th>
+                        <th>Société</th>
+                        <th>Position</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Rôles</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="contactsTableBody">
+                    <!-- Les contacts seront chargés ici -->
+                </tbody>
+            </table>
+            
+            <!-- État vide -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">👥</div>
+                <h3>Aucun contact trouvé</h3>
+                <p>Commencez par ajouter votre premier contact</p>
+                <button class="btn-add" onclick="openContactModal()">
+                    <span>➕</span>
+                    Ajouter un contact
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Contact -->
+    <div id="contactModal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Nouveau contact</h2>
+                <button class="modal-close" onclick="closeContactModal()">×</button>
+            </div>
+            
+            <form id="contactForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="firstName">Prénom *</label>
+                        <input type="text" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName">Nom *</label>
+                        <input type="text" id="lastName" name="lastName" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="phone">Téléphone</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="position">Position</label>
+                        <input type="text" id="position" name="position" placeholder="ex: Directeur IT">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="companyId">Société</label>
+                    <select id="companyId" name="companyId">
+                        <option value="">-- Sélectionner une société --</option>
+                        <!-- Les sociétés seront chargées ici -->
+                    </select>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="3" placeholder="Notes sur le contact..."></textarea>
+                </div>
+                
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="isAdminContact" name="isAdminContact">
+                        <label for="isAdminContact">Contact administrateur</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="isPaymentContact" name="isPaymentContact">
+                        <label for="isPaymentContact">Contact facturation</label>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeContactModal()">Annuler</button>
+                    <button type="submit" class="btn-primary" id="saveContactBtn">
+                        <span id="saveContactText">Créer le contact</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Variables globales
+        let contacts = [];
+        let companies = [];
+        let currentEditId = null;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier l'authentification
+            if (!await AuthService.requireAuth()) return;
+            
+            // Charger les données utilisateur
+            loadUserInfo();
+            
+            // Charger les données
+            await loadData();
+            
+            // Configurer la recherche
+            setupSearch();
+        });
+
+        // Charger les informations utilisateur
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Administrateur' : 'Utilisateur';
+            }
+        }
+
+        // Charger toutes les données
+        async function loadData() {
+            showLoading(true);
+            
+            try {
+                // Charger les contacts et les sociétés en parallèle
+                const [contactsResult, companiesResult] = await Promise.all([
+                    CRMService.getContacts(),
+                    CRMService.getCompanies()
+                ]);
+
+                if (!contactsResult.success) {
+                    throw new Error(contactsResult.error);
+                }
+
+                if (!companiesResult.success) {
+                    throw new Error(companiesResult.error);
+                }
+
+                contacts = contactsResult.data;
+                companies = companiesResult.data;
+
+                // Enrichir les contacts avec les infos des sociétés
+                contacts = contacts.map(contact => {
+                    const company = companies.find(c => c.id === contact.company_id);
+                    return {
+                        ...contact,
+                        company_name: company ? company.name : null
+                    };
+                });
+
+                updateUI();
+            } catch (error) {
+                console.error('Erreur chargement données:', error);
+                showError('Erreur lors du chargement des données: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Mettre à jour l'interface
+        function updateUI() {
+            updateStats();
+            updateContactsTable();
+            updateCompanySelect();
+        }
+
+        // Mettre à jour les statistiques
+        function updateStats() {
+            const stats = {
+                total: contacts.length,
+                admin: contacts.filter(c => c.is_admin_contact).length,
+                payment: contacts.filter(c => c.is_payment_contact).length,
+                unassigned: contacts.filter(c => !c.company_id).length
+            };
+
+            document.getElementById('totalContacts').textContent = stats.total;
+            document.getElementById('adminContacts').textContent = stats.admin;
+            document.getElementById('paymentContacts').textContent = stats.payment;
+            document.getElementById('unassignedContacts').textContent = stats.unassigned;
+        }
+
+        // Mettre à jour le tableau des contacts
+        function updateContactsTable() {
+            const tbody = document.getElementById('contactsTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (contacts.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+
+            tbody.innerHTML = contacts.map(contact => `
+                <tr>
+                    <td>
+                        <div class="contact-info">
+                            <div class="contact-avatar">
+                                ${getInitials(contact.first_name, contact.last_name)}
+                            </div>
+                            <div class="contact-details">
+                                <h3>${contact.first_name} ${contact.last_name}</h3>
+                                <p>Créé le ${formatDateShort(contact.created_at)}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        ${contact.company_name ? `<span class="company-badge">${contact.company_name}</span>` : '<span style="color: #6b7280;">Non assigné</span>'}
+                    </td>
+                    <td>${contact.position || '-'}</td>
+                    <td>
+                        <a href="mailto:${contact.email}" style="color: #667eea; text-decoration: none;">
+                            ${contact.email}
+                        </a>
+                    </td>
+                    <td>
+                        ${contact.phone ? `<a href="tel:${contact.phone}" style="color: #667eea; text-decoration: none;">${contact.phone}</a>` : '-'}
+                    </td>
+                    <td>
+                        <div class="contact-badges">
+                            ${contact.is_admin_contact ? '<span class="badge badge-admin">Admin</span>' : ''}
+                            ${contact.is_payment_contact ? '<span class="badge badge-payment">Facturation</span>' : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="contact-actions">
+                            <button class="btn-icon btn-edit" onclick="editContact(${contact.id})" title="Modifier">
+                                ✏️
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deleteContact(${contact.id})" title="Supprimer">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Mettre à jour le select des sociétés
+        function updateCompanySelect() {
+            const select = document.getElementById('companyId');
+            
+            select.innerHTML = '<option value="">-- Sélectionner une société --</option>' +
+                companies.map(company => `
+                    <option value="${company.id}">${company.name}</option>
+                `).join('');
+        }
+
+        // Configurer la recherche
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                
+                if (!query) {
+                    updateContactsTable();
+                    return;
+                }
+
+                const filteredContacts = contacts.filter(contact =>
+                    contact.first_name.toLowerCase().includes(query) ||
+                    contact.last_name.toLowerCase().includes(query) ||
+                    contact.email.toLowerCase().includes(query) ||
+                    (contact.company_name && contact.company_name.toLowerCase().includes(query)) ||
+                    (contact.position && contact.position.toLowerCase().includes(query)) ||
+                    (contact.phone && contact.phone.includes(query))
+                );
+
+                // Temporairement remplacer contacts pour l'affichage
+                const originalContacts = [...contacts];
+                contacts = filteredContacts;
+                updateContactsTable();
+                contacts = originalContacts;
+            });
+        }
+
+        // Ouvrir le modal de contact
+        function openContactModal(contactId = null) {
+            const modal = document.getElementById('contactModal');
+            const form = document.getElementById('contactForm');
+            const title = document.getElementById('modalTitle');
+            const saveBtn = document.getElementById('saveContactText');
+
+            // Reset du formulaire
+            form.reset();
+            currentEditId = contactId;
+
+            if (contactId) {
+                // Mode édition
+                const contact = contacts.find(c => c.id === contactId);
+                if (contact) {
+                    title.textContent = 'Modifier le contact';
+                    saveBtn.textContent = 'Mettre à jour';
+
+                    // Pré-remplir le formulaire
+                    document.getElementById('firstName').value = contact.first_name || '';
+                    document.getElementById('lastName').value = contact.last_name || '';
+                    document.getElementById('email').value = contact.email || '';
+                    document.getElementById('phone').value = contact.phone || '';
+                    document.getElementById('position').value = contact.position || '';
+                    document.getElementById('companyId').value = contact.company_id || '';
+                    document.getElementById('notes').value = contact.notes || '';
+                    document.getElementById('isAdminContact').checked = contact.is_admin_contact || false;
+                    document.getElementById('isPaymentContact').checked = contact.is_payment_contact || false;
+                }
+            } else {
+                // Mode création
+                title.textContent = 'Nouveau contact';
+                saveBtn.textContent = 'Créer le contact';
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Fermer le modal de contact
+        function closeContactModal() {
+            const modal = document.getElementById('contactModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            currentEditId = null;
+        }
+
+        // Gestionnaire de soumission du formulaire
+        document.getElementById('contactForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await saveContact();
+        });
+
+        // Sauvegarder le contact
+        async function saveContact() {
+            const saveBtn = document.getElementById('saveContactBtn');
+            const saveText = document.getElementById('saveContactText');
+            const originalText = saveText.textContent;
+
+            saveBtn.classList.add('loading');
+            saveText.textContent = 'Sauvegarde...';
+
+            try {
+                const formData = new FormData(document.getElementById('contactForm'));
+                
+                const contactData = {
+                    first_name: formData.get('firstName'),
+                    last_name: formData.get('lastName'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone') || null,
+                    position: formData.get('position') || null,
+                    company_id: formData.get('companyId') || null,
+                    notes: formData.get('notes') || null,
+                    is_admin_contact: formData.get('isAdminContact') === 'on',
+                    is_payment_contact: formData.get('isPaymentContact') === 'on'
+                };
+
+                let result;
+                if (currentEditId) {
+                    result = await CRMService.updateContact(currentEditId, contactData);
+                } else {
+                    result = await CRMService.createContact(contactData);
+                }
+
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                showSuccess(currentEditId ? 'Contact mis à jour avec succès!' : 'Contact créé avec succès!');
+                closeContactModal();
+                await loadData();
+
+            } catch (error) {
+                console.error('Erreur sauvegarde contact:', error);
+                showError('Erreur lors de la sauvegarde: ' + error.message);
+            } finally {
+                saveBtn.classList.remove('loading');
+                saveText.textContent = originalText;
+            }
+        }
+
+        // Modifier un contact
+        function editContact(contactId) {
+            openContactModal(contactId);
+        }
+
+        // Supprimer un contact
+        async function deleteContact(contactId) {
+            const contact = contacts.find(c => c.id === contactId);
+            if (!contact) return;
+
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer le contact "${contact.first_name} ${contact.last_name}" ?\n\nCette action est irréversible.`)) {
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const result = await CRMService.deleteContact(contactId);
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+
+                showSuccess('Contact supprimé avec succès!');
+                await loadData();
+
+            } catch (error) {
+                console.error('Erreur suppression contact:', error);
+                showError('Erreur lors de la suppression: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fermer le modal en cliquant à l'extérieur
+        document.getElementById('contactModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeContactModal();
+            }
+        });
+
+        // Fermer le modal avec Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
+                closeContactModal();
+            }
+        });
+    </script>
+</body>
+</html>
