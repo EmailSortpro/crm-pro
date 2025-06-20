@@ -2,12 +2,23 @@
 // CONFIGURATION SUPABASE
 // ===================================
 
-// 🔥 REMPLACE CES VALEURS PAR TES VRAIES CLÉS SUPABASE
-const SUPABASE_URL = 'https://TON-PROJECT-ID.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Ta vraie clé
+// Configuration avec tes vraies clés Supabase
+const SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDM0MTgsImV4cCI6MjA2NTk3OTQxOH0.Wy_jbUB7D5Bly-rZB6oc2bXUHzZQ8MivDL4vdM1jcE0';
 
 // Initialisation du client Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Test de connexion
+supabase.auth.getSession().then(({ data, error }) => {
+    if (error && error.message.includes('Invalid API key')) {
+        console.error('🚨 Clé API Supabase invalide');
+    } else {
+        console.log('✅ Connexion Supabase OK');
+    }
+}).catch(err => {
+    console.error('🚨 Erreur de connexion Supabase:', err);
+});
 
 // ===================================
 // UTILITAIRES GLOBAUX
@@ -296,6 +307,34 @@ class CRMService {
         }
     }
     
+    // ========== LICENCES ==========
+    
+    static async getLicenses() {
+        try {
+            const { data, error } = await supabase
+                .from('company_licenses')
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    ),
+                    license_plans (
+                        id,
+                        name,
+                        price_per_user
+                    )
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur récupération licences:', error);
+            return { success: false, error: error.message };
+        }
+    }
     
     static async createLicense(licenseData) {
         try {
@@ -362,31 +401,6 @@ class CRMService {
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('Erreur récupération plans:', error);
-            return { success: false, error: error.message };
-        }
-    }
-        try {
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (error) throw error;
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('Erreur récupération licences:', error);
             return { success: false, error: error.message };
         }
     }
@@ -481,6 +495,7 @@ function getInitials(firstName, lastName) {
 
 // Gestion des erreurs
 function showError(message, duration = 5000) {
+    // Créer ou réutiliser le conteneur d'erreurs
     let errorContainer = document.getElementById('error-container');
     if (!errorContainer) {
         errorContainer = document.createElement('div');
@@ -495,6 +510,7 @@ function showError(message, duration = 5000) {
         document.body.appendChild(errorContainer);
     }
     
+    // Créer le message d'erreur
     const errorDiv = document.createElement('div');
     errorDiv.style.cssText = `
         background: #fee2e2;
@@ -508,6 +524,7 @@ function showError(message, duration = 5000) {
     `;
     errorDiv.textContent = message;
     
+    // Ajouter le bouton de fermeture
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '×';
     closeBtn.style.cssText = `
@@ -524,6 +541,7 @@ function showError(message, duration = 5000) {
     errorDiv.appendChild(closeBtn);
     errorContainer.appendChild(errorDiv);
     
+    // Auto-suppression
     if (duration > 0) {
         setTimeout(() => {
             if (errorDiv.parentNode) {
@@ -535,6 +553,7 @@ function showError(message, duration = 5000) {
 
 // Gestion des succès
 function showSuccess(message, duration = 3000) {
+    // Similaire à showError mais en vert
     let successContainer = document.getElementById('success-container');
     if (!successContainer) {
         successContainer = document.createElement('div');
