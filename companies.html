@@ -241,7 +241,7 @@
         let filteredCompanies = [];
         let currentFilter = 'all';
         let selectedCompany = null;
-        let editMode = false;
+        let editMode = false; // VARIABLE IMPORTANTE POUR GÉRER L'ÉDITION
 
         // Styles pour les filtres
         const filterBtnStyle = `
@@ -567,18 +567,64 @@
             modal.classList.add('show');
             
             if (modalId === 'add-company') {
-                // Mode création - réinitialiser le formulaire
-                document.getElementById('addCompanyForm').reset();
-                document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
-                document.getElementById('submitBtn').textContent = '💾 Créer la société';
-                editMode = false;
-                selectedCompany = null;
+                // Réinitialiser le formulaire et les variables si on ouvre pour une nouvelle société
+                if (!editMode) {
+                    document.getElementById('addCompanyForm').reset();
+                    document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
+                    document.getElementById('submitBtn').textContent = '💾 Créer la société';
+                    selectedCompany = null;
+                }
             }
         }
 
         function closeModal(modalId) {
             const modal = document.getElementById(`modal-${modalId}`);
             modal.classList.remove('show');
+            
+            // Réinitialiser les variables d'édition quand on ferme le modal
+            if (modalId === 'add-company') {
+                editMode = false;
+                selectedCompany = null;
+            }
+        }
+
+        // FONCTION CORRIGÉE POUR LA MODIFICATION
+        function editCompany(companyId) {
+            console.log('Editing company:', companyId); // Debug
+            
+            const company = companies.find(c => c.id === companyId);
+            if (!company) {
+                console.error('Société non trouvée:', companyId);
+                return;
+            }
+            
+            // Fermer le modal de détails s'il est ouvert
+            closeModal('company-details');
+            
+            // IMPORTANT: Passer en mode édition AVANT d'ouvrir le modal
+            editMode = true;
+            selectedCompany = company;
+            
+            // Remplir le formulaire avec les données existantes
+            document.getElementById('companyName').value = company.name || '';
+            document.getElementById('companyStatus').value = company.status || '';
+            document.getElementById('companyIndustry').value = company.industry || '';
+            document.getElementById('accountManager').value = company.account_manager || '';
+            document.getElementById('companyWebsite').value = company.website || '';
+            document.getElementById('companyPhone').value = company.phone || '';
+            document.getElementById('companySiret').value = company.siret || '';
+            document.getElementById('companyAddress').value = company.address || '';
+            document.getElementById('companyCity').value = company.city || '';
+            document.getElementById('companyPostalCode').value = company.postal_code || '';
+            document.getElementById('companyCountry').value = company.country || '';
+            document.getElementById('companyNotes').value = company.notes || '';
+            
+            // Modifier les textes du modal
+            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
+            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
+            
+            // Ouvrir le modal
+            openModal('add-company');
         }
 
         // Gestion du formulaire d'ajout/modification
@@ -605,11 +651,13 @@
             try {
                 let result;
                 if (editMode && selectedCompany) {
+                    console.log('Updating company:', selectedCompany.id, formData); // Debug
                     result = await CRMService.updateCompany(selectedCompany.id, formData);
                     if (result.success) {
                         showSuccess('Société modifiée avec succès !');
                     }
                 } else {
+                    console.log('Creating new company:', formData); // Debug
                     result = await CRMService.createCompany(formData);
                     if (result.success) {
                         showSuccess('Société créée avec succès !');
@@ -709,40 +757,6 @@
             `;
             
             openModal('company-details');
-        }
-
-        // Modifier une société
-        function editCompany(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) return;
-            
-            // Fermer le modal de détails s'il est ouvert
-            closeModal('company-details');
-            
-            // Passer en mode édition
-            editMode = true;
-            selectedCompany = company;
-            
-            // Remplir le formulaire avec les données existantes
-            document.getElementById('companyName').value = company.name || '';
-            document.getElementById('companyStatus').value = company.status || '';
-            document.getElementById('companyIndustry').value = company.industry || '';
-            document.getElementById('accountManager').value = company.account_manager || '';
-            document.getElementById('companyWebsite').value = company.website || '';
-            document.getElementById('companyPhone').value = company.phone || '';
-            document.getElementById('companySiret').value = company.siret || '';
-            document.getElementById('companyAddress').value = company.address || '';
-            document.getElementById('companyCity').value = company.city || '';
-            document.getElementById('companyPostalCode').value = company.postal_code || '';
-            document.getElementById('companyCountry').value = company.country || '';
-            document.getElementById('companyNotes').value = company.notes || '';
-            
-            // Modifier les textes du modal
-            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
-            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
-            
-            // Ouvrir le modal
-            openModal('add-company');
         }
 
         // Supprimer une société
