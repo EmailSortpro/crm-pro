@@ -295,9 +295,14 @@
                     <h3 class="card-title">🎯 Opportunités Basées sur les Sociétés</h3>
                     <p class="card-subtitle">Prospects et opportunités de croissance</p>
                 </div>
-                <button class="btn btn-primary" onclick="openModal('add-opportunity')">
-                    ➕ Nouvelle Opportunité
-                </button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary btn-sm" onclick="clearAllOpportunities()" title="Vider toutes les opportunités">
+                        🗑️ Vider tout
+                    </button>
+                    <button class="btn btn-primary" onclick="openModal('add-opportunity')">
+                        ➕ Nouvelle Opportunité
+                    </button>
+                </div>
             </div>
             <div class="card-body" style="padding: 0;">
                 <!-- Filtres des opportunités -->
@@ -511,7 +516,7 @@
                     licenses = []; // Fallback
                 }
                 
-                // Charger les opportunités depuis le localStorage ou créer des données basées sur les sociétés
+                // Charger UNIQUEMENT les opportunités depuis le localStorage (pas de génération automatique)
                 loadOpportunities();
                 
             } catch (error) {
@@ -528,15 +533,9 @@
         }
 
         function loadOpportunities() {
-            // Charger depuis localStorage
+            // Charger UNIQUEMENT depuis localStorage - PAS de génération automatique
             const stored = localStorage.getItem(OPPORTUNITIES_STORAGE_KEY);
             let localOpportunities = stored ? JSON.parse(stored) : [];
-            
-            // Si pas d'opportunités stockées, en créer quelques-unes basées sur les vraies sociétés
-            if (localOpportunities.length === 0 && companies.length > 0) {
-                localOpportunities = generateOpportunitiesFromCompanies();
-                saveOpportunities(localOpportunities);
-            }
             
             // Enrichir avec les noms des sociétés
             opportunities = localOpportunities.map(opp => ({
@@ -549,43 +548,8 @@
             updateOpportunityCounts();
         }
 
-        function generateOpportunitiesFromCompanies() {
-            const generatedOpportunities = [];
-            
-            companies.forEach(company => {
-                // Créer des opportunités basées sur le statut de la société
-                if (company.status === 'prospect') {
-                    generatedOpportunities.push({
-                        id: `gen-${company.id}-1`,
-                        company_id: company.id,
-                        title: `Licence initiale pour ${company.name}`,
-                        value: Math.floor(Math.random() * 5000) + 2000,
-                        stage: 'prospect',
-                        probability: 25,
-                        expected_close_date: getRandomFutureDate(30, 90),
-                        source: 'website',
-                        notes: `Première approche avec ${company.name}`,
-                        created_at: new Date().toISOString()
-                    });
-                } else if (company.status === 'client') {
-                    // Opportunité d'extension pour les clients existants
-                    generatedOpportunities.push({
-                        id: `gen-${company.id}-2`,
-                        company_id: company.id,
-                        title: `Extension licences pour ${company.name}`,
-                        value: Math.floor(Math.random() * 3000) + 1500,
-                        stage: 'qualification',
-                        probability: 60,
-                        expected_close_date: getRandomFutureDate(15, 45),
-                        source: 'referral',
-                        notes: `Opportunité d'extension pour client existant`,
-                        created_at: new Date().toISOString()
-                    });
-                }
-            });
-            
-            return generatedOpportunities;
-        }
+        // SUPPRIMER CETTE FONCTION - Ne plus générer automatiquement
+        // function generateOpportunitiesFromCompanies() { ... }
 
         function getRandomFutureDate(minDays, maxDays) {
             const today = new Date();
@@ -787,29 +751,28 @@
         function updateForecastTable() {
             const tableBody = document.getElementById('forecastTableBody');
             
-            // Générer des prévisions basées sur les vraies données
+            // Générer des prévisions basées UNIQUEMENT sur les vraies données (pas d'opportunités fictives)
             const quarters = ['T1 2025', 'T2 2025', 'T3 2025', 'T4 2025'];
             const baseMonthlyRevenue = licenses
                 .filter(l => l.status === 'active')
                 .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
             
+            // Si pas de revenus de base, afficher des données vides/réalistes
             const periods = quarters.map((quarter, index) => {
-                // Nombre de prospects qui pourraient être convertis
-                const targetCompanies = companies.filter(c => c.status === 'prospect' || c.status === 'sponsor').length;
-                const oppsCount = Math.max(1, Math.ceil(targetCompanies * 0.3 * (index + 1)));
+                // Utiliser UNIQUEMENT les vraies opportunités créées par l'utilisateur
+                const realOpportunities = opportunities.length;
                 
-                // Estimation basée sur le revenu actuel + croissance
+                // Estimation très conservative basée sur les licences actuelles
                 const quarterly = baseMonthlyRevenue * 3;
-                const growthMultiplier = 1 + (index * 0.15); // 15% de croissance par trimestre
-                const estimated = Math.ceil(quarterly * growthMultiplier);
+                const conservativeGrowth = quarterly > 0 ? quarterly * (1 + index * 0.05) : 0; // 5% par trimestre seulement
                 
-                // Probabilité décroissante dans le temps
-                const probability = Math.max(50, 80 - index * 10);
+                // Probabilité réaliste
+                const probability = Math.max(30, 70 - index * 10);
                 
                 return {
                     name: quarter,
-                    opportunities: oppsCount,
-                    estimated: estimated,
+                    opportunities: realOpportunities, // Utiliser le vrai nombre d'opportunités
+                    estimated: Math.ceil(conservativeGrowth),
                     probability: probability
                 };
             });
@@ -1073,6 +1036,24 @@
             updateForecastTable();
             
             showSuccess('Opportunité supprimée avec succès');
+        }
+
+        // Nouvelle fonction pour vider toutes les opportunités
+        function clearAllOpportunities() {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer TOUTES les opportunités ?\n\nCette action est irréversible et videra complètement votre pipeline.')) {
+                return;
+            }
+            
+            // Vider le localStorage
+            localStorage.removeItem(OPPORTUNITIES_STORAGE_KEY);
+            
+            // Recharger les données
+            loadOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            showSuccess('Toutes les opportunités ont été supprimées');
         }
 
         // Gestion des modals
