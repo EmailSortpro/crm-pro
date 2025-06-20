@@ -1431,16 +1431,26 @@
 
         // Gestion des modals
         function openAddLicenseModal() {
+            console.log('Ouverture du modal d\'ajout de licence');
             resetLicenseForm();
             document.getElementById('licenseModalTitle').textContent = '➕ Nouvelle Licence';
             document.getElementById('submitLicenseBtn').textContent = '💾 Créer la licence';
             editingLicense = null;
-            document.getElementById('licenseModal').classList.add('show');
+            
+            // S'assurer que le modal s'affiche
+            const modal = document.getElementById('licenseModal');
+            modal.classList.add('show');
+            modal.style.display = 'flex';
+            
+            console.log('Modal ouvert:', modal.classList.contains('show'));
         }
 
         function closeLicenseModal() {
-            document.getElementById('licenseModal').classList.remove('show');
+            const modal = document.getElementById('licenseModal');
+            modal.classList.remove('show');
+            modal.style.display = 'none';
             resetLicenseForm();
+            console.log('Modal fermé');
         }
 
         function openLicenseDetails(licenseId) {
@@ -1770,7 +1780,14 @@
             document.getElementById('licenseForm').reset();
             document.getElementById('pricingPreview').style.display = 'none';
             editingLicense = null;
-            initializeDates();
+            
+            // Réinitialiser les dates par défaut
+            const today = new Date();
+            document.getElementById('startDate').value = today.toISOString().split('T')[0];
+            updateDates();
+            
+            // Debug pour vérifier que le formulaire est bien réinitialisé
+            console.log('Formulaire réinitialisé');
         }
 
         function editLicense(licenseId) {
@@ -2003,50 +2020,69 @@
         document.getElementById('licenseForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
+            // Validation des champs requis
+            const companyId = document.getElementById('licenseCompany').value;
+            const planId = document.getElementById('licensePlan').value;
+            const licenseCount = parseInt(document.getElementById('licenseCount').value);
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!companyId || !planId || !licenseCount || !startDate || !endDate) {
+                showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+                return;
+            }
+            
             const planSelect = document.getElementById('licensePlan');
             const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
             const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
-            const licenseCount = parseInt(document.getElementById('licenseCount').value);
             
-            const companyId = document.getElementById('licenseCompany').value;
-            const planId = document.getElementById('licensePlan').value;
             const company = companies.find(c => c.id === companyId);
             const plan = licensePlans.find(p => p.id === planId);
             
             const licenseData = {
                 id: editingLicense ? editingLicense.id : Date.now().toString(),
                 company_id: companyId,
-                company_name: company ? company.name : '',
+                company_name: company ? company.name : 'Société inconnue',
                 plan_id: planId,
-                plan_name: plan ? plan.name : '',
+                plan_name: plan ? plan.name : 'Plan inconnu',
                 plan_price: pricePerUser,
                 license_count: licenseCount,
-                start_date: document.getElementById('startDate').value,
-                end_date: document.getElementById('endDate').value,
-                renewal_date: document.getElementById('renewalDate').value,
-                status: document.getElementById('licenseStatus').value,
-                payment_method: document.getElementById('paymentMethod').value,
+                start_date: startDate,
+                end_date: endDate,
+                renewal_date: document.getElementById('renewalDate').value || endDate,
+                status: document.getElementById('licenseStatus').value || 'active',
+                payment_method: document.getElementById('paymentMethod').value || '',
                 monthly_cost: pricePerUser * licenseCount,
-                users_count: editingLicense ? editingLicense.users_count : 0
+                users_count: editingLicense ? (licenseUsers.filter(u => u.license_id === editingLicense.id).length) : 0
             };
             
-            if (editingLicense) {
-                // Modification
-                const index = licenses.findIndex(l => l.id === editingLicense.id);
-                if (index !== -1) {
-                    licenses[index] = licenseData;
+            try {
+                if (editingLicense) {
+                    // Modification
+                    const index = licenses.findIndex(l => l.id === editingLicense.id);
+                    if (index !== -1) {
+                        licenses[index] = licenseData;
+                        showNotification('Licence modifiée avec succès !', 'success');
+                    } else {
+                        showNotification('Erreur lors de la modification', 'error');
+                        return;
+                    }
+                } else {
+                    // Création
+                    licenses.push(licenseData);
+                    showNotification('Licence créée avec succès !', 'success');
                 }
-                showNotification('Licence modifiée avec succès !', 'success');
-            } else {
-                // Création
-                licenses.push(licenseData);
-                showNotification('Licence créée avec succès !', 'success');
+                
+                // Fermer le modal et actualiser
+                closeLicenseModal();
+                updateStats();
+                updateCounts();
+                filterLicenses(currentFilter);
+                
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde:', error);
+                showNotification('Erreur lors de la sauvegarde de la licence', 'error');
             }
-            
-            closeLicenseModal();
-            updateStats();
-            updateCounts();
-            filterLicenses(currentFilter);
         });
 
         // Fonctions utilitaires
@@ -2070,10 +2106,16 @@
         }
 
         function showNotification(message, type = 'success') {
+            // Supprimer les notifications existantes
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(n => n.remove());
+            
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
             document.body.appendChild(notification);
+            
+            console.log(`Notification ${type}: ${message}`);
             
             setTimeout(() => {
                 notification.remove();
