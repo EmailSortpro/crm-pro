@@ -3,26 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM Pro - Dashboard</title>
+    <title>CRM Pro - Gestion des Licences</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Styles spécifiques pour la page licences */
+        .license-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .license-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .license-expired {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .license-suspended {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .license-cancelled {
+            background: var(--gray-200);
+            color: var(--gray-600);
+        }
+
+        .license-expiring {
+            background: #fed7aa;
+            color: #c2410c;
+            animation: pulse 2s infinite;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+            background: var(--gray-200);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        .license-usage-bar {
+            background: var(--gray-200);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .license-usage-fill {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .license-usage-fill.warning {
+            background: var(--warning-color);
+        }
+
+        .license-usage-fill.danger {
+            background: var(--error-color);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideInUp 0.3s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-400);
+            padding: 0.25rem;
+            border-radius: var(--radius);
+            transition: var(--transition);
+        }
+
+        .close-btn:hover {
+            color: var(--gray-600);
+            background: var(--gray-100);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .pricing-preview {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-grid,
+            .form-grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Animations keyframes */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navigation -->
+    <!-- Navigation avec CSS unifié -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">
+            <div class="nav-logo">
                 <span class="logo-icon">🚀</span>
                 <span class="logo-text">CRM Pro</span>
-            </a>
+            </div>
             
             <div class="nav-menu">
                 <a href="index.html" class="nav-link">
                     <span class="nav-icon">🏠</span>
                     Accueil
                 </a>
-                <a href="dashboard.html" class="nav-link active">
+                <a href="dashboard.html" class="nav-link">
                     <span class="nav-icon">📊</span>
                     Tableau de bord
                 </a>
@@ -42,7 +270,7 @@
                     <span class="nav-icon">🎯</span>
                     Onboarding
                 </a>
-                <a href="licenses.html" class="nav-link">
+                <a href="licenses.html" class="nav-link active">
                     <span class="nav-icon">📄</span>
                     Licences
                 </a>
@@ -50,10 +278,8 @@
             
             <div class="nav-user">
                 <div class="user-info">
-                    <div>
-                        <div class="user-name" id="userName">Utilisateur</div>
-                        <div class="user-role" id="userRole">user</div>
-                    </div>
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
                 </div>
                 <button onclick="AuthService.logout()" class="logout-btn">
                     <span>🚪</span>
@@ -65,142 +291,241 @@
 
     <!-- Contenu principal -->
     <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
-        <!-- Titre de la page -->
-        <div style="margin-bottom: 2rem;">
-            <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
-                📊 Dashboard
-            </h1>
-            <p style="color: var(--gray-600);">
-                Vue d'ensemble de votre activité CRM et gestion des licences
-            </p>
+        <!-- En-tête de page -->
+        <div class="d-flex justify-between align-center mb-2" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
+                    📄 Gestion des Licences
+                </h1>
+                <p style="color: var(--gray-600);">
+                    Gérez les licences, utilisateurs, renouvellements et revenus récurrents
+                </p>
+            </div>
+            <button class="btn btn-primary" onclick="openAddLicenseModal()">
+                ➕ Nouvelle Licence
+            </button>
         </div>
 
-        <!-- Statistiques principales -->
-        <section class="stats-grid" id="statsContainer">
-            <!-- Les stats seront chargées dynamiquement -->
-        </section>
-
-        <!-- Graphiques et données -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-            <!-- Graphique évolution des sociétés -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">📈 Répartition des sociétés</h3>
-                    <p class="card-subtitle">Par statut dans votre base</p>
-                </div>
-                <div class="card-body">
-                    <canvas id="companiesChart" width="400" height="300"></canvas>
-                </div>
+        <!-- Statistiques des licences -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalLicenses">0</div>
+                <div class="stat-label">Licences Actives</div>
             </div>
-
-            <!-- Graphique revenus -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">💰 Revenus actuels</h3>
-                    <p class="card-subtitle">Répartition par plan de licence</p>
-                </div>
-                <div class="card-body">
-                    <canvas id="revenueChart" width="400" height="300"></canvas>
-                </div>
+            <div class="stat-card success">
+                <div class="stat-number" id="totalUsers">0</div>
+                <div class="stat-label">Utilisateurs Total</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-number" id="monthlyRevenue">0 €</div>
+                <div class="stat-label">Revenus Mensuels</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-number" id="expiringLicenses">0</div>
+                <div class="stat-label">Expirations 30j</div>
             </div>
         </div>
 
-        <!-- Tableaux de données -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-            <!-- Licences à renouveler -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">⚠️ Licences à renouveler</h3>
-                    <p class="card-subtitle">Échéances dans les 30 prochains jours</p>
-                </div>
-                <div class="card-body">
-                    <div class="table-container">
-                        <table class="table" id="renewalsTable">
-                            <thead>
-                                <tr>
-                                    <th>Société</th>
-                                    <th>Échéance</th>
-                                    <th>Montant</th>
-                                </tr>
-                            </thead>
-                            <tbody id="renewalsTableBody">
-                                <!-- Données chargées dynamiquement -->
-                            </tbody>
-                        </table>
+        <!-- Filtres et recherche -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-body">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <!-- Filtres par statut -->
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
+                        <button class="filter-btn active" data-filter="all" onclick="filterLicenses('all')">
+                            Toutes (<span id="count-all">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="active" onclick="filterLicenses('active')">
+                            Actives (<span id="count-active">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="expired" onclick="filterLicenses('expired')">
+                            Expirées (<span id="count-expired">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="expiring" onclick="filterLicenses('expiring')">
+                            À renouveler (<span id="count-expiring">0</span>)
+                        </button>
                     </div>
-                </div>
-            </div>
-
-            <!-- Activité récente basée sur les vraies données -->
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">🕒 Données récentes</h3>
-                    <p class="card-subtitle">Derniers éléments créés</p>
-                </div>
-                <div class="card-body">
-                    <div id="recentActivity">
-                        <!-- Activité chargée dynamiquement -->
+                    
+                    <!-- Barre de recherche -->
+                    <div style="flex: 1; min-width: 200px;">
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une licence..." 
+                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius);"
+                               oninput="searchLicenses()">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Actions rapides -->
-        <section style="margin-top: 3rem;">
-            <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--gray-800);">
-                🚀 Actions rapides
-            </h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                <a href="companies.html?action=add" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
-                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">🏢</span>
-                    <strong>Nouvelle société</strong>
-                    <small style="opacity: 0.8;">Ajouter un prospect</small>
-                </a>
+        <!-- Tableau des licences -->
+        <div class="card">
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Société</th>
+                                <th>Plan</th>
+                                <th>Utilisateurs</th>
+                                <th>Période</th>
+                                <th>Renouvellement</th>
+                                <th>Coût mensuel</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="licensesTableBody">
+                            <!-- Chargé dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
                 
-                <a href="licenses.html?action=add" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
-                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">🔑</span>
-                    <strong>Nouvelle licence</strong>
-                    <small style="opacity: 0.8;">Créer une licence</small>
-                </a>
-                
-                <a href="onboarding.html" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
-                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</span>
-                    <strong>Onboarding</strong>
-                    <small style="opacity: 0.8;">Suivre les étapes</small>
-                </a>
-                
-                <a href="forecast.html" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
-                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">📈</span>
-                    <strong>Forecast</strong>
-                    <small style="opacity: 0.8;">Prévoir les ventes</small>
-                </a>
+                <!-- État vide -->
+                <div id="emptyState" class="text-center" style="display: none; padding: 3rem; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                    <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucune licence trouvée</h3>
+                    <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                        Commencez par créer votre première licence
+                    </p>
+                    <button class="btn btn-primary" onclick="openAddLicenseModal()">
+                        ➕ Créer ma première licence
+                    </button>
+                </div>
             </div>
-        </section>
+        </div>
     </main>
+
+    <!-- Modal Nouvelle/Modifier Licence -->
+    <div id="licenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="licenseModalTitle">➕ Nouvelle Licence</h3>
+                <button class="close-btn" onclick="closeLicenseModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="licenseForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="licenseCompany">Société *</label>
+                            <select id="licenseCompany" required>
+                                <option value="">Sélectionner une société</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="licensePlan">Plan *</label>
+                            <select id="licensePlan" required onchange="updatePricing()">
+                                <option value="">Sélectionner un plan</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="licenseCount">Nombre de licences *</label>
+                            <input type="number" id="licenseCount" value="1" min="1" required onchange="updatePricing()">
+                        </div>
+                        <div class="form-group">
+                            <label for="startDate">Date de début *</label>
+                            <input type="date" id="startDate" required onchange="updateDates()">
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">Date de fin *</label>
+                            <input type="date" id="endDate" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid-3">
+                        <div class="form-group">
+                            <label for="renewalDate">Date de renouvellement</label>
+                            <input type="date" id="renewalDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="licenseStatus">Statut</label>
+                            <select id="licenseStatus">
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspendue</option>
+                                <option value="expired">Expirée</option>
+                                <option value="cancelled">Annulée</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="paymentMethod">Méthode de paiement</label>
+                            <select id="paymentMethod">
+                                <option value="">Sélectionner</option>
+                                <option value="stripe">Stripe</option>
+                                <option value="bank_transfer">Virement bancaire</option>
+                                <option value="check">Chèque</option>
+                                <option value="cash">Espèces</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Aperçu des coûts -->
+                    <div id="pricingPreview" class="pricing-preview" style="display: none;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
+                        <div class="form-grid-3" style="text-align: center;">
+                            <div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">
+                            Annuler
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitLicenseBtn">
+                            💾 Créer la licence
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="config.js"></script>
     <script>
-        // Variables globales pour les vraies données
-        let companies = [];
+        // Variables globales
         let licenses = [];
-        let contacts = [];
-        let companiesChart = null;
-        let revenueChart = null;
+        let companies = [];
+        let licensePlans = [];
+        let licenseUsers = []; // Stockage des utilisateurs pour chaque licence
+        let filteredLicenses = [];
+        let currentFilter = 'all';
+        let editingLicense = null;
 
-        // Initialisation de la page
+        // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
-            // Vérifier l'authentification
-            const isAuthenticated = await AuthService.requireAuth();
-            if (!isAuthenticated) return;
-
-            // Charger les informations utilisateur
-            loadUserInfo();
-
-            // Charger les données du dashboard
-            await loadDashboardData();
+            showLoading(true);
+            
+            try {
+                // Vérifier l'authentification
+                if (!await AuthService.requireAuth()) return;
+                
+                // Charger les informations utilisateur
+                loadUserInfo();
+                
+                // Initialiser la page
+                await initializePage();
+                
+            } catch (error) {
+                console.error('Erreur initialisation:', error);
+                showError('Erreur lors du chargement de la page');
+            } finally {
+                showLoading(false);
+            }
         });
 
-        // Charger les informations utilisateur
         function loadUserInfo() {
             const userInfo = AuthService.getUserInfo();
             if (userInfo) {
@@ -209,532 +534,1033 @@
             }
         }
 
-        // Charger toutes les données RÉELLES du dashboard
-        async function loadDashboardData() {
+        async function initializePage() {
+            await loadData();
+            populateSelects();
+            updateStats();
+            updateCounts();
+            renderLicenses();
+            initializeDates();
+        }
+        // Variables globales
+        let licenses = [];
+        let companies = [];
+        let licensePlans = [];
+        let licenseUsers = []; // Stockage des utilisateurs pour chaque licence
+        let filteredLicenses = [];
+        let currentFilter = 'all';
+        let editingLicense = null;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
             showLoading(true);
             
             try {
-                // Charger les vraies données de la base
-                const [companiesResult, licensesResult, contactsResult] = await Promise.all([
-                    CRMService.getCompanies(),
-                    CRMService.getLicenses(),
-                    CRMService.getContacts()
-                ]);
+                // Vérifier l'authentification
+                if (!await AuthService.requireAuth()) return;
                 
-                if (companiesResult.success) {
-                    companies = companiesResult.data;
-                    console.log('Sociétés chargées:', companies.length);
-                }
+                // Charger les informations utilisateur
+                loadUserInfo();
                 
-                if (licensesResult.success) {
-                    licenses = licensesResult.data;
-                    console.log('Licences chargées:', licenses.length);
-                }
-                
-                if (contactsResult.success) {
-                    contacts = contactsResult.data;
-                    console.log('Contacts chargés:', contacts.length);
-                }
-                
-                // Calculer les vraies statistiques
-                const realStats = calculateRealStats();
-                
-                // Afficher les données
-                renderStats(realStats);
-                renderCharts();
-                renderRenewalsTable();
-                renderRecentActivity();
+                // Initialiser la page
+                await initializePage();
                 
             } catch (error) {
-                console.error('Erreur dashboard:', error);
-                showError('Erreur lors du chargement des données');
-                
-                // Affichage de base en cas d'erreur
-                renderEmptyStats();
+                console.error('Erreur initialisation:', error);
+                showError('Erreur lors du chargement de la page');
             } finally {
                 showLoading(false);
             }
+        });
+
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            }
         }
 
-        // Calculer les vraies statistiques basées sur les données de la base
-        function calculateRealStats() {
-            // Statistiques des sociétés
-            const totalCompanies = companies.length;
-            const prospects = companies.filter(c => c.status === 'prospect').length;
-            const sponsors = companies.filter(c => c.status === 'sponsor').length;
-            const clients = companies.filter(c => c.status === 'client').length;
-            const onboarded = companies.filter(c => c.status === 'onboarded').length;
+        async function initializePage() {
+            await loadData();
+            populateSelects();
+            updateStats();
+            updateCounts();
+            renderLicenses();
+            initializeDates();
+        }
+
+        async function loadData() {
+            try {
+                console.log('🔄 Chargement des données...');
+                
+                // Charger toutes les données en parallèle
+                const [licensesResult, companiesResult, plansResult] = await Promise.all([
+                    CRMService.getLicenses(),
+                    CRMService.getCompanies(),
+                    CRMService.getLicensePlans()
+                ]);
+
+                console.log('📊 Résultats bruts:', {
+                    licenses: licensesResult,
+                    companies: companiesResult,
+                    plans: plansResult
+                });
+
+                // Traiter les licences
+                if (licensesResult.success && licensesResult.data) {
+                    licenses = licensesResult.data.map(license => {
+                        console.log('📝 Traitement licence:', license);
+                        
+                        // Récupérer les infos de la société
+                        const companyInfo = license.companies || {};
+                        
+                        // Récupérer les infos du plan
+                        const planInfo = license.license_plans || {};
+                        
+                        return {
+                            id: license.id,
+                            company_id: license.company_id,
+                            company_name: companyInfo.name || 'Société inconnue',
+                            plan_id: license.plan_id,
+                            plan_name: planInfo.name || 'Plan inconnu',
+                            plan_price: planInfo.price_per_user || 0,
+                            license_count: license.license_count || 0,
+                            start_date: license.start_date,
+                            end_date: license.end_date,
+                            renewal_date: license.renewal_date,
+                            status: license.status || 'active',
+                            payment_method: license.payment_method,
+                            monthly_cost: license.monthly_cost || 0
+                        };
+                    });
+                } else {
+                    console.log('❌ Pas de licences trouvées ou erreur');
+                    licenses = [];
+                }
+
+                // Traiter les sociétés
+                if (companiesResult.success && companiesResult.data) {
+                    companies = companiesResult.data;
+                } else {
+                    console.log('❌ Pas de sociétés trouvées ou erreur');
+                    companies = [];
+                }
+
+                // Traiter les plans
+                if (plansResult.success && plansResult.data) {
+                    licensePlans = plansResult.data;
+                } else {
+                    console.log('❌ Pas de plans trouvés ou erreur');
+                    licensePlans = [];
+                }
+
+                // Initialiser les utilisateurs (vide au début, sera rempli manuellement)
+                licenseUsers = [];
+
+                console.log('✅ Données finales:', {
+                    licenses: licenses.length,
+                    companies: companies.length,
+                    plans: licensePlans.length
+                });
+
+                // Initialiser les licences filtrées
+                filteredLicenses = [...licenses];
+
+            } catch (error) {
+                console.error('❌ Erreur chargement données:', error);
+                showError('Erreur lors du chargement des données: ' + error.message);
+                
+                // En cas d'erreur, initialiser des tableaux vides
+                licenses = [];
+                companies = [];
+                licensePlans = [];
+                licenseUsers = [];
+                filteredLicenses = [];
+            }
+        }
+
+        function populateSelects() {
+            populateCompanySelect();
+            populatePlanSelect();
+        }
+
+        function populateCompanySelect() {
+            const select = document.getElementById('licenseCompany');
+            select.innerHTML = '<option value="">Sélectionner une société</option>';
             
-            // Statistiques des licences
-            const activeLicenses = licenses.filter(l => l.status === 'active').length;
-            const totalLicenseCount = licenses
-                .filter(l => l.status === 'active')
-                .reduce((sum, l) => sum + (l.license_count || 0), 0);
-            const monthlyRevenue = licenses
-                .filter(l => l.status === 'active')
-                .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = `${company.name} (${company.status})`;
+                select.appendChild(option);
+            });
+        }
+
+        function populatePlanSelect() {
+            const select = document.getElementById('licensePlan');
+            select.innerHTML = '<option value="">Sélectionner un plan</option>';
             
-            // Licences expirant dans les 30 jours
+            licensePlans.forEach(plan => {
+                const option = document.createElement('option');
+                option.value = plan.id;
+                option.textContent = `${plan.name} - ${formatCurrency(plan.price_per_user)}/mois`;
+                option.dataset.price = plan.price_per_user;
+                select.appendChild(option);
+            });
+        }
+
+        function initializeDates() {
+            const today = new Date();
+            const startDateInput = document.getElementById('startDate');
+            if (!startDateInput.value) {
+                startDateInput.value = today.toISOString().split('T')[0];
+                updateDates();
+            }
+        }
+
+        function updateDates() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            if (!startDate || isNaN(startDate)) return;
+            
+            const endDate = new Date(startDate);
+            endDate.setFullYear(endDate.getFullYear() + 1);
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            
+            const renewalDate = new Date(endDate);
+            renewalDate.setMonth(renewalDate.getMonth() - 1);
+            document.getElementById('renewalDate').value = renewalDate.toISOString().split('T')[0];
+        }
+
+        function updatePricing() {
+            const planSelect = document.getElementById('licensePlan');
+            const licenseCount = parseInt(document.getElementById('licenseCount').value) || 0;
+            const selectedOption = planSelect.options[planSelect.selectedIndex];
+            
+            if (!selectedOption || !selectedOption.dataset.price) {
+                document.getElementById('pricingPreview').style.display = 'none';
+                return;
+            }
+            
+            const pricePerUser = parseFloat(selectedOption.dataset.price);
+            const monthlyTotal = pricePerUser * licenseCount;
+            const yearlyTotal = monthlyTotal * 12;
+            
+            document.getElementById('pricePerUser').textContent = formatCurrency(pricePerUser);
+            document.getElementById('monthlyTotal').textContent = formatCurrency(monthlyTotal);
+            document.getElementById('yearlyTotal').textContent = formatCurrency(yearlyTotal);
+            document.getElementById('pricingPreview').style.display = 'block';
+        }
+
+        function updateStats() {
+            const activeLicenses = licenses.filter(l => l.status === 'active');
+            const totalUsers = licenseUsers.filter(u => u.status === 'active').length;
+            const monthlyRevenue = activeLicenses.reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            
             const now = new Date();
-            const in30Days = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
-            const expiringLicenses = licenses.filter(l => {
-                if (l.status !== 'active' || !l.renewal_date) return false;
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const expiringLicenses = activeLicenses.filter(l => {
+                if (!l.renewal_date) return false;
                 const renewalDate = new Date(l.renewal_date);
-                return renewalDate >= now && renewalDate <= in30Days;
+                return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
             });
             
-            // Statistiques des contacts
-            const totalContacts = contacts.length;
-            const adminContacts = contacts.filter(c => c.is_admin_contact).length;
-            const paymentContacts = contacts.filter(c => c.is_payment_contact).length;
+            document.getElementById('totalLicenses').textContent = activeLicenses.length;
+            document.getElementById('totalUsers').textContent = totalUsers;
+            document.getElementById('monthlyRevenue').textContent = formatCurrency(monthlyRevenue);
+            document.getElementById('expiringLicenses').textContent = expiringLicenses.length;
+        }
+
+        function updateCounts() {
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             
-            return {
-                totalCompanies,
-                prospects,
-                sponsors,
-                clients,
-                onboarded,
-                activeLicenses,
-                totalLicenseCount,
-                monthlyRevenue,
-                expiringLicenses,
-                totalContacts,
-                adminContacts,
-                paymentContacts
+            const counts = {
+                all: licenses.length,
+                active: licenses.filter(l => l.status === 'active').length,
+                expired: licenses.filter(l => l.status === 'expired').length,
+                expiring: licenses.filter(l => {
+                    if (l.status !== 'active' || !l.renewal_date) return false;
+                    const renewalDate = new Date(l.renewal_date);
+                    return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
+                }).length
             };
-        }
-
-        // Rendu des statistiques principales avec les vraies données
-        function renderStats(stats) {
-            const container = document.getElementById('statsContainer');
             
-            // Calculs des pourcentages
-            const prospectPercent = stats.totalCompanies > 0 ? Math.round(stats.prospects / stats.totalCompanies * 100) : 0;
-            const clientPercent = stats.totalCompanies > 0 ? Math.round(stats.clients / stats.totalCompanies * 100) : 0;
-            const sponsorPercent = stats.totalCompanies > 0 ? Math.round(stats.sponsors / stats.totalCompanies * 100) : 0;
-            const onboardedPercent = stats.totalCompanies > 0 ? Math.round(stats.onboarded / stats.totalCompanies * 100) : 0;
-            
-            container.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-number">${stats.totalCompanies}</div>
-                    <div class="stat-label">Total Sociétés</div>
-                    <div class="stat-change">${stats.totalContacts} contacts</div>
-                </div>
-                
-                <div class="stat-card warning">
-                    <div class="stat-number">${stats.prospects}</div>
-                    <div class="stat-label">Prospects</div>
-                    <div class="stat-change">${prospectPercent}% du total</div>
-                </div>
-                
-                <div class="stat-card info">
-                    <div class="stat-number">${stats.sponsors}</div>
-                    <div class="stat-label">Sponsors</div>
-                    <div class="stat-change">${sponsorPercent}% du total</div>
-                </div>
-                
-                <div class="stat-card success">
-                    <div class="stat-number">${stats.clients}</div>
-                    <div class="stat-label">Clients</div>
-                    <div class="stat-change">${clientPercent}% du total</div>
-                </div>
-                
-                <div class="stat-card primary">
-                    <div class="stat-number">${stats.onboarded}</div>
-                    <div class="stat-label">Onboardés</div>
-                    <div class="stat-change">${onboardedPercent}% du total</div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-number">${stats.totalLicenseCount}</div>
-                    <div class="stat-label">Licences Actives</div>
-                    <div class="stat-change">${stats.activeLicenses} société(s)</div>
-                </div>
-                
-                <div class="stat-card success">
-                    <div class="stat-number">${formatCurrency(stats.monthlyRevenue)}</div>
-                    <div class="stat-label">Revenus Mensuels</div>
-                    <div class="stat-change">MRR (Monthly Recurring Revenue)</div>
-                </div>
-                
-                <div class="stat-card error">
-                    <div class="stat-number">${stats.expiringLicenses.length}</div>
-                    <div class="stat-label">Licences à renouveler</div>
-                    <div class="stat-change">Dans les 30 jours</div>
-                </div>
-            `;
-        }
-
-        // Rendu des graphiques avec les vraies données
-        function renderCharts() {
-            renderCompaniesChart();
-            renderRevenueChart();
-        }
-
-        // Graphique répartition des sociétés avec vraies données
-        function renderCompaniesChart() {
-            const ctx = document.getElementById('companiesChart').getContext('2d');
-            
-            if (companiesChart) {
-                companiesChart.destroy();
-            }
-            
-            // Calculer la répartition réelle
-            const prospects = companies.filter(c => c.status === 'prospect').length;
-            const sponsors = companies.filter(c => c.status === 'sponsor').length;
-            const clients = companies.filter(c => c.status === 'client').length;
-            const onboarded = companies.filter(c => c.status === 'onboarded').length;
-            
-            // Ne montrer que les statuts qui ont des données
-            const labels = [];
-            const data = [];
-            const colors = [];
-            
-            if (prospects > 0) {
-                labels.push('Prospects');
-                data.push(prospects);
-                colors.push('#f59e0b');
-            }
-            if (sponsors > 0) {
-                labels.push('Sponsors');
-                data.push(sponsors);
-                colors.push('#8b5cf6');
-            }
-            if (clients > 0) {
-                labels.push('Clients');
-                data.push(clients);
-                colors.push('#3b82f6');
-            }
-            if (onboarded > 0) {
-                labels.push('Onboardés');
-                data.push(onboarded);
-                colors.push('#10b981');
-            }
-            
-            // Si aucune donnée, afficher un message
-            if (data.length === 0) {
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                ctx.font = '16px Arial';
-                ctx.fillStyle = '#6b7280';
-                ctx.textAlign = 'center';
-                ctx.fillText('Aucune société dans la base', ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return;
-            }
-            
-            companiesChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                usePointStyle: true
-                            }
-                        }
-                    }
+            Object.keys(counts).forEach(key => {
+                const element = document.getElementById(`count-${key}`);
+                if (element) {
+                    element.textContent = counts[key];
                 }
             });
         }
 
-        // Graphique revenus par plan avec vraies données
-        function renderRevenueChart() {
-            const ctx = document.getElementById('revenueChart').getContext('2d');
+        function filterLicenses(filter) {
+            currentFilter = filter;
             
-            if (revenueChart) {
-                revenueChart.destroy();
-            }
-            
-            // Grouper les revenus par plan de licence
-            const revenueByPlan = {};
-            licenses.filter(l => l.status === 'active').forEach(license => {
-                const planName = license.license_plans?.name || 'Plan inconnu';
-                if (!revenueByPlan[planName]) {
-                    revenueByPlan[planName] = 0;
-                }
-                revenueByPlan[planName] += license.monthly_cost || 0;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
             });
+            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
             
-            const planNames = Object.keys(revenueByPlan);
-            const planRevenues = Object.values(revenueByPlan);
-            
-            // Si aucune donnée, afficher un message
-            if (planNames.length === 0) {
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                ctx.font = '16px Arial';
-                ctx.fillStyle = '#6b7280';
-                ctx.textAlign = 'center';
-                ctx.fillText('Aucune licence active', ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return;
-            }
-            
-            revenueChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: planNames,
-                    datasets: [{
-                        label: 'Revenus (€/mois)',
-                        data: planRevenues,
-                        backgroundColor: [
-                            '#667eea',
-                            '#764ba2', 
-                            '#48bb78',
-                            '#ed8936',
-                            '#9f7aea'
-                        ].slice(0, planNames.length),
-                        borderWidth: 1,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return formatCurrency(value);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Tableau des licences à renouveler avec vraies données
-        function renderRenewalsTable() {
-            const tableBody = document.getElementById('renewalsTableBody');
-            
-            // Licences expirant dans les 30 jours
             const now = new Date();
-            const in30Days = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
-            const expiringLicenses = licenses.filter(l => {
-                if (l.status !== 'active' || !l.renewal_date) return false;
-                const renewalDate = new Date(l.renewal_date);
-                return renewalDate >= now && renewalDate <= in30Days;
-            });
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             
-            if (expiringLicenses.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="3" style="text-align: center; color: var(--gray-500); padding: 2rem;">
-                            🎉 Aucune licence à renouveler dans les 30 prochains jours
-                        </td>
-                    </tr>
-                `;
+            switch (filter) {
+                case 'all':
+                    filteredLicenses = [...licenses];
+                    break;
+                case 'active':
+                    filteredLicenses = licenses.filter(l => l.status === 'active');
+                    break;
+                case 'expired':
+                    filteredLicenses = licenses.filter(l => l.status === 'expired');
+                    break;
+                case 'expiring':
+                    filteredLicenses = licenses.filter(l => {
+                        if (l.status !== 'active' || !l.renewal_date) return false;
+                        const renewalDate = new Date(l.renewal_date);
+                        return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
+                    });
+                    break;
+            }
+            
+            const searchTerm = document.getElementById('searchInput').value;
+            if (searchTerm) {
+                searchLicenses();
+            } else {
+                renderLicenses();
+            }
+        }
+
+        function searchLicenses() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderLicenses();
                 return;
             }
             
-            tableBody.innerHTML = expiringLicenses.map(license => {
-                const renewalDate = new Date(license.renewal_date);
-                const diffTime = renewalDate - now;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
-                let urgencyClass = '';
-                if (diffDays <= 7) urgencyClass = 'stat-card error';
-                else if (diffDays <= 15) urgencyClass = 'stat-card warning';
-                else urgencyClass = 'stat-card info';
+            const searchResults = filteredLicenses.filter(license => {
+                return license.company_name.toLowerCase().includes(searchTerm) ||
+                       license.plan_name.toLowerCase().includes(searchTerm);
+            });
+            
+            renderLicenses(searchResults);
+        }
+
+        function renderLicenses(licensesToRender = filteredLicenses) {
+            const tableBody = document.getElementById('licensesTableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            console.log('🎨 Rendu des licences:', licensesToRender);
+            
+            if (licensesToRender.length === 0) {
+                tableBody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            tableBody.innerHTML = licensesToRender.map(license => {
+                const isExpiring = isLicenseExpiring(license);
+                const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
+                const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
                 
                 return `
-                    <tr onclick="window.location.href='licenses.html#${license.id}'" style="cursor: pointer;">
+                    <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;">
                         <td>
-                            <strong>${license.companies?.name || 'Société inconnue'}</strong>
-                            <br>
-                            <small style="color: var(--gray-500);">${license.license_count} licence(s)</small>
+                            <div style="font-weight: 600;">${license.company_name}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
                         </td>
                         <td>
-                            <span class="${urgencyClass}" style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
-                                ${diffDays} jour${diffDays > 1 ? 's' : ''}
-                            </span>
-                            <br>
-                            <small style="color: var(--gray-500);">${formatDateShort(license.renewal_date)}</small>
+                            <div style="font-weight: 500;">${license.plan_name}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/mois</div>
                         </td>
                         <td>
-                            <strong>${formatCurrency(license.monthly_cost)}</strong>
-                            <br>
-                            <small style="color: var(--gray-500);">par mois</small>
+                            <span style="font-weight: 600; font-size: 1.125rem;">${licenseUsers.filter(u => u.license_id === license.id && u.status === 'active').length}/${license.license_count}</span>
+                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openUsersModal('${license.id}')" title="Gérer les utilisateurs" style="margin-left: 0.5rem;">
+                                👥
+                            </button>
+                        </td>
+                        <td>
+                            <div>${formatDateShort(license.start_date)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">→ ${formatDateShort(license.end_date)}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 500;">${formatDateShort(license.renewal_date)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${getDaysUntilRenewal(license.renewal_date)}</div>
+                        </td>
+                        <td>
+                            <span style="font-weight: 600; font-size: 1.125rem;">${formatCurrency(license.monthly_cost || 0)}</span>
+                        </td>
+                        <td>
+                            <span class="license-status ${statusClass}">${statusText}</span>
+                        </td>
+                        <td onclick="event.stopPropagation()">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-secondary" onclick="editLicense('${license.id}')" title="Modifier">
+                                    ✏️
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteLicense('${license.id}')" title="Supprimer">
+                                    🗑️
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // Activité récente basée sur les vraies données
-        function renderRecentActivity() {
-            const container = document.getElementById('recentActivity');
+        function isLicenseExpiring(license) {
+            if (license.status !== 'active' || !license.renewal_date) return false;
             
-            const activities = [];
+            const now = new Date();
+            const renewalDate = new Date(license.renewal_date);
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             
-            // Dernières sociétés créées
-            companies
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .slice(0, 2)
-                .forEach(company => {
-                    activities.push({
-                        icon: company.status === 'prospect' ? '🏢' : '🤝',
-                        action: `Société ${company.status}`,
-                        details: company.name,
-                        time: getTimeAgo(company.created_at)
-                    });
-                });
+            return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
+        }
+
+        function getDaysUntilRenewal(renewalDate) {
+            if (!renewalDate) return 'Non défini';
             
-            // Derniers contacts créés
-            contacts
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .slice(0, 2)
-                .forEach(contact => {
-                    activities.push({
-                        icon: '👤',
-                        action: 'Contact ajouté',
-                        details: `${contact.first_name} ${contact.last_name}${contact.company_name ? ' - ' + contact.company_name : ''}`,
-                        time: getTimeAgo(contact.created_at)
-                    });
-                });
+            const now = new Date();
+            const renewal = new Date(renewalDate);
+            const diffTime = renewal - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            // Licences actives récentes
-            licenses
-                .filter(l => l.status === 'active')
-                .sort((a, b) => new Date(b.created_at || b.start_date) - new Date(a.created_at || a.start_date))
-                .slice(0, 1)
-                .forEach(license => {
-                    activities.push({
-                        icon: '🔑',
-                        action: 'Licence active',
-                        details: `${license.companies?.name || 'Société'} - ${license.license_count} licence(s)`,
-                        time: getTimeAgo(license.created_at || license.start_date)
-                    });
-                });
+            if (diffDays < 0) {
+                return `Expiré depuis ${Math.abs(diffDays)} jour(s)`;
+            } else if (diffDays === 0) {
+                return 'Expire aujourd\'hui';
+            } else if (diffDays === 1) {
+                return 'Expire demain';
+            } else if (diffDays <= 30) {
+                return `Dans ${diffDays} jour(s)`;
+            } else {
+                return `Dans ${Math.ceil(diffDays / 30)} mois`;
+            }
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'active': 'Active',
+                'expired': 'Expirée',
+                'suspended': 'Suspendue',
+                'cancelled': 'Annulée'
+            };
+            return statusMap[status] || status;
+        }
+
+        function openLicenseDetails(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
             
-            // Trier par date et prendre les 5 plus récents
-            activities.sort((a, b) => new Date(b.actualDate) - new Date(a.actualDate));
-            const recentActivities = activities.slice(0, 5);
+            alert(`Détails de la licence ${license.company_name} - ${license.plan_name}\n\nCette fonctionnalité est en cours de développement.`);
+        }
+
+        // Gestion des modals
+        function openAddLicenseModal() {
+            resetLicenseForm();
+            document.getElementById('licenseModalTitle').textContent = '➕ Nouvelle Licence';
+            document.getElementById('submitLicenseBtn').textContent = '💾 Créer la licence';
+            editingLicense = null;
             
-            if (recentActivities.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; color: var(--gray-500); padding: 2rem;">
-                        📂 Aucune activité récente
-                        <br>
-                        <small>Commencez par ajouter des sociétés ou contacts</small>
-                    </div>
-                `;
+            const modal = document.getElementById('licenseModal');
+            modal.classList.add('show');
+        }
+
+        function closeLicenseModal() {
+            const modal = document.getElementById('licenseModal');
+            modal.classList.remove('show');
+            resetLicenseForm();
+        }
+
+        function resetLicenseForm() {
+            document.getElementById('licenseForm').reset();
+            document.getElementById('pricingPreview').style.display = 'none';
+            editingLicense = null;
+            
+            const today = new Date();
+            document.getElementById('startDate').value = today.toISOString().split('T')[0];
+            updateDates();
+        }
+
+        function editLicense(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            editingLicense = license;
+            
+            document.getElementById('licenseCompany').value = license.company_id;
+            document.getElementById('licensePlan').value = license.plan_id;
+            document.getElementById('licenseCount').value = license.license_count;
+            document.getElementById('startDate').value = license.start_date;
+            document.getElementById('endDate').value = license.end_date;
+            document.getElementById('renewalDate').value = license.renewal_date;
+            document.getElementById('licenseStatus').value = license.status;
+            document.getElementById('paymentMethod').value = license.payment_method || '';
+            
+            document.getElementById('licenseModalTitle').textContent = '✏️ Modifier la Licence';
+            document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
+            
+            updatePricing();
+            
+            document.getElementById('licenseModal').classList.add('show');
+        }
+
+        async function deleteLicense(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${license.company_name}" ?\n\nCette action est irréversible.`);
+            if (!confirmed) return;
+            
+            showLoading(true);
+            
+            try {
+                const result = await CRMService.deleteLicense(licenseId);
+                
+                if (result.success) {
+                    showSuccess('Licence supprimée avec succès');
+                    await loadData();
+                    updateStats();
+                    updateCounts();
+                    renderLicenses();
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la suppression');
+                }
+                
+            } catch (error) {
+                console.error('Erreur suppression licence:', error);
+                showError('Erreur lors de la suppression de la licence: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Gestion du formulaire
+        document.getElementById('licenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const companyId = document.getElementById('licenseCompany').value;
+            const planId = document.getElementById('licensePlan').value;
+            const licenseCount = parseInt(document.getElementById('licenseCount').value);
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!companyId || !planId || !licenseCount || !startDate || !endDate) {
+                showError('Veuillez remplir tous les champs obligatoires');
                 return;
             }
             
-            container.innerHTML = recentActivities.map(activity => `
-                <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--gray-200);">
-                    <div style="font-size: 1.5rem;">${activity.icon}</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: var(--gray-800); margin-bottom: 0.25rem;">
-                            ${activity.action}
-                        </div>
-                        <div style="color: var(--gray-600); font-size: 0.875rem;">
-                            ${activity.details}
-                        </div>
-                    </div>
-                    <div style="color: var(--gray-500); font-size: 0.75rem;">
-                        ${activity.time}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Fonction pour calculer le temps écoulé
-        function getTimeAgo(dateString) {
-            if (!dateString) return 'Date inconnue';
+            showLoading(true);
             
-            const now = new Date();
-            const date = new Date(dateString);
-            const diffTime = Math.abs(now - date);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays === 0) return "Aujourd'hui";
-            if (diffDays === 1) return "Hier";
-            if (diffDays < 7) return `Il y a ${diffDays} jours`;
-            if (diffDays < 30) return `Il y a ${Math.ceil(diffDays / 7)} semaine(s)`;
-            return `Il y a ${Math.ceil(diffDays / 30)} mois`;
-        }
+            try {
+                const planSelect = document.getElementById('licensePlan');
+                const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
+                const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
+                
+                const licenseData = {
+                    company_id: companyId,
+                    plan_id: planId,
+                    license_count: licenseCount,
+                    start_date: startDate,
+                    end_date: endDate,
+                    renewal_date: document.getElementById('renewalDate').value || endDate,
+                    status: document.getElementById('licenseStatus').value || 'active',
+                    payment_method: document.getElementById('paymentMethod').value || null,
+                    monthly_cost: pricePerUser * licenseCount
+                };
+                
+                let result;
+                if (editingLicense) {
+                    result = await CRMService.updateLicense(editingLicense.id, licenseData);
+                } else {
+                    result = await CRMService.createLicense(licenseData);
+                }
+                
+                if (result.success) {
+                    showSuccess(editingLicense ? 'Licence modifiée avec succès !' : 'Licence créée avec succès !');
+                    closeLicenseModal();
+                    await loadData();
+                    updateStats();
+                    updateCounts();
+                    renderLicenses();
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la sauvegarde');
+                }
+                
+            } catch (error) {
+                console.error('Erreur sauvegarde licence:', error);
+                showError('Erreur lors de la sauvegarde de la licence: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
 
-        // Affichage par défaut si pas de données
-        function renderEmptyStats() {
-            const container = document.getElementById('statsContainer');
-            container.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Sociétés</div>
-                    <div class="stat-change">Aucune donnée</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Licences</div>
-                    <div class="stat-change">Aucune donnée</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">0 €</div>
-                    <div class="stat-label">Revenus</div>
-                    <div class="stat-change">Aucune donnée</div>
-                </div>
-            `;
-        }
-
-        // Rafraîchir les données
-        async function refreshDashboard() {
-            await loadDashboardData();
-            showSuccess('Dashboard mis à jour !');
-        }
-
-        // Auto-refresh toutes les 5 minutes
-        setInterval(refreshDashboard, 5 * 60 * 1000);
-
-        // Raccourcis clavier
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch (e.key) {
-                    case 'r':
-                        e.preventDefault();
-                        refreshDashboard();
-                        break;
-                    case '1':
-                        e.preventDefault();
-                        window.location.href = 'companies.html';
-                        break;
-                    case '2':
-                        e.preventDefault();
-                        window.location.href = 'forecast.html';
-                        break;
-                    case '3':
-                        e.preventDefault();
-                        window.location.href = 'onboarding.html';
-                        break;
-                    case '4':
-                        e.preventDefault();
-                        window.location.href = 'licenses.html';
-                        break;
+        // Fermer les modals en cliquant en dehors
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                if (e.target.id === 'licenseModal') {
+                    closeLicenseModal();
                 }
             }
         });
 
-        // Animation d'entrée
-        window.addEventListener('load', () => {
-            document.querySelector('main').classList.add('animate-fadeIn');
+    <script src="config.js"></script>
+    <script>
+        function showAddUserForm(licenseId) {
+            document.getElementById('addUserForm').style.display = 'block';
+            document.getElementById('importUserForm').style.display = 'none';
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'none';
+            document.getElementById('userForm').reset();
+        }
+
+        function showImportUserForm(licenseId) {
+            document.getElementById('importUserForm').style.display = 'block';
+            document.getElementById('addUserForm').style.display = 'none';
+        }
+
+        function hideImportUserForm() {
+            document.getElementById('importUserForm').style.display = 'none';
+            document.getElementById('csvFile').value = '';
+        }
+
+        function addUser(event, licenseId) {
+            event.preventDefault();
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
+            if (currentUsers.length >= license.license_count) {
+                showError('Nombre maximum d\'utilisateurs atteint pour cette licence');
+                return;
+            }
+            
+            const firstName = document.getElementById('userFirstName').value;
+            const lastName = document.getElementById('userLastName').value;
+            const email = document.getElementById('userEmail').value;
+            const role = document.getElementById('userRole').value;
+            
+            // Vérifier que l'email n'existe pas déjà
+            const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
+            if (existingUser) {
+                showError('Un utilisateur avec cet email existe déjà pour cette licence');
+                return;
+            }
+            
+            const newUser = {
+                id: Date.now().toString(),
+                license_id: licenseId,
+                first_name: firstName,
+                last_name: lastName,
+                email: email,
+                role: role,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                last_activity: null
+            };
+            
+            licenseUsers.push(newUser);
+            
+            showSuccess('Utilisateur ajouté avec succès');
+            hideAddUserForm();
+            
+            // Actualiser la modal
+            openUsersModal(licenseId);
+        }
+
+        function downloadTemplate() {
+            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'modele_utilisateurs.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        function importUsers(licenseId) {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Veuillez sélectionner un fichier CSV');
+                return;
+            }
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n');
+                    
+                    if (lines.length < 2) {
+                        showError('Le fichier CSV doit contenir au moins une ligne de données');
+                        return;
+                    }
+                    
+                    // Ignorer la première ligne (en-têtes)
+                    const dataLines = lines.slice(1).filter(line => line.trim());
+                    
+                    const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
+                    const availableSlots = license.license_count - currentUsers.length;
+                    
+                    if (dataLines.length > availableSlots) {
+                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
+                        return;
+                    }
+                    
+                    let importedCount = 0;
+                    const errors = [];
+                    
+                    dataLines.forEach((line, index) => {
+                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+                        
+                        if (columns.length < 3) {
+                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
+                            return;
+                        }
+                        
+                        const [firstName, lastName, email, role = 'user'] = columns;
+                        
+                        if (!firstName || !lastName || !email) {
+                            errors.push(`Ligne ${index + 2}: Données manquantes`);
+                            return;
+                        }
+                        
+                        // Vérifier si l'email existe déjà
+                        const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
+                        if (existingUser) {
+                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
+                            return;
+                        }
+                        
+                        const newUser = {
+                            id: Date.now().toString() + '_' + index,
+                            license_id: licenseId,
+                            first_name: firstName,
+                            last_name: lastName,
+                            email: email,
+                            role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            last_activity: null
+                        };
+                        
+                        licenseUsers.push(newUser);
+                        importedCount++;
+                    });
+                    
+                    if (errors.length > 0) {
+                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
+                    } else {
+                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
+                    }
+                    
+                    hideImportUserForm();
+                    openUsersModal(licenseId);
+                    
+                } catch (error) {
+                    console.error('Erreur import CSV:', error);
+                    showError('Erreur lors de l\'import du fichier CSV');
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function toggleUserStatus(userId) {
+            const user = licenseUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            user.status = user.status === 'active' ? 'inactive' : 'active';
+            
+            showSuccess(`Utilisateur ${user.status === 'active' ? 'activé' : 'désactivé'}`);
+            
+            // Actualiser la modal
+            const licenseId = user.license_id;
+            openUsersModal(licenseId);
+        }
+
+        function removeUser(userId) {
+            const user = licenseUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${user.first_name} ${user.last_name} ?`)) {
+                return;
+            }
+            
+            const index = licenseUsers.findIndex(u => u.id === userId);
+            if (index !== -1) {
+                licenseUsers.splice(index, 1);
+                showSuccess('Utilisateur supprimé');
+                
+                // Actualiser la modal
+                openUsersModal(user.license_id);
+            }
+        }
+
+        function saveUsersChanges(licenseId) {
+            // Dans une vraie application, ici on enverrait les données à Supabase
+            // Pour le moment, les changements sont déjà appliqués en temps réel
+            
+            showSuccess('Modifications sauvegardées');
+            closeUsersModal();
+            
+            // Mettre à jour les stats et le tableau
+            updateStats();
+            renderLicenses();
+        }
+
+        // Fermer les modals avec la touche Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const licenseModal = document.getElementById('licenseModal');
+                const detailsModal = document.getElementById('detailsModal');
+                const usersModal = document.getElementById('usersModal');
+                
+                if (licenseModal.classList.contains('show')) {
+                    closeLicenseModal();
+                } else if (detailsModal.classList.contains('show')) {
+                    closeDetailsModal();
+                } else if (usersModal.classList.contains('show')) {
+                    closeUsersModal();
+                }
+            }
         });
+            document.getElementById('addUserForm').style.display = 'block';
+            document.getElementById('importUserForm').style.display = 'none';
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'none';
+            document.getElementById('userForm').reset();
+        }
+
+        function showImportUserForm(licenseId) {
+            document.getElementById('importUserForm').style.display = 'block';
+            document.getElementById('addUserForm').style.display = 'none';
+        }
+
+        function hideImportUserForm() {
+            document.getElementById('importUserForm').style.display = 'none';
+            document.getElementById('csvFile').value = '';
+        }
+
+        function addUser(event, licenseId) {
+            event.preventDefault();
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
+            if (currentUsers.length >= license.license_count) {
+                showError('Nombre maximum d\'utilisateurs atteint pour cette licence');
+                return;
+            }
+            
+            const firstName = document.getElementById('userFirstName').value;
+            const lastName = document.getElementById('userLastName').value;
+            const email = document.getElementById('userEmail').value;
+            const role = document.getElementById('userRole').value;
+            
+            // Vérifier que l'email n'existe pas déjà
+            const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
+            if (existingUser) {
+                showError('Un utilisateur avec cet email existe déjà pour cette licence');
+                return;
+            }
+            
+            const newUser = {
+                id: Date.now().toString(),
+                license_id: licenseId,
+                first_name: firstName,
+                last_name: lastName,
+                email: email,
+                role: role,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                last_activity: null
+            };
+            
+            licenseUsers.push(newUser);
+            
+            showSuccess('Utilisateur ajouté avec succès');
+            hideAddUserForm();
+            
+            // Actualiser la modal
+            openUsersModal(licenseId);
+        }
+
+        function downloadTemplate() {
+            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'modele_utilisateurs.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        function importUsers(licenseId) {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Veuillez sélectionner un fichier CSV');
+                return;
+            }
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n');
+                    
+                    if (lines.length < 2) {
+                        showError('Le fichier CSV doit contenir au moins une ligne de données');
+                        return;
+                    }
+                    
+                    // Ignorer la première ligne (en-têtes)
+                    const dataLines = lines.slice(1).filter(line => line.trim());
+                    
+                    const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
+                    const availableSlots = license.license_count - currentUsers.length;
+                    
+                    if (dataLines.length > availableSlots) {
+                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
+                        return;
+                    }
+                    
+                    let importedCount = 0;
+                    const errors = [];
+                    
+                    dataLines.forEach((line, index) => {
+                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+                        
+                        if (columns.length < 3) {
+                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
+                            return;
+                        }
+                        
+                        const [firstName, lastName, email, role = 'user'] = columns;
+                        
+                        if (!firstName || !lastName || !email) {
+                            errors.push(`Ligne ${index + 2}: Données manquantes`);
+                            return;
+                        }
+                        
+                        // Vérifier si l'email existe déjà
+                        const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
+                        if (existingUser) {
+                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
+                            return;
+                        }
+                        
+                        const newUser = {
+                            id: Date.now().toString() + '_' + index,
+                            license_id: licenseId,
+                            first_name: firstName,
+                            last_name: lastName,
+                            email: email,
+                            role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            last_activity: null
+                        };
+                        
+                        licenseUsers.push(newUser);
+                        importedCount++;
+                    });
+                    
+                    if (errors.length > 0) {
+                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
+                    } else {
+                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
+                    }
+                    
+                    hideImportUserForm();
+                    openUsersModal(licenseId);
+                    
+                } catch (error) {
+                    console.error('Erreur import CSV:', error);
+                    showError('Erreur lors de l\'import du fichier CSV');
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function toggleUserStatus(userId) {
+            const user = licenseUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            user.status = user.status === 'active' ? 'inactive' : 'active';
+            
+            showSuccess(`Utilisateur ${user.status === 'active' ? 'activé' : 'désactivé'}`);
+            
+            // Actualiser la modal
+            const licenseId = user.license_id;
+            openUsersModal(licenseId);
+        }
+
+        function removeUser(userId) {
+            const user = licenseUsers.find(u => u.id === userId);
+            if (!user) return;
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${user.first_name} ${user.last_name} ?`)) {
+                return;
+            }
+            
+            const index = licenseUsers.findIndex(u => u.id === userId);
+            if (index !== -1) {
+                licenseUsers.splice(index, 1);
+                showSuccess('Utilisateur supprimé');
+                
+                // Actualiser la modal
+                openUsersModal(user.license_id);
+            }
+        }
+
+        function saveUsersChanges(licenseId) {
+            // Dans une vraie application, ici on enverrait les données à Supabase
+            // Pour le moment, les changements sont déjà appliqués en temps réel
+            
+            showSuccess('Modifications sauvegardées');
+            closeUsersModal();
+            
+            // Mettre à jour les stats et le tableau
+            updateStats();
+            renderLicenses();
+        }
     </script>
 </body>
 </html>
