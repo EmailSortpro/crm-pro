@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Suivi Onboarding</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header de navigation -->
+    <header class="page-header">
+        <div class="container">
+            <nav class="navbar">
+                <a href="dashboard.html" class="logo">
+                    <div class="logo-icon">🚀</div>
+                    <h1>CRM Pro</h1>
+                </a>
+                
+                <ul class="nav-menu">
+                    <li><a href="dashboard.html" class="nav-link">📊 Dashboard</a></li>
+                    <li><a href="companies.html" class="nav-link">🏢 Sociétés</a></li>
+                    <li><a href="forecast.html" class="nav-link">📈 Forecast</a></li>
+                    <li><a href="onboarding.html" class="nav-link active">🎯 Onboarding</a></li>
+                    <li><a href="licenses.html" class="nav-link">🔑 Licences</a></li>
+                </ul>
+                
+                <div class="user-menu">
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar"></div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName"></div>
+                            <div class="user-role" id="userRole"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="AuthService.logout()">
+                        Déconnexion
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        <!-- En-tête de page -->
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
+                🎯 Suivi Onboarding
+            </h1>
+            <p style="color: var(--gray-600);">
+                Suivez l'avancement de l'onboarding de vos clients et gérez les étapes clés
+            </p>
+        </div>
+
+        <!-- Statistiques d'onboarding -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOnboarding">0</div>
+                <div class="stat-label">Onboarding Actifs</div>
+                <div class="stat-change" id="onboardingChange">En cours</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-number" id="completedOnboarding">0</div>
+                <div class="stat-label">Terminés ce mois</div>
+                <div class="stat-change" id="completedChange">+0% vs mois dernier</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-number" id="avgCompletionTime">0j</div>
+                <div class="stat-label">Durée Moyenne</div>
+                <div class="stat-change" id="timeChange">Temps de réalisation</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-number" id="delayedOnboarding">0</div>
+                <div class="stat-label">En Retard</div>
+                <div class="stat-change" id="delayedChange">Actions requises</div>
+            </div>
+        </div>
+
+        <!-- Filtres et vue d'ensemble -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-body" style="padding: 1.5rem;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <!-- Filtres par statut -->
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
+                        <button class="filter-btn active" onclick="filterOnboarding('all')">
+                            Tous (<span id="count-all">0</span>)
+                        </button>
+                        <button class="filter-btn" onclick="filterOnboarding('in-progress')">
+                            En cours (<span id="count-in-progress">0</span>)
+                        </button>
+                        <button class="filter-btn" onclick="filterOnboarding('completed')">
+                            Terminés (<span id="count-completed">0</span>)
+                        </button>
+                        <button class="filter-btn" onclick="filterOnboarding('delayed')">
+                            En retard (<span id="count-delayed">0</span>)
+                        </button>
+                    </div>
+                    
+                    <!-- Barre de recherche -->
+                    <div style="flex: 1; min-width: 200px;">
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
+                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"
+                               oninput="searchOnboarding()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liste des onboarding -->
+        <div id="onboardingGrid" class="onboarding-grid">
+            <!-- Chargé dynamiquement -->
+        </div>
+
+        <!-- État vide -->
+        <div id="emptyState" class="card" style="display: none; text-align: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+            <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucun onboarding trouvé</h3>
+            <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                Les nouveaux clients apparaîtront automatiquement ici
+            </p>
+            <a href="companies.html" class="btn btn-primary">
+                🏢 Voir les sociétés
+            </a>
+        </div>
+    </main>
+
+    <!-- Modal Détails Onboarding -->
+    <div id="modal-onboarding-details" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="onboardingDetailsTitle">Onboarding - Société</h3>
+                <button class="close-btn" onclick="closeModal('onboarding-details')">&times;</button>
+            </div>
+            
+            <div id="onboardingDetailsContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Variables globales
+        let companies = [];
+        let allOnboardingSteps = [];
+        let filteredOnboarding = [];
+        let selectedCompany = null;
+
+        // Styles pour la page onboarding
+        const onboardingStyles = `
+            .onboarding-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+                gap: 1.5rem;
+            }
+            .onboarding-card {
+                background: var(--white);
+                border: 2px solid var(--gray-200);
+                border-radius: var(--radius-lg);
+                padding: 1.5rem;
+                transition: all var(--transition);
+                cursor: pointer;
+                position: relative;
+            }
+            .onboarding-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+                border-color: var(--primary-color);
+            }
+            .onboarding-card.completed {
+                border-color: var(--success-color);
+                background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+            }
+            .onboarding-card.delayed {
+                border-color: var(--error-color);
+                background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+            }
+            .onboarding-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 1rem;
+            }
+            .company-name {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--gray-800);
+                margin-bottom: 0.25rem;
+            }
+            .company-status {
+                font-size: 0.875rem;
+                color: var(--gray-500);
+            }
+            .progress-circle {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 0.875rem;
+                color: var(--white);
+                position: relative;
+            }
+            .progress-circle.low {
+                background: conic-gradient(var(--error-color) var(--progress, 0%), var(--gray-200) 0%);
+            }
+            .progress-circle.medium {
+                background: conic-gradient(var(--warning-color) var(--progress, 0%), var(--gray-200) 0%);
+            }
+            .progress-circle.high {
+                background: conic-gradient(var(--success-color) var(--progress, 0%), var(--gray-200) 0%);
+            }
+            .progress-circle.complete {
+                background: var(--success-color);
+            }
+            .steps-preview {
+                display: grid;
+                gap: 0.5rem;
+                margin-bottom: 1rem;
+            }
+            .step-item {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.5rem;
+                background: var(--gray-50);
+                border-radius: var(--radius);
+                font-size: 0.875rem;
+                transition: all var(--transition);
+            }
+            .step-item.completed {
+                background: var(--success-color);
+                color: var(--white);
+            }
+            .step-item.in-progress {
+                background: var(--warning-color);
+                color: var(--white);
+            }
+            .step-checkbox {
+                width: 18px;
+                height: 18px;
+                border: 2px solid var(--gray-300);
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                color: var(--white);
+                flex-shrink: 0;
+            }
+            .step-checkbox.completed {
+                background: var(--success-color);
+                border-color: var(--success-color);
+            }
+            .onboarding-actions {
+                display: flex;
+                gap: 0.5rem;
+                justify-content: flex-end;
+                margin-top: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid var(--gray-200);
+            }
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                align-items: center;
+                justify-content: center;
+            }
+            .modal.show {
+                display: flex;
+            }
+            .modal-content {
+                background: var(--white);
+                border-radius: var(--radius-lg);
+                padding: 2rem;
+                width: 90%;
+                max-width: 900px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid var(--gray-200);
+            }
+            .modal-title {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: var(--gray-800);
+            }
+            .close-btn {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: var(--gray-500);
+                padding: 0.25rem;
+                border-radius: var(--radius);
+                transition: all var(--transition);
+            }
+            .close-btn:hover {
+                background: var(--gray-100);
+                color: var(--gray-700);
+            }
+            .step-detail {
+                background: var(--white);
+                border: 2px solid var(--gray-200);
+                border-radius: var(--radius-lg);
+                padding: 1.5rem;
+                margin-bottom: 1rem;
+                transition: all var(--transition);
+            }
+            .step-detail.completed {
+                border-color: var(--success-color);
+                background: var(--gray-50);
+            }
+            .step-detail.current {
+                border-color: var(--primary-color);
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            }
+            .step-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+            }
+            .step-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                color: var(--gray-800);
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+            .step-status {
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+            }
+            .status-completed {
+                background: var(--success-color);
+                color: var(--white);
+            }
+            .status-pending {
+                background: var(--gray-300);
+                color: var(--gray-700);
+            }
+            .status-in-progress {
+                background: var(--warning-color);
+                color: var(--white);
+            }
+        `;
+
+        // Injecter les styles
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = onboardingStyles;
+        document.head.appendChild(styleSheet);
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isAuthenticated = await AuthService.requireAuth();
+            if (!isAuthenticated) return;
+
+            loadUserInfo();
+            await loadOnboardingData();
+        });
+
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email;
+                document.getElementById('userRole').textContent = userInfo.role;
+                document.getElementById('userAvatar').textContent = getInitials(userInfo.email, '');
+            }
+        }
+
+        async function loadOnboardingData() {
+            showLoading(true);
+            
+            try {
+                // Charger les sociétés
+                const companiesResult = await CRMService.getCompanies();
+                if (companiesResult.success) {
+                    companies = companiesResult.data;
+                    
+                    // Charger les étapes d'onboarding pour toutes les sociétés
+                    await loadAllOnboardingSteps();
+                    
+                    // Calculer les statistiques
+                    calculateOnboardingStats();
+                    
+                    // Mettre à jour l'affichage
+                    filterOnboarding('all');
+                    
+                } else {
+                    showError('Erreur chargement sociétés: ' + companiesResult.error);
+                }
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors du chargement des données');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadAllOnboardingSteps() {
+            allOnboardingSteps = [];
+            
+            for (const company of companies) {
+                try {
+                    const steps = await getOnboardingSteps(company.id);
+                    if (steps.length === 0) {
+                        // Créer les étapes par défaut si elles n'existent pas
+                        await createDefaultOnboardingSteps(company.id);
+                        const newSteps = await getOnboardingSteps(company.id);
+                        allOnboardingSteps.push(...newSteps.map(step => ({
+                            ...step,
+                            company_name: company.name,
+                            company_status: company.status
+                        })));
+                    } else {
+                        allOnboardingSteps.push(...steps.map(step => ({
+                            ...step,
+                            company_name: company.name,
+                            company_status: company.status
+                        })));
+                    }
+                } catch (error) {
+                    console.error(`Erreur chargement étapes pour ${company.name}:`, error);
+                }
+            }
+        }
+
+        async function getOnboardingSteps(companyId) {
+            try {
+                const { data, error } = await supabase
+                    .from('onboarding_steps')
+                    .select('*')
+                    .eq('company_id', companyId)
+                    .order('step_order', { ascending: true });
+                
+                if (error) throw error;
+                return data || [];
+            } catch (error) {
+                console.error('Erreur récupération étapes onboarding:', error);
+                return [];
+            }
+        }
+
+        async function createDefaultOnboardingSteps(companyId) {
+            const defaultSteps = [
+                { company_id: companyId, step_name: 'Kick-off effectué', step_order: 1 },
+                { company_id: companyId, step_name: 'Prérequis réseaux', step_order: 2 },
+                { company_id: companyId, step_name: 'Intégration système', step_order: 3 },
+                { company_id: companyId, step_name: 'Adresses emails validées', step_order: 4 },
+                { company_id: companyId, step_name: 'Tests utilisateurs fonctionnels', step_order: 5 },
+                { company_id: companyId, step_name: 'Meeting de clôture', step_order: 6 }
+            ];
+            
+            try {
+                const { error } = await supabase
+                    .from('onboarding_steps')
+                    .insert(defaultSteps);
+                
+                if (error) throw error;
+            } catch (error) {
+                console.error('Erreur création étapes par défaut:', error);
+            }
+        }
+
+        function calculateOnboardingStats() {
+            // Grouper les étapes par société
+            const companiesWithSteps = {};
+            allOnboardingSteps.forEach(step => {
+                if (!companiesWithSteps[step.company_id]) {
+                    companiesWithSteps[step.company_id] = {
+                        company_name: step.company_name,
+                        company_status: step.company_status,
+                        steps: []
+                    };
+                }
+                companiesWithSteps[step.company_id].steps.push(step);
+            });
+
+            // Calculer les métriques
+            let totalOnboarding = 0;
+            let completedOnboarding = 0;
+            let delayedOnboarding = 0;
+            let totalCompletionDays = 0;
+            let completedCount = 0;
+
+            Object.values(companiesWithSteps).forEach(company => {
+                const steps = company.steps;
+                const completedSteps = steps.filter(s => s.is_completed).length;
+                const totalSteps = steps.length;
+                const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+
+                if (progressPercent > 0 && progressPercent < 100) {
+                    totalOnboarding++;
+                    
+                    // Vérifier s'il y a du retard (estimation basée sur les dates dues)
+                    const hasDelay = steps.some(s => !s.is_completed && s.due_date && new Date(s.due_date) < new Date());
+                    if (hasDelay) {
+                        delayedOnboarding++;
+                    }
+                } else if (progressPercent === 100) {
+                    completedOnboarding++;
+                    
+                    // Calculer la durée (simulé)
+                    const firstStep = steps.find(s => s.step_order === 1);
+                    const lastStep = steps.find(s => s.step_order === totalSteps);
+                    if (firstStep?.completion_date && lastStep?.completion_date) {
+                        const startDate = new Date(firstStep.completion_date);
+                        const endDate = new Date(lastStep.completion_date);
+                        const diffDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                        totalCompletionDays += diffDays;
+                        completedCount++;
+                    }
+                }
+            });
+
+            const avgCompletionTime = completedCount > 0 ? Math.round(totalCompletionDays / completedCount) : 0;
+
+            // Mettre à jour l'affichage
+            document.getElementById('totalOnboarding').textContent = totalOnboarding;
+            document.getElementById('completedOnboarding').textContent = completedOnboarding;
+            document.getElementById('avgCompletionTime').textContent = avgCompletionTime + 'j';
+            document.getElementById('delayedOnboarding').textContent = delayedOnboarding;
+
+            // Mettre à jour les changements (simulés)
+            document.getElementById('onboardingChange').textContent = 'En cours';
+            document.getElementById('completedChange').textContent = '+15% vs mois dernier';
+            document.getElementById('timeChange').textContent = 'Temps de réalisation';
+            document.getElementById('delayedChange').textContent = 'Actions requises';
+        }
+
+        function filterOnboarding(filter) {
+            // Mettre à jour les boutons de filtre
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Grouper par société et filtrer
+            const companiesWithSteps = {};
+            allOnboardingSteps.forEach(step => {
+                if (!companiesWithSteps[step.company_id]) {
+                    companiesWithSteps[step.company_id] = {
+                        company_id: step.company_id,
+                        company_name: step.company_name,
+                        company_status: step.company_status,
+                        steps: []
+                    };
+                }
+                companiesWithSteps[step.company_id].steps.push(step);
+            });
+
+            let filtered = Object.values(companiesWithSteps);
+
+            if (filter !== 'all') {
+                filtered = filtered.filter(company => {
+                    const steps = company.steps;
+                    const completedSteps = steps.filter(s => s.is_completed).length;
+                    const totalSteps = steps.length;
+                    const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+
+                    switch (filter) {
+                        case 'in-progress':
+                            return progressPercent > 0 && progressPercent < 100;
+                        case 'completed':
+                            return progressPercent === 100;
+                        case 'delayed':
+                            return steps.some(s => !s.is_completed && s.due_date && new Date(s.due_date) < new Date());
+                        default:
+                            return true;
+                    }
+                });
+            }
+
+            filteredOnboarding = filtered;
+            updateCounts();
+            renderOnboarding();
+        }
+
+        function updateCounts() {
+            const all = Object.keys(companies.reduce((acc, company) => {
+                acc[company.id] = true;
+                return acc;
+            }, {})).length;
+
+            const companiesWithSteps = {};
+            allOnboardingSteps.forEach(step => {
+                if (!companiesWithSteps[step.company_id]) {
+                    companiesWithSteps[step.company_id] = { steps: [] };
+                }
+                companiesWithSteps[step.company_id].steps.push(step);
+            });
+
+            let inProgress = 0;
+            let completed = 0;
+            let delayed = 0;
+
+            Object.values(companiesWithSteps).forEach(company => {
+                const steps = company.steps;
+                const completedSteps = steps.filter(s => s.is_completed).length;
+                const totalSteps = steps.length;
+                const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+
+                if (progressPercent > 0 && progressPercent < 100) {
+                    inProgress++;
+                }
+                if (progressPercent === 100) {
+                    completed++;
+                }
+                if (steps.some(s => !s.is_completed && s.due_date && new Date(s.due_date) < new Date())) {
+                    delayed++;
+                }
+            });
+
+            document.getElementById('count-all').textContent = all;
+            document.getElementById('count-in-progress').textContent = inProgress;
+            document.getElementById('count-completed').textContent = completed;
+            document.getElementById('count-delayed').textContent = delayed;
+        }
+
+        function searchOnboarding() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderOnboarding();
+                return;
+            }
+            
+            const searchResults = filteredOnboarding.filter(company =>
+                company.company_name.toLowerCase().includes(searchTerm)
+            );
+            
+            renderOnboarding(searchResults);
+        }
+
+        function renderOnboarding(onboardingToRender = filteredOnboarding) {
+            const grid = document.getElementById('onboardingGrid');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (onboardingToRender.length === 0) {
+                grid.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            grid.style.display = 'grid';
+            emptyState.style.display = 'none';
+            
+            grid.innerHTML = onboardingToRender.map(company => {
+                const steps = company.steps;
+                const completedSteps = steps.filter(s => s.is_completed).length;
+                const totalSteps = steps.length;
+                const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+                
+                // Déterminer le statut
+                let cardClass = '';
+                let statusText = '';
+                if (progressPercent === 100) {
+                    cardClass = 'completed';
+                    statusText = 'Terminé';
+                } else if (steps.some(s => !s.is_completed && s.due_date && new Date(s.due_date) < new Date())) {
+                    cardClass = 'delayed';
+                    statusText = 'En retard';
+                } else {
+                    statusText = 'En cours';
+                }
+                
+                // Classe de couleur pour le cercle de progression
+                let progressClass = 'low';
+                if (progressPercent >= 100) progressClass = 'complete';
+                else if (progressPercent >= 75) progressClass = 'high';
+                else if (progressPercent >= 50) progressClass = 'medium';
+                
+                return `
+                    <div class="onboarding-card ${cardClass}" onclick="openOnboardingDetails('${company.company_id}')">
+                        <div class="onboarding-header">
+                            <div>
+                                <div class="company-name">${company.company_name}</div>
+                                <div class="company-status">${company.company_status} • ${statusText}</div>
+                            </div>
+                            <div class="progress-circle ${progressClass}" style="--progress: ${progressPercent * 3.6}deg;">
+                                ${Math.round(progressPercent)}%
+                            </div>
+                        </div>
+                        
+                        <div class="steps-preview">
+                            ${steps.slice(0, 4).map(step => `
+                                <div class="step-item ${step.is_completed ? 'completed' : ''}">
+                                    <div class="step-checkbox ${step.is_completed ? 'completed' : ''}">
+                                        ${step.is_completed ? '✓' : ''}
+                                    </div>
+                                    <span>${step.step_name}</span>
+                                </div>
+                            `).join('')}
+                            ${steps.length > 4 ? `
+                                <div style="text-align: center; color: var(--gray-500); font-size: 0.875rem;">
+                                    +${steps.length - 4} autres étapes
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: var(--gray-600);">
+                            <span>${completedSteps}/${totalSteps} étapes terminées</span>
+                            <span>${getNextStepInfo(steps)}</span>
+                        </div>
+                        
+                        <div class="onboarding-actions" onclick="event.stopPropagation()">
+                            <button class="btn btn-sm btn-primary" onclick="openOnboardingDetails('${company.company_id}')">
+                                📋 Détails
+                            </button>
+                            <button class="btn btn-sm btn-secondary" onclick="markNextStepComplete('${company.company_id}')">
+                                ✅ Étape suivante
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getNextStepInfo(steps) {
+            const nextStep = steps.find(s => !s.is_completed);
+            if (!nextStep) return 'Terminé';
+            
+            if (nextStep.due_date) {
+                const dueDate = new Date(nextStep.due_date);
+                const now = new Date();
+                const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) return `En retard de ${Math.abs(diffDays)} jour(s)`;
+                if (diffDays === 0) return 'Échéance aujourd\'hui';
+                if (diffDays === 1) return 'Échéance demain';
+                return `Échéance dans ${diffDays} jour(s)`;
+            }
+            
+            return 'Prochaine étape';
+        }
+
+        async function markNextStepComplete(companyId) {
+            const companySteps = allOnboardingSteps.filter(s => s.company_id === companyId);
+            const nextStep = companySteps.find(s => !s.is_completed);
+            
+            if (!nextStep) {
+                showError('Toutes les étapes sont déjà terminées');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('onboarding_steps')
+                    .update({
+                        is_completed: true,
+                        completion_date: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', nextStep.id);
+                
+                if (error) throw error;
+                
+                showSuccess(`Étape "${nextStep.step_name}" marquée comme terminée`);
+                await loadOnboardingData();
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors de la mise à jour de l\'étape');
+            }
+        }
+
+        function openOnboardingDetails(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            const steps = allOnboardingSteps.filter(s => s.company_id === companyId);
+            
+            if (!company || !steps.length) return;
+            
+            selectedCompany = company;
+            document.getElementById('onboardingDetailsTitle').textContent = `Onboarding - ${company.name}`;
+            
+            const completedSteps = steps.filter(s => s.is_completed).length;
+            const totalSteps = steps.length;
+            const progressPercent = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+            
+            document.getElementById('onboardingDetailsContent').innerHTML = `
+                <div style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+                        <div>
+                            <h4 style="color: var(--gray-800); margin-bottom: 0.5rem;">Progression globale</h4>
+                            <p style="color: var(--gray-600);">${completedSteps}/${totalSteps} étapes terminées (${Math.round(progressPercent)}%)</p>
+                        </div>
+                        <div class="progress-circle ${progressPercent >= 100 ? 'complete' : progressPercent >= 75 ? 'high' : progressPercent >= 50 ? 'medium' : 'low'}" 
+                             style="--progress: ${progressPercent * 3.6}deg; width: 80px; height: 80px; font-size: 1rem;">
+                            ${Math.round(progressPercent)}%
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--gray-50); height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, var(--primary-color), var(--success-color)); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="color: var(--gray-800); margin-bottom: 1rem;">Étapes détaillées</h4>
+                    ${steps.map((step, index) => {
+                        const isCompleted = step.is_completed;
+                        const isCurrent = !isCompleted && steps.slice(0, index).every(s => s.is_completed);
+                        
+                        return `
+                            <div class="step-detail ${isCompleted ? 'completed' : isCurrent ? 'current' : ''}">
+                                <div class="step-header">
+                                    <div class="step-title">
+                                        <div class="step-checkbox ${isCompleted ? 'completed' : ''}" style="width: 24px; height: 24px;">
+                                            ${isCompleted ? '✓' : step.step_order}
+                                        </div>
+                                        ${step.step_name}
+                                    </div>
+                                    <div class="step-status ${isCompleted ? 'status-completed' : isCurrent ? 'status-in-progress' : 'status-pending'}">
+                                        ${isCompleted ? 'Terminé' : isCurrent ? 'En cours' : 'En attente'}
+                                    </div>
+                                </div>
+                                
+                                ${isCompleted && step.completion_date ? `
+                                    <p style="color: var(--gray-600); margin-bottom: 1rem;">
+                                        ✅ Terminé le ${formatDate(step.completion_date)}
+                                    </p>
+                                ` : ''}
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                    <div>
+                                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--gray-700);">Date d'échéance</label>
+                                        <input type="date" value="${step.due_date ? step.due_date.split('T')[0] : ''}" 
+                                               onchange="updateStepDueDate('${step.id}', this.value)"
+                                               style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                                    </div>
+                                    <div>
+                                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--gray-700);">Statut</label>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <input type="checkbox" ${isCompleted ? 'checked' : ''} 
+                                                   onchange="toggleStepCompletion('${step.id}', this.checked)"
+                                                   style="transform: scale(1.2);">
+                                            <span>Terminé</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--gray-700);">Commentaires</label>
+                                    <textarea rows="2" placeholder="Ajouter des commentaires sur cette étape..."
+                                              onchange="updateStepComments('${step.id}', this.value)"
+                                              style="width: 100%; padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: var(--radius); resize: vertical;">${step.comments || ''}</textarea>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="closeModal('onboarding-details')">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="saveAllSteps()">
+                        💾 Sauvegarder toutes les modifications
+                    </button>
+                </div>
+            `;
+            
+            openModal('onboarding-details');
+        }
+
+        async function updateStepDueDate(stepId, dueDate) {
+            try {
+                const { error } = await supabase
+                    .from('onboarding_steps')
+                    .update({
+                        due_date: dueDate,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', stepId);
+                
+                if (error) throw error;
+                
+                // Mettre à jour localement
+                const step = allOnboardingSteps.find(s => s.id === stepId);
+                if (step) {
+                    step.due_date = dueDate;
+                }
+                
+            } catch (error) {
+                console.error('Erreur mise à jour date échéance:', error);
+                showError('Erreur lors de la mise à jour de la date d\'échéance');
+            }
+        }
+
+        async function updateStepComments(stepId, comments) {
+            try {
+                const { error } = await supabase
+                    .from('onboarding_steps')
+                    .update({
+                        comments: comments,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', stepId);
+                
+                if (error) throw error;
+                
+                // Mettre à jour localement
+                const step = allOnboardingSteps.find(s => s.id === stepId);
+                if (step) {
+                    step.comments = comments;
+                }
+                
+            } catch (error) {
+                console.error('Erreur mise à jour commentaires:', error);
+                showError('Erreur lors de la mise à jour des commentaires');
+            }
+        }
+
+        async function toggleStepCompletion(stepId, isCompleted) {
+            try {
+                const updateData = {
+                    is_completed: isCompleted,
+                    updated_at: new Date().toISOString()
+                };
+                
+                if (isCompleted) {
+                    updateData.completion_date = new Date().toISOString();
+                } else {
+                    updateData.completion_date = null;
+                }
+                
+                const { error } = await supabase
+                    .from('onboarding_steps')
+                    .update(updateData)
+                    .eq('id', stepId);
+                
+                if (error) throw error;
+                
+                // Mettre à jour localement
+                const step = allOnboardingSteps.find(s => s.id === stepId);
+                if (step) {
+                    step.is_completed = isCompleted;
+                    step.completion_date = isCompleted ? new Date().toISOString() : null;
+                }
+                
+                showSuccess(isCompleted ? 'Étape marquée comme terminée' : 'Étape marquée comme non terminée');
+                
+                // Recharger l'affichage
+                setTimeout(() => {
+                    loadOnboardingData();
+                    if (selectedCompany) {
+                        openOnboardingDetails(selectedCompany.id);
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error('Erreur mise à jour statut étape:', error);
+                showError('Erreur lors de la mise à jour du statut');
+            }
+        }
+
+        function saveAllSteps() {
+            showSuccess('Toutes les modifications sont sauvegardées automatiquement');
+            closeModal('onboarding-details');
+        }
+
+        // Gestion des modals
+        function openModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.remove('show');
+        }
+
+        // Fermer les modals en cliquant à l'extérieur
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                const modalId = e.target.id.replace('modal-', '');
+                closeModal(modalId);
+            }
+        });
+
+        // Raccourcis clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.show').forEach(modal => {
+                    const modalId = modal.id.replace('modal-', '');
+                    closeModal(modalId);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
