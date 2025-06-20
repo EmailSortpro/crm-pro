@@ -682,13 +682,14 @@
 
         async function loadData() {
             try {
-                // Charger les données depuis la base ou mode démo
+                // Charger les données depuis la vraie base de données
                 const [licensesResult, companiesResult, plansResult] = await Promise.all([
                     CRMService.getLicenses(),
                     CRMService.getCompanies(),
                     CRMService.getLicensePlans()
                 ]);
 
+                // Charger les licences (vide par défaut si aucune en base)
                 if (licensesResult.success) {
                     licenses = licensesResult.data.map(license => ({
                         id: license.id,
@@ -704,51 +705,44 @@
                         status: license.status,
                         payment_method: license.payment_method,
                         monthly_cost: license.monthly_cost,
-                        users_count: 0 // À implémenter avec les utilisateurs
+                        users_count: 0
                     }));
+                } else {
+                    licenses = []; // Tableau vide si pas de données
                 }
 
+                // Charger les sociétés
                 if (companiesResult.success) {
                     companies = companiesResult.data;
+                } else {
+                    companies = [];
                 }
 
+                // Charger les plans de licence
                 if (plansResult.success) {
                     licensePlans = plansResult.data;
+                } else {
+                    licensePlans = [];
                 }
 
-                // Simuler des utilisateurs pour la démo
-                licenseUsers = [
-                    {
-                        id: '1',
-                        license_id: '1',
-                        name: 'Jean Dupont',
-                        email: 'j.dupont@techcorp.com',
-                        status: 'active',
-                        last_login: '2024-06-19T14:30:00Z',
-                        role: 'Admin',
-                        created_at: '2024-01-15T09:00:00Z'
-                    },
-                    {
-                        id: '2',
-                        license_id: '1',
-                        name: 'Marie Martin',
-                        email: 'm.martin@techcorp.com',
-                        status: 'active',
-                        last_login: '2024-06-18T16:45:00Z',
-                        role: 'User',
-                        created_at: '2024-01-20T10:30:00Z'
-                    }
-                ];
+                // Pas d'utilisateurs simulés - tableau vide
+                licenseUsers = [];
 
-                // Mettre à jour le nombre d'utilisateurs par licence
-                licenses.forEach(license => {
-                    const usersForLicense = licenseUsers.filter(u => u.license_id === license.id);
-                    license.users_count = usersForLicense.length;
+                console.log('Données chargées:', {
+                    licenses: licenses.length,
+                    companies: companies.length,
+                    plans: licensePlans.length
                 });
 
             } catch (error) {
                 console.error('Erreur chargement données:', error);
                 showError('Erreur lors du chargement des données');
+                
+                // En cas d'erreur, initialiser des tableaux vides
+                licenses = [];
+                companies = [];
+                licensePlans = [];
+                licenseUsers = [];
             }
         }
 
