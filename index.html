@@ -3,209 +3,454 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM Pro - Connexion</title>
+    <title>CRM Pro - Accueil</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .action-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .action-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .action-description {
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .features-section {
+            background: #f9fafb;
+            padding: 3rem 0;
+            margin: 3rem 0;
+            border-radius: 1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 1.5rem;
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+
+        .feature-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .stats-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 3rem 0;
+        }
+
+        .stat-preview-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+            text-align: center;
+        }
+
+        .stat-preview-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-preview-label {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-<body class="login-body">
-    <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="logo">
-                    <div class="logo-icon">🚀</div>
-                    <h1>CRM Pro</h1>
-                </div>
-                <p class="subtitle">Connectez-vous à votre espace</p>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
             </div>
             
-            <form id="loginForm" class="login-form">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">📧</span>
-                        <input type="email" id="email" name="email" required placeholder="votre@email.com">
-                    </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link active">
+                    <span class="nav-icon">🏠</span>
+                    Accueil
+                </a>
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="forecast.html" class="nav-link">
+                    <span class="nav-icon">📈</span>
+                    Forecast
+                </a>
+                <a href="onboarding.html" class="nav-link">
+                    <span class="nav-icon">🎯</span>
+                    Onboarding
+                </a>
+                <a href="licenses.html" class="nav-link">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
                 </div>
-                
-                <div class="form-group">
-                    <label for="password">Mot de passe</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">🔒</span>
-                        <input type="password" id="password" name="password" required placeholder="••••••••">
-                    </div>
-                </div>
-                
-                <button type="submit" class="login-btn" id="loginBtn">
-                    <span class="btn-text">Se connecter</span>
-                    <div class="btn-loader" style="display: none;">
-                        <div class="spinner"></div>
-                    </div>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
                 </button>
-                
-                <div id="errorMessage" class="error-message" style="display: none;"></div>
-            </form>
-            
-            <div class="demo-accounts">
-                <h3>🧪 Comptes de démonstration</h3>
-                <div class="demo-grid">
-                    <div class="demo-account" onclick="fillDemo('admin')">
-                        <div class="demo-icon">👑</div>
-                        <div class="demo-info">
-                            <strong>Administrateur</strong>
-                            <small>admin@crm.com</small>
-                        </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Section héro -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">🚀 CRM Pro</h1>
+            <p class="hero-subtitle">
+                Gérez efficacement vos relations clients, prospects et opportunités commerciales 
+                avec notre solution CRM complète et intuitive.
+            </p>
+            <a href="dashboard.html" class="btn btn-primary btn-lg">
+                📊 Accéder au tableau de bord
+            </a>
+        </div>
+    </section>
+
+    <!-- Contenu principal -->
+    <main class="container">
+        <!-- Statistiques rapides -->
+        <div class="stats-preview">
+            <div class="stat-preview-card">
+                <div class="stat-preview-number" id="previewTotalCompanies">-</div>
+                <div class="stat-preview-label">Sociétés</div>
+            </div>
+            <div class="stat-preview-card">
+                <div class="stat-preview-number" id="previewTotalContacts">-</div>
+                <div class="stat-preview-label">Contacts</div>
+            </div>
+            <div class="stat-preview-card">
+                <div class="stat-preview-number" id="previewActiveLicenses">-</div>
+                <div class="stat-preview-label">Licences actives</div>
+            </div>
+            <div class="stat-preview-card">
+                <div class="stat-preview-number" id="previewRevenue">-</div>
+                <div class="stat-preview-label">Revenus mensuels</div>
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <section>
+            <h2 style="text-align: center; margin-bottom: 2rem; color: #1f2937; font-size: 2rem;">
+                🎯 Actions rapides
+            </h2>
+            <div class="quick-actions">
+                <a href="companies.html?action=add" class="action-card">
+                    <span class="action-icon">🏢</span>
+                    <h3 class="action-title">Nouvelle société</h3>
+                    <p class="action-description">
+                        Ajoutez un nouveau prospect ou client à votre portefeuille et commencez le suivi commercial.
+                    </p>
+                </a>
+
+                <a href="contacts.html" class="action-card">
+                    <span class="action-icon">👥</span>
+                    <h3 class="action-title">Gérer les contacts</h3>
+                    <p class="action-description">
+                        Centralisez tous vos contacts clients et prospects avec leurs informations détaillées.
+                    </p>
+                </a>
+
+                <a href="forecast.html" class="action-card">
+                    <span class="action-icon">📈</span>
+                    <h3 class="action-title">Suivi des opportunités</h3>
+                    <p class="action-description">
+                        Analysez vos prévisions de ventes et suivez l'évolution de vos opportunités commerciales.
+                    </p>
+                </a>
+
+                <a href="onboarding.html" class="action-card">
+                    <span class="action-icon">🎯</span>
+                    <h3 class="action-title">Onboarding clients</h3>
+                    <p class="action-description">
+                        Suivez les étapes d'intégration de vos nouveaux clients pour un onboarding réussi.
+                    </p>
+                </a>
+
+                <a href="licenses.html" class="action-card">
+                    <span class="action-icon">📄</span>
+                    <h3 class="action-title">Gestion des licences</h3>
+                    <p class="action-description">
+                        Administrez les licences de vos clients et suivez les échéances de renouvellement.
+                    </p>
+                </a>
+
+                <a href="dashboard.html" class="action-card">
+                    <span class="action-icon">📊</span>
+                    <h3 class="action-title">Tableau de bord</h3>
+                    <p class="action-description">
+                        Vue d'ensemble complète de votre activité avec graphiques et indicateurs clés.
+                    </p>
+                </a>
+            </div>
+        </section>
+
+        <!-- Section fonctionnalités -->
+        <section class="features-section">
+            <div class="container">
+                <h2 style="text-align: center; margin-bottom: 3rem; color: #1f2937; font-size: 2rem;">
+                    ✨ Fonctionnalités principales
+                </h2>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <span class="feature-icon">🏢</span>
+                        <h3 class="feature-title">Gestion des sociétés</h3>
+                        <p class="feature-description">
+                            Organisez vos prospects, clients et sociétés onboardées avec un suivi détaillé de leur statut.
+                        </p>
                     </div>
-                    <div class="demo-account" onclick="fillDemo('user')">
-                        <div class="demo-icon">👤</div>
-                        <div class="demo-info">
-                            <strong>Utilisateur</strong>
-                            <small>user@crm.com</small>
-                        </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">👥</span>
+                        <h3 class="feature-title">Carnet de contacts</h3>
+                        <p class="feature-description">
+                            Centralisez tous vos contacts avec leurs rôles, coordonnées et notes personnalisées.
+                        </p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">📈</span>
+                        <h3 class="feature-title">Prévisions de ventes</h3>
+                        <p class="feature-description">
+                            Suivez vos opportunités commerciales et analysez vos prévisions de revenus.
+                        </p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">🎯</span>
+                        <h3 class="feature-title">Suivi onboarding</h3>
+                        <p class="feature-description">
+                            Gérez les étapes d'intégration de vos nouveaux clients pour un déploiement réussi.
+                        </p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">📄</span>
+                        <h3 class="feature-title">Gestion des licences</h3>
+                        <p class="feature-description">
+                            Administrez les licences clients et suivez les échéances de renouvellement.
+                        </p>
+                    </div>
+
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <h3 class="feature-title">Tableaux de bord</h3>
+                        <p class="feature-description">
+                            Visualisez vos données avec des graphiques interactifs et des indicateurs en temps réel.
+                        </p>
                     </div>
                 </div>
             </div>
+        </section>
+
+        <!-- Section CTA -->
+        <section style="text-align: center; margin: 4rem 0; padding: 3rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 1rem; color: white;">
+            <h2 style="font-size: 2rem; margin-bottom: 1rem;">Prêt à optimiser votre CRM ?</h2>
+            <p style="font-size: 1.125rem; margin-bottom: 2rem; opacity: 0.9;">
+                Découvrez toutes les fonctionnalités de CRM Pro et boostez votre performance commerciale.
+            </p>
+            <a href="dashboard.html" class="btn" style="background: white; color: #667eea; padding: 1rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; display: inline-block;">
+                🚀 Commencer maintenant
+            </a>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer style="background: #f9fafb; padding: 2rem 0; text-align: center; color: #6b7280; border-top: 1px solid #e5e7eb;">
+        <div class="container">
+            <p>&copy; 2025 CRM Pro - Solution de gestion de la relation client</p>
         </div>
-        
-        <div class="login-footer">
-            <p>&copy; 2025 CRM Pro - Gestion intelligente de vos relations clients</p>
-        </div>
-    </div>
-    
+    </footer>
+
     <script src="config.js"></script>
     <script>
-        // Variables globales
-        let isSubmitting = false;
-        
-        // Éléments DOM
-        const loginForm = document.getElementById('loginForm');
-        const loginBtn = document.getElementById('loginBtn');
-        const btnText = document.querySelector('.btn-text');
-        const btnLoader = document.querySelector('.btn-loader');
-        const errorMessage = document.getElementById('errorMessage');
-        
-        // Gestion du formulaire de connexion
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier l'authentification
+            if (!await AuthService.requireAuth()) return;
             
-            if (isSubmitting) return;
+            // Charger les informations utilisateur
+            loadUserInfo();
             
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            await handleLogin(email, password);
+            // Charger les statistiques rapides
+            await loadQuickStats();
         });
-        
-        // Fonction de connexion
-        async function handleLogin(email, password) {
-            setLoading(true);
-            hideError();
-            
+
+        // Charger les informations utilisateur
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            }
+        }
+
+        // Charger les statistiques rapides
+        async function loadQuickStats() {
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-                
-                if (error) {
-                    throw error;
+                // Charger les statistiques depuis l'API
+                const [companiesResult, licensesResult] = await Promise.all([
+                    CRMService.getCompanies(),
+                    CRMService.getLicenses()
+                ]);
+
+                if (companiesResult.success) {
+                    const companies = companiesResult.data;
+                    document.getElementById('previewTotalCompanies').textContent = companies.length;
+                    
+                    // Compter les contacts (simulé)
+                    const totalContacts = companies.reduce((sum, company) => {
+                        return sum + (company.company_contacts ? company.company_contacts.length : 0);
+                    }, 0);
+                    document.getElementById('previewTotalContacts').textContent = totalContacts;
                 }
-                
-                // Récupérer le rôle utilisateur
-                const userRole = data.user.user_metadata?.role || 'user';
-                
-                // Stocker les infos utilisateur
-                localStorage.setItem('userInfo', JSON.stringify({
-                    email: data.user.email,
-                    role: userRole,
-                    id: data.user.id
-                }));
-                
-                // Animation de succès
-                btnText.textContent = 'Connexion réussie !';
-                loginBtn.style.background = '#28a745';
-                
-                // Redirection après un délai
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 1000);
-                
+
+                if (licensesResult.success) {
+                    const licenses = licensesResult.data;
+                    const activeLicenses = licenses.filter(l => l.status === 'active').length;
+                    document.getElementById('previewActiveLicenses').textContent = activeLicenses;
+                    
+                    // Calculer les revenus mensuels
+                    const monthlyRevenue = licenses
+                        .filter(l => l.status === 'active')
+                        .reduce((sum, license) => sum + (license.monthly_cost || 0), 0);
+                    document.getElementById('previewRevenue').textContent = formatCurrency(monthlyRevenue);
+                }
+
             } catch (error) {
-                console.error('Erreur de connexion:', error);
-                showError(getErrorMessage(error.message));
-                setLoading(false);
+                console.error('Erreur chargement statistiques:', error);
+                // Afficher des valeurs par défaut en cas d'erreur
+                document.getElementById('previewTotalCompanies').textContent = '0';
+                document.getElementById('previewTotalContacts').textContent = '0';
+                document.getElementById('previewActiveLicenses').textContent = '0';
+                document.getElementById('previewRevenue').textContent = '0 €';
             }
         }
-        
-        // Gestion du loading
-        function setLoading(loading) {
-            isSubmitting = loading;
-            
-            if (loading) {
-                btnText.style.display = 'none';
-                btnLoader.style.display = 'flex';
-                loginBtn.disabled = true;
-            } else {
-                btnText.style.display = 'block';
-                btnLoader.style.display = 'none';
-                loginBtn.disabled = false;
-                btnText.textContent = 'Se connecter';
-                loginBtn.style.background = '';
-            }
-        }
-        
-        // Affichage des erreurs
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-            errorMessage.style.animation = 'slideInDown 0.3s ease';
-        }
-        
-        function hideError() {
-            errorMessage.style.display = 'none';
-        }
-        
-        // Messages d'erreur conviviaux
-        function getErrorMessage(error) {
-            const messages = {
-                'Invalid login credentials': 'Email ou mot de passe incorrect',
-                'Email not confirmed': 'Veuillez confirmer votre email',
-                'Too many requests': 'Trop de tentatives. Réessayez plus tard',
-                'User not found': 'Utilisateur introuvable',
-                'Network request failed': 'Problème de connexion. Vérifiez votre internet'
-            };
-            
-            return messages[error] || 'Erreur de connexion. Réessayez';
-        }
-        
-        // Remplir automatiquement les comptes de démo
-        function fillDemo(type) {
-            const credentials = {
-                admin: { email: 'admin@crm.com', password: 'admin123' },
-                user: { email: 'user@crm.com', password: 'user123' }
-            };
-            
-            const creds = credentials[type];
-            document.getElementById('email').value = creds.email;
-            document.getElementById('password').value = creds.password;
-            
-            // Animation des champs
-            document.getElementById('email').style.animation = 'pulse 0.5s ease';
-            document.getElementById('password').style.animation = 'pulse 0.5s ease';
-        }
-        
-        // Vérifier si l'utilisateur est déjà connecté
-        window.addEventListener('load', async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (session) {
-                // Utilisateur déjà connecté, rediriger
-                window.location.href = 'dashboard.html';
-            }
-        });
-        
+
         // Animation d'entrée
         window.addEventListener('load', () => {
-            document.querySelector('.login-card').style.animation = 'slideInUp 0.6s ease';
+            const cards = document.querySelectorAll('.action-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.6s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
         });
     </script>
 </body>
