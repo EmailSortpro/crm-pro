@@ -71,8 +71,11 @@
                 📊 Dashboard
             </h1>
             <p style="color: var(--gray-600);">
-                Vue d'ensemble de votre activité CRM et gestion des licences
+                Vue d'ensemble de votre activité CRM avec les données de votre base Supabase
             </p>
+            <button onclick="refreshDashboard()" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">
+                🔄 Actualiser les données
+            </button>
         </div>
 
         <!-- Statistiques principales -->
@@ -86,7 +89,7 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">📈 Répartition des sociétés</h3>
-                    <p class="card-subtitle">Par statut dans votre base</p>
+                    <p class="card-subtitle">Par statut dans votre base Supabase</p>
                 </div>
                 <div class="card-body">
                     <canvas id="companiesChart" width="400" height="300"></canvas>
@@ -96,8 +99,8 @@
             <!-- Graphique revenus -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">💰 Revenus actuels</h3>
-                    <p class="card-subtitle">Répartition par plan de licence</p>
+                    <h3 class="card-title">💰 Revenus par plan</h3>
+                    <p class="card-subtitle">Revenus mensuels par type de licence</p>
                 </div>
                 <div class="card-body">
                     <canvas id="revenueChart" width="400" height="300"></canvas>
@@ -135,7 +138,7 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">🕒 Données récentes</h3>
-                    <p class="card-subtitle">Derniers éléments créés</p>
+                    <p class="card-subtitle">Derniers éléments créés dans Supabase</p>
                 </div>
                 <div class="card-body">
                     <div id="recentActivity">
@@ -180,7 +183,7 @@
 
     <script src="config.js"></script>
     <script>
-        // Variables globales pour les vraies données
+        // Variables globales pour les vraies données UNIQUEMENT
         let companies = [];
         let licenses = [];
         let contacts = [];
@@ -189,75 +192,111 @@
 
         // Initialisation de la page
         document.addEventListener('DOMContentLoaded', async () => {
-            // Vérifier l'authentification
-            const isAuthenticated = await AuthService.requireAuth();
-            if (!isAuthenticated) return;
+            try {
+                showLoading(true);
+                
+                // Vérifier l'authentification
+                if (!await AuthService.requireAuth()) return;
 
-            // Charger les informations utilisateur
-            loadUserInfo();
+                // Charger les informations utilisateur
+                loadUserInfo();
 
-            // Charger les données du dashboard
-            await loadDashboardData();
+                // Charger UNIQUEMENT les données RÉELLES du dashboard
+                await loadRealDashboardData();
+                
+            } catch (error) {
+                console.error('Erreur dashboard:', error);
+                showError('Erreur lors du chargement du dashboard');
+                renderErrorState();
+            } finally {
+                showLoading(false);
+            }
         });
 
         // Charger les informations utilisateur
         function loadUserInfo() {
-            const userInfo = AuthService.getUserInfo();
-            if (userInfo) {
-                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
-                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            try {
+                const userInfo = AuthService.getUserInfo();
+                if (userInfo) {
+                    document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                    document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+                }
+            } catch (error) {
+                console.error('Erreur chargement utilisateur:', error);
+                document.getElementById('userName').textContent = 'Utilisateur';
+                document.getElementById('userRole').textContent = 'User';
             }
         }
 
-        // Charger toutes les données RÉELLES du dashboard
-        async function loadDashboardData() {
-            showLoading(true);
-            
+        // Charger UNIQUEMENT les données RÉELLES de Supabase
+        async function loadRealDashboardData() {
             try {
-                // Charger les vraies données de la base
+                console.log('🔄 Chargement des données RÉELLES du dashboard...');
+                
+                // Charger toutes les données en parallèle avec timeout
                 const [companiesResult, licensesResult, contactsResult] = await Promise.all([
-                    CRMService.getCompanies(),
-                    CRMService.getLicenses(),
-                    CRMService.getContacts()
+                    withTimeout(CRMService.getCompanies(), 10000),
+                    withTimeout(CRMService.getLicenses(), 10000),
+                    withTimeout(CRMService.getContacts(), 10000)
                 ]);
                 
-                if (companiesResult.success) {
+                console.log('📊 Résultats bruts dashboard:', {
+                    companies: companiesResult,
+                    licenses: licensesResult,
+                    contacts: contactsResult
+                });
+                
+                // Traiter les sociétés
+                if (companiesResult.success && companiesResult.data) {
                     companies = companiesResult.data;
-                    console.log('Sociétés chargées:', companies.length);
+                    console.log('✅ Sociétés chargées:', companies.length);
+                } else {
+                    console.log('❌ Erreur sociétés:', companiesResult.error);
+                    companies = [];
                 }
                 
-                if (licensesResult.success) {
+                // Traiter les licences
+                if (licensesResult.success && licensesResult.data) {
                     licenses = licensesResult.data;
-                    console.log('Licences chargées:', licenses.length);
+                    console.log('✅ Licences chargées:', licenses.length);
+                } else {
+                    console.log('❌ Erreur licences:', licensesResult.error);
+                    licenses = [];
                 }
                 
-                if (contactsResult.success) {
+                // Traiter les contacts
+                if (contactsResult.success && contactsResult.data) {
                     contacts = contactsResult.data;
-                    console.log('Contacts chargés:', contacts.length);
+                    console.log('✅ Contacts chargés:', contacts.length);
+                } else {
+                    console.log('❌ Erreur contacts:', contactsResult.error);
+                    contacts = [];
                 }
                 
-                // Calculer les vraies statistiques
+                // Calculer et afficher les statistiques réelles
                 const realStats = calculateRealStats();
+                console.log('📈 Statistiques calculées:', realStats);
                 
-                // Afficher les données
+                // Afficher toutes les données
                 renderStats(realStats);
                 renderCharts();
                 renderRenewalsTable();
                 renderRecentActivity();
                 
             } catch (error) {
-                console.error('Erreur dashboard:', error);
-                showError('Erreur lors du chargement des données');
-                
-                // Affichage de base en cas d'erreur
-                renderEmptyStats();
-            } finally {
-                showLoading(false);
+                console.error('❌ Erreur fatale dashboard:', error);
+                throw error;
             }
         }
 
-        // Calculer les vraies statistiques basées sur les données de la base
+        // Calculer les statistiques basées UNIQUEMENT sur les données Supabase
         function calculateRealStats() {
+            console.log('🧮 Calcul des statistiques avec les données:', {
+                companiesCount: companies.length,
+                licensesCount: licenses.length,
+                contactsCount: contacts.length
+            });
+            
             // Statistiques des sociétés
             const totalCompanies = companies.length;
             const prospects = companies.filter(c => c.status === 'prospect').length;
@@ -288,7 +327,7 @@
             const adminContacts = contacts.filter(c => c.is_admin_contact).length;
             const paymentContacts = contacts.filter(c => c.is_payment_contact).length;
             
-            return {
+            const stats = {
                 totalCompanies,
                 prospects,
                 sponsors,
@@ -297,14 +336,17 @@
                 activeLicenses,
                 totalLicenseCount,
                 monthlyRevenue,
-                expiringLicenses,
+                expiringLicenses: expiringLicenses.length,
                 totalContacts,
                 adminContacts,
                 paymentContacts
             };
+            
+            console.log('📊 Statistiques finales:', stats);
+            return stats;
         }
 
-        // Rendu des statistiques principales avec les vraies données
+        // Rendu des statistiques avec les vraies données
         function renderStats(stats) {
             const container = document.getElementById('statsContainer');
             
@@ -358,7 +400,7 @@
                 </div>
                 
                 <div class="stat-card error">
-                    <div class="stat-number">${stats.expiringLicenses.length}</div>
+                    <div class="stat-number">${stats.expiringLicenses}</div>
                     <div class="stat-label">Licences à renouveler</div>
                     <div class="stat-change">Dans les 30 jours</div>
                 </div>
@@ -384,6 +426,8 @@
             const sponsors = companies.filter(c => c.status === 'sponsor').length;
             const clients = companies.filter(c => c.status === 'client').length;
             const onboarded = companies.filter(c => c.status === 'onboarded').length;
+            
+            console.log('📈 Données graphique sociétés:', { prospects, sponsors, clients, onboarded });
             
             // Ne montrer que les statuts qui ont des données
             const labels = [];
@@ -469,6 +513,8 @@
             const planNames = Object.keys(revenueByPlan);
             const planRevenues = Object.values(revenueByPlan);
             
+            console.log('💰 Données graphique revenus:', { planNames, planRevenues });
+            
             // Si aucune donnée, afficher un message
             if (planNames.length === 0) {
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -532,6 +578,8 @@
                 return renewalDate >= now && renewalDate <= in30Days;
             });
             
+            console.log('⚠️ Licences à renouveler:', expiringLicenses.length);
+            
             if (expiringLicenses.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
@@ -549,19 +597,19 @@
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                 
                 let urgencyClass = '';
-                if (diffDays <= 7) urgencyClass = 'stat-card error';
-                else if (diffDays <= 15) urgencyClass = 'stat-card warning';
-                else urgencyClass = 'stat-card info';
+                if (diffDays <= 7) urgencyClass = 'error';
+                else if (diffDays <= 15) urgencyClass = 'warning';
+                else urgencyClass = 'info';
                 
                 return `
-                    <tr onclick="window.location.href='licenses.html#${license.id}'" style="cursor: pointer;">
+                    <tr onclick="window.location.href='licenses.html'" style="cursor: pointer;">
                         <td>
                             <strong>${license.companies?.name || 'Société inconnue'}</strong>
                             <br>
                             <small style="color: var(--gray-500);">${license.license_count} licence(s)</small>
                         </td>
                         <td>
-                            <span class="${urgencyClass}" style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                            <span class="stat-card ${urgencyClass}" style="padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
                                 ${diffDays} jour${diffDays > 1 ? 's' : ''}
                             </span>
                             <br>
@@ -577,7 +625,7 @@
             }).join('');
         }
 
-        // Activité récente basée sur les vraies données
+        // Activité récente basée UNIQUEMENT sur les vraies données
         function renderRecentActivity() {
             const container = document.getElementById('recentActivity');
             
@@ -586,26 +634,29 @@
             // Dernières sociétés créées
             companies
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .slice(0, 2)
+                .slice(0, 3)
                 .forEach(company => {
                     activities.push({
                         icon: company.status === 'prospect' ? '🏢' : '🤝',
                         action: `Société ${company.status}`,
                         details: company.name,
-                        time: getTimeAgo(company.created_at)
+                        time: getTimeAgo(company.created_at),
+                        actualDate: company.created_at
                     });
                 });
             
             // Derniers contacts créés
             contacts
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .slice(0, 2)
+                .slice(0, 3)
                 .forEach(contact => {
+                    const companyName = companies.find(c => c.id === contact.company_id)?.name;
                     activities.push({
                         icon: '👤',
                         action: 'Contact ajouté',
-                        details: `${contact.first_name} ${contact.last_name}${contact.company_name ? ' - ' + contact.company_name : ''}`,
-                        time: getTimeAgo(contact.created_at)
+                        details: `${contact.first_name} ${contact.last_name}${companyName ? ' - ' + companyName : ''}`,
+                        time: getTimeAgo(contact.created_at),
+                        actualDate: contact.created_at
                     });
                 });
             
@@ -613,19 +664,22 @@
             licenses
                 .filter(l => l.status === 'active')
                 .sort((a, b) => new Date(b.created_at || b.start_date) - new Date(a.created_at || a.start_date))
-                .slice(0, 1)
+                .slice(0, 2)
                 .forEach(license => {
                     activities.push({
                         icon: '🔑',
                         action: 'Licence active',
                         details: `${license.companies?.name || 'Société'} - ${license.license_count} licence(s)`,
-                        time: getTimeAgo(license.created_at || license.start_date)
+                        time: getTimeAgo(license.created_at || license.start_date),
+                        actualDate: license.created_at || license.start_date
                     });
                 });
             
             // Trier par date et prendre les 5 plus récents
             activities.sort((a, b) => new Date(b.actualDate) - new Date(a.actualDate));
             const recentActivities = activities.slice(0, 5);
+            
+            console.log('🕒 Activités récentes:', recentActivities.length);
             
             if (recentActivities.length === 0) {
                 container.innerHTML = `
@@ -672,32 +726,55 @@
             return `Il y a ${Math.ceil(diffDays / 30)} mois`;
         }
 
-        // Affichage par défaut si pas de données
-        function renderEmptyStats() {
+        // Affichage d'erreur si les données ne peuvent pas être chargées
+        function renderErrorState() {
             const container = document.getElementById('statsContainer');
             container.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Sociétés</div>
-                    <div class="stat-change">Aucune donnée</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">0</div>
-                    <div class="stat-label">Licences</div>
-                    <div class="stat-change">Aucune donnée</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">0 €</div>
-                    <div class="stat-label">Revenus</div>
-                    <div class="stat-change">Aucune donnée</div>
+                <div class="stat-card error">
+                    <div class="stat-number">❌</div>
+                    <div class="stat-label">Erreur de connexion</div>
+                    <div class="stat-change">Impossible de charger les données</div>
                 </div>
             `;
+            
+            // Graphiques d'erreur
+            const companiesCtx = document.getElementById('companiesChart').getContext('2d');
+            companiesCtx.clearRect(0, 0, companiesCtx.canvas.width, companiesCtx.canvas.height);
+            companiesCtx.font = '16px Arial';
+            companiesCtx.fillStyle = '#dc2626';
+            companiesCtx.textAlign = 'center';
+            companiesCtx.fillText('Erreur de chargement', companiesCtx.canvas.width / 2, companiesCtx.canvas.height / 2);
+            
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            revenueCtx.clearRect(0, 0, revenueCtx.canvas.width, revenueCtx.canvas.height);
+            revenueCtx.font = '16px Arial';
+            revenueCtx.fillStyle = '#dc2626';
+            revenueCtx.textAlign = 'center';
+            revenueCtx.fillText('Erreur de chargement', revenueCtx.canvas.width / 2, revenueCtx.canvas.height / 2);
         }
 
         // Rafraîchir les données
         async function refreshDashboard() {
-            await loadDashboardData();
-            showSuccess('Dashboard mis à jour !');
+            try {
+                showLoading(true);
+                await loadRealDashboardData();
+                showSuccess('Dashboard mis à jour avec les dernières données !');
+            } catch (error) {
+                console.error('Erreur rafraîchissement:', error);
+                showError('Erreur lors de la mise à jour des données');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fonction utilitaire pour les timeouts
+        function withTimeout(promise, timeoutMs = 10000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+                )
+            ]);
         }
 
         // Auto-refresh toutes les 5 minutes
@@ -733,7 +810,13 @@
 
         // Animation d'entrée
         window.addEventListener('load', () => {
-            document.querySelector('main').classList.add('animate-fadeIn');
+            document.querySelector('main').style.opacity = '0';
+            document.querySelector('main').style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                document.querySelector('main').style.transition = 'all 0.5s ease';
+                document.querySelector('main').style.opacity = '1';
+                document.querySelector('main').style.transform = 'translateY(0)';
+            }, 100);
         });
     </script>
 </body>
