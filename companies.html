@@ -8,38 +8,59 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Header de navigation -->
-    <header class="page-header">
-        <div class="container">
-            <nav class="navbar">
-                <a href="dashboard.html" class="logo">
-                    <div class="logo-icon">🚀</div>
-                    <h1>CRM Pro</h1>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
+            </a>
+            
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Accueil
                 </a>
-                
-                <ul class="nav-menu">
-                    <li><a href="dashboard.html" class="nav-link">📊 Dashboard</a></li>
-                    <li><a href="companies.html" class="nav-link active">🏢 Sociétés</a></li>
-                    <li><a href="forecast.html" class="nav-link">📈 Forecast</a></li>
-                    <li><a href="onboarding.html" class="nav-link">🎯 Onboarding</a></li>
-                    <li><a href="licenses.html" class="nav-link">🔑 Licences</a></li>
-                </ul>
-                
-                <div class="user-menu">
-                    <div class="user-info">
-                        <div class="user-avatar" id="userAvatar"></div>
-                        <div class="user-details">
-                            <div class="user-name" id="userName"></div>
-                            <div class="user-role" id="userRole"></div>
-                        </div>
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link active">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="forecast.html" class="nav-link">
+                    <span class="nav-icon">📈</span>
+                    Forecast
+                </a>
+                <a href="onboarding.html" class="nav-link">
+                    <span class="nav-icon">🎯</span>
+                    Onboarding
+                </a>
+                <a href="licenses.html" class="nav-link">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <div>
+                        <div class="user-name" id="userName">Utilisateur</div>
+                        <div class="user-role" id="userRole">user</div>
                     </div>
-                    <button class="btn btn-secondary btn-sm" onclick="AuthService.logout()">
-                        Déconnexion
-                    </button>
                 </div>
-            </nav>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
+                </button>
+            </div>
         </div>
-    </header>
+    </nav>
 
     <!-- Contenu principal -->
     <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
@@ -152,10 +173,10 @@
                         <input type="tel" id="companyPhone" placeholder="01.23.45.67.89">
                     </div>
                 </div>
-                    <div class="form-group">
-                        <label for="companySiret">SIRET</label>
-                        <input type="text" id="companySiret" placeholder="12345678901234">
-                    </div>
+                
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="companySiret">SIRET</label>
+                    <input type="text" id="companySiret" placeholder="12345678901234">
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 1rem;">
@@ -388,9 +409,8 @@
         function loadUserInfo() {
             const userInfo = AuthService.getUserInfo();
             if (userInfo) {
-                document.getElementById('userName').textContent = userInfo.email;
-                document.getElementById('userRole').textContent = userInfo.role;
-                document.getElementById('userAvatar').textContent = getInitials(userInfo.email, '');
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
             }
         }
 
