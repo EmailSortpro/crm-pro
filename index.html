@@ -156,10 +156,10 @@
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="nav-logo">
+            <a href="index.html" class="nav-logo">
                 <span class="logo-icon">🚀</span>
                 <span class="logo-text">CRM Pro</span>
-            </div>
+            </a>
             
             <div class="nav-menu">
                 <a href="index.html" class="nav-link active">
@@ -194,8 +194,10 @@
             
             <div class="nav-user">
                 <div class="user-info">
-                    <span class="user-name" id="userName">Utilisateur</span>
-                    <span class="user-role" id="userRole">user</span>
+                    <div>
+                        <div class="user-name" id="userName">Utilisateur</div>
+                        <div class="user-role" id="userRole">user</div>
+                    </div>
                 </div>
                 <button onclick="AuthService.logout()" class="logout-btn">
                     <span>🚪</span>
