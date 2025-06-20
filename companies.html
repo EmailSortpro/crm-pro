@@ -92,6 +92,9 @@
                         <button class="filter-btn" data-filter="prospect" onclick="filterCompanies('prospect')">
                             Prospects (<span id="count-prospect">0</span>)
                         </button>
+                        <button class="filter-btn" data-filter="sponsor" onclick="filterCompanies('sponsor')">
+                            Sponsors (<span id="count-sponsor">0</span>)
+                        </button>
                         <button class="filter-btn" data-filter="client" onclick="filterCompanies('client')">
                             Clients (<span id="count-client">0</span>)
                         </button>
@@ -128,11 +131,11 @@
         </div>
     </main>
 
-    <!-- Modal Nouvelle Société -->
+    <!-- Modal Nouvelle/Modifier Société -->
     <div id="modal-add-company" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">➕ Nouvelle Société</h3>
+                <h3 class="modal-title" id="modalTitle">➕ Nouvelle Société</h3>
                 <button class="close-btn" onclick="closeModal('add-company')">&times;</button>
             </div>
             
@@ -146,6 +149,7 @@
                         <label for="companyStatus">Statut</label>
                         <select id="companyStatus">
                             <option value="prospect">Prospect</option>
+                            <option value="sponsor">Sponsor</option>
                             <option value="client">Client</option>
                             <option value="onboarded">Onboardé</option>
                         </select>
@@ -208,7 +212,7 @@
                     <button type="button" class="btn btn-secondary" onclick="closeModal('add-company')">
                         Annuler
                     </button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
                         💾 Créer la société
                     </button>
                 </div>
@@ -237,6 +241,7 @@
         let filteredCompanies = [];
         let currentFilter = 'all';
         let selectedCompany = null;
+        let editMode = false;
 
         // Styles pour les filtres
         const filterBtnStyle = `
@@ -305,6 +310,10 @@
             .status-prospect {
                 background: #fef3c7;
                 color: #92400e;
+            }
+            .status-sponsor {
+                background: #f3e8ff;
+                color: #7c3aed;
             }
             .status-client {
                 background: #dbeafe;
@@ -440,6 +449,7 @@
         function updateCounts() {
             document.getElementById('count-all').textContent = companies.length;
             document.getElementById('count-prospect').textContent = companies.filter(c => c.status === 'prospect').length;
+            document.getElementById('count-sponsor').textContent = companies.filter(c => c.status === 'sponsor').length;
             document.getElementById('count-client').textContent = companies.filter(c => c.status === 'client').length;
             document.getElementById('count-onboarded').textContent = companies.filter(c => c.status === 'onboarded').length;
         }
@@ -557,8 +567,12 @@
             modal.classList.add('show');
             
             if (modalId === 'add-company') {
-                // Réinitialiser le formulaire
+                // Mode création - réinitialiser le formulaire
                 document.getElementById('addCompanyForm').reset();
+                document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
+                document.getElementById('submitBtn').textContent = '💾 Créer la société';
+                editMode = false;
+                selectedCompany = null;
             }
         }
 
@@ -567,7 +581,7 @@
             modal.classList.remove('show');
         }
 
-        // Gestion du formulaire d'ajout
+        // Gestion du formulaire d'ajout/modification
         document.getElementById('addCompanyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -589,17 +603,28 @@
             showLoading(true);
             
             try {
-                const result = await CRMService.createCompany(formData);
+                let result;
+                if (editMode && selectedCompany) {
+                    result = await CRMService.updateCompany(selectedCompany.id, formData);
+                    if (result.success) {
+                        showSuccess('Société modifiée avec succès !');
+                    }
+                } else {
+                    result = await CRMService.createCompany(formData);
+                    if (result.success) {
+                        showSuccess('Société créée avec succès !');
+                    }
+                }
+                
                 if (result.success) {
-                    showSuccess('Société créée avec succès !');
                     closeModal('add-company');
                     await loadCompanies();
                 } else {
-                    showError('Erreur lors de la création: ' + result.error);
+                    showError('Erreur lors de la sauvegarde: ' + result.error);
                 }
             } catch (error) {
                 console.error('Erreur:', error);
-                showError('Erreur lors de la création de la société');
+                showError('Erreur lors de la sauvegarde de la société');
             } finally {
                 showLoading(false);
             }
@@ -613,7 +638,7 @@
             selectedCompany = company;
             document.getElementById('companyDetailsTitle').textContent = company.name;
             
-            // Contenu des détails (simplifié pour l'instant)
+            // Contenu des détails
             document.getElementById('companyDetailsContent').innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                     <div>
@@ -624,6 +649,7 @@
                             <div><strong>Site web :</strong> ${company.website ? `<a href="${company.website}" target="_blank">${company.website}</a>` : 'Non spécifié'}</div>
                             <div><strong>Téléphone :</strong> ${company.phone || 'Non spécifié'}</div>
                             <div><strong>SIRET :</strong> ${company.siret || 'Non spécifié'}</div>
+                            <div><strong>Responsable :</strong> ${company.account_manager || 'Non assigné'}</div>
                         </div>
                     </div>
                     <div>
@@ -685,9 +711,38 @@
             openModal('company-details');
         }
 
-        // Modifier une société (simplifié pour l'instant)
+        // Modifier une société
         function editCompany(companyId) {
-            showError('Fonctionnalité de modification en cours de développement');
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            // Fermer le modal de détails s'il est ouvert
+            closeModal('company-details');
+            
+            // Passer en mode édition
+            editMode = true;
+            selectedCompany = company;
+            
+            // Remplir le formulaire avec les données existantes
+            document.getElementById('companyName').value = company.name || '';
+            document.getElementById('companyStatus').value = company.status || '';
+            document.getElementById('companyIndustry').value = company.industry || '';
+            document.getElementById('accountManager').value = company.account_manager || '';
+            document.getElementById('companyWebsite').value = company.website || '';
+            document.getElementById('companyPhone').value = company.phone || '';
+            document.getElementById('companySiret').value = company.siret || '';
+            document.getElementById('companyAddress').value = company.address || '';
+            document.getElementById('companyCity').value = company.city || '';
+            document.getElementById('companyPostalCode').value = company.postal_code || '';
+            document.getElementById('companyCountry').value = company.country || '';
+            document.getElementById('companyNotes').value = company.notes || '';
+            
+            // Modifier les textes du modal
+            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
+            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
+            
+            // Ouvrir le modal
+            openModal('add-company');
         }
 
         // Supprimer une société
