@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header de navigation -->
+    <header class="page-header">
+        <div class="container">
+            <nav class="navbar">
+                <a href="dashboard.html" class="logo">
+                    <div class="logo-icon">🚀</div>
+                    <h1>CRM Pro</h1>
+                </a>
+                
+                <ul class="nav-menu">
+                    <li><a href="dashboard.html" class="nav-link active">📊 Dashboard</a></li>
+                    <li><a href="companies.html" class="nav-link">🏢 Sociétés</a></li>
+                    <li><a href="forecast.html" class="nav-link">📈 Forecast</a></li>
+                    <li><a href="onboarding.html" class="nav-link">🎯 Onboarding</a></li>
+                    <li><a href="licenses.html" class="nav-link">🔑 Licences</a></li>
+                </ul>
+                
+                <div class="user-menu">
+                    <div class="user-info">
+                        <div class="user-avatar" id="userAvatar"></div>
+                        <div class="user-details">
+                            <div class="user-name" id="userName"></div>
+                            <div class="user-role" id="userRole"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="AuthService.logout()">
+                        Déconnexion
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        <!-- Titre de la page -->
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
+                📊 Dashboard
+            </h1>
+            <p style="color: var(--gray-600);">
+                Vue d'ensemble de votre activité CRM et gestion des licences
+            </p>
+        </div>
+
+        <!-- Statistiques principales -->
+        <section class="stats-grid" id="statsContainer">
+            <!-- Les stats seront chargées dynamiquement -->
+        </section>
+
+        <!-- Graphiques et données -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <!-- Graphique évolution des sociétés -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📈 Évolution des sociétés</h3>
+                    <p class="card-subtitle">Répartition par statut</p>
+                </div>
+                <div class="card-body">
+                    <canvas id="companiesChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+
+            <!-- Graphique revenus -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">💰 Revenus mensuels</h3>
+                    <p class="card-subtitle">Évolution des revenus récurrents</p>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tableaux de données -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <!-- Licences à renouveler -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">⚠️ Licences à renouveler</h3>
+                    <p class="card-subtitle">Échéances dans les 30 prochains jours</p>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="table" id="renewalsTable">
+                            <thead>
+                                <tr>
+                                    <th>Société</th>
+                                    <th>Échéance</th>
+                                    <th>Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody id="renewalsTableBody">
+                                <!-- Données chargées dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activité récente -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">🕒 Activité récente</h3>
+                    <p class="card-subtitle">Dernières modifications</p>
+                </div>
+                <div class="card-body">
+                    <div id="recentActivity">
+                        <!-- Activité chargée dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions rapides -->
+        <section style="margin-top: 3rem;">
+            <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: var(--gray-800);">
+                🚀 Actions rapides
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <a href="companies.html?action=add" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
+                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">🏢</span>
+                    <strong>Nouvelle société</strong>
+                    <small style="opacity: 0.8;">Ajouter un prospect</small>
+                </a>
+                
+                <a href="licenses.html?action=add" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
+                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">🔑</span>
+                    <strong>Nouvelle licence</strong>
+                    <small style="opacity: 0.8;">Créer une licence</small>
+                </a>
+                
+                <a href="onboarding.html" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
+                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</span>
+                    <strong>Onboarding</strong>
+                    <small style="opacity: 0.8;">Suivre les étapes</small>
+                </a>
+                
+                <a href="forecast.html" class="btn btn-primary" style="padding: 1.5rem; flex-direction: column; text-align: center;">
+                    <span style="font-size: 2rem; margin-bottom: 0.5rem;">📈</span>
+                    <strong>Forecast</strong>
+                    <small style="opacity: 0.8;">Prévoir les ventes</small>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script>
+        // Variables globales
+        let stats = {};
+        let companiesChart = null;
+        let revenueChart = null;
+
+        // Initialisation de la page
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier l'authentification
+            const isAuthenticated = await AuthService.requireAuth();
+            if (!isAuthenticated) return;
+
+            // Charger les informations utilisateur
+            loadUserInfo();
+
+            // Charger les données du dashboard
+            await loadDashboardData();
+        });
+
+        // Charger les informations utilisateur
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email;
+                document.getElementById('userRole').textContent = userInfo.role;
+                document.getElementById('userAvatar').textContent = getInitials(userInfo.email, '');
+            }
+        }
+
+        // Charger toutes les données du dashboard
+        async function loadDashboardData() {
+            showLoading(true);
+            
+            try {
+                // Charger les statistiques
+                const statsResult = await CRMService.getStats();
+                if (statsResult.success) {
+                    stats = statsResult.data;
+                    renderStats();
+                    renderCharts();
+                    renderRenewalsTable();
+                    renderRecentActivity();
+                } else {
+                    showError('Erreur lors du chargement du dashboard');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Rendu des statistiques principales
+        function renderStats() {
+            const container = document.getElementById('statsContainer');
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalCompanies}</div>
+                    <div class="stat-label">Total Sociétés</div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-number">${stats.prospects}</div>
+                    <div class="stat-label">Prospects</div>
+                    <div class="stat-change">+${Math.round(stats.prospects / stats.totalCompanies * 100)}% du total</div>
+                </div>
+                
+                <div class="stat-card warning">
+                    <div class="stat-number">${stats.clients}</div>
+                    <div class="stat-label">Clients</div>
+                    <div class="stat-change">+${Math.round(stats.clients / stats.totalCompanies * 100)}% du total</div>
+                </div>
+                
+                <div class="stat-card error">
+                    <div class="stat-number">${stats.onboarded}</div>
+                    <div class="stat-label">Onboardés</div>
+                    <div class="stat-change">+${Math.round(stats.onboarded / stats.totalCompanies * 100)}% du total</div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalLicenseCount}</div>
+                    <div class="stat-label">Licences Actives</div>
+                    <div class="stat-change">${stats.activeLicenses} sociétés</div>
+                </div>
+                
+                <div class="stat-card success">
+                    <div class="stat-number">${formatCurrency(stats.monthlyRevenue)}</div>
+                    <div class="stat-label">Revenus Mensuels</div>
+                    <div class="stat-change">MRR (Monthly Recurring Revenue)</div>
+                </div>
+            `;
+        }
+
+        // Rendu des graphiques
+        function renderCharts() {
+            renderCompaniesChart();
+            renderRevenueChart();
+        }
+
+        // Graphique répartition des sociétés
+        function renderCompaniesChart() {
+            const ctx = document.getElementById('companiesChart').getContext('2d');
+            
+            if (companiesChart) {
+                companiesChart.destroy();
+            }
+            
+            companiesChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Prospects', 'Clients', 'Onboardés'],
+                    datasets: [{
+                        data: [stats.prospects, stats.clients, stats.onboarded],
+                        backgroundColor: [
+                            '#667eea',
+                            '#764ba2',
+                            '#48bb78'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Graphique évolution des revenus (simulé)
+        function renderRevenueChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            
+            if (revenueChart) {
+                revenueChart.destroy();
+            }
+            
+            // Données simulées pour les 6 derniers mois
+            const currentRevenue = stats.monthlyRevenue;
+            const revenueData = [];
+            const labels = [];
+            
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                labels.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
+                
+                // Simulation d'une croissance progressive
+                const growth = 1 + (5 - i) * 0.1; // Croissance de 10% par mois
+                revenueData.push(Math.round(currentRevenue * growth));
+            }
+            
+            revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Revenus (€)',
+                        data: revenueData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Tableau des licences à renouveler
+        function renderRenewalsTable() {
+            const tableBody = document.getElementById('renewalsTableBody');
+            
+            if (!stats.expiringLicenses || stats.expiringLicenses.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: var(--gray-500); padding: 2rem;">
+                            🎉 Aucune licence à renouveler dans les 30 prochains jours
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tableBody.innerHTML = stats.expiringLicenses.map(license => {
+                const renewalDate = new Date(license.renewal_date);
+                const now = new Date();
+                const diffTime = renewalDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let urgencyClass = '';
+                if (diffDays <= 7) urgencyClass = 'badge-error';
+                else if (diffDays <= 15) urgencyClass = 'badge-warning';
+                else urgencyClass = 'badge-info';
+                
+                return `
+                    <tr onclick="window.location.href='licenses.html#${license.id}'" style="cursor: pointer;">
+                        <td>
+                            <strong>${license.companies?.name || 'Société inconnue'}</strong>
+                            <br>
+                            <small style="color: var(--gray-500);">${license.license_count} licence(s)</small>
+                        </td>
+                        <td>
+                            <span class="badge ${urgencyClass}">
+                                ${diffDays} jour${diffDays > 1 ? 's' : ''}
+                            </span>
+                            <br>
+                            <small style="color: var(--gray-500);">${formatDateShort(license.renewal_date)}</small>
+                        </td>
+                        <td>
+                            <strong>${formatCurrency(license.monthly_cost)}</strong>
+                            <br>
+                            <small style="color: var(--gray-500);">par mois</small>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Activité récente (simulée)
+        function renderRecentActivity() {
+            const container = document.getElementById('recentActivity');
+            
+            // Génération d'activités fictives basées sur les données réelles
+            const activities = [
+                {
+                    icon: '🏢',
+                    action: 'Nouvelle société ajoutée',
+                    details: 'TechCorp SAS - Prospect',
+                    time: '2 heures'
+                },
+                {
+                    icon: '🔑',
+                    action: 'Licence renouvelée',
+                    details: 'Digital Solutions - 5 licences',
+                    time: '4 heures'
+                },
+                {
+                    icon: '✅',
+                    action: 'Étape onboarding complétée',
+                    details: 'Innovation Inc - Tests fonctionnels',
+                    time: '1 jour'
+                },
+                {
+                    icon: '📧',
+                    action: 'Contact ajouté',
+                    details: 'Pierre Bernard - CTO',
+                    time: '2 jours'
+                },
+                {
+                    icon: '💰',
+                    action: 'Paiement reçu',
+                    details: formatCurrency(199) + ' - Innovation Inc',
+                    time: '3 jours'
+                }
+            ];
+            
+            container.innerHTML = activities.map(activity => `
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--gray-200);">
+                    <div style="font-size: 1.5rem;">${activity.icon}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: var(--gray-800); margin-bottom: 0.25rem;">
+                            ${activity.action}
+                        </div>
+                        <div style="color: var(--gray-600); font-size: 0.875rem;">
+                            ${activity.details}
+                        </div>
+                    </div>
+                    <div style="color: var(--gray-500); font-size: 0.75rem;">
+                        Il y a ${activity.time}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Rafraîchir les données
+        async function refreshDashboard() {
+            await loadDashboardData();
+            showSuccess('Dashboard mis à jour !');
+        }
+
+        // Auto-refresh toutes les 5 minutes
+        setInterval(refreshDashboard, 5 * 60 * 1000);
+
+        // Raccourcis clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        refreshDashboard();
+                        break;
+                    case '1':
+                        e.preventDefault();
+                        window.location.href = 'companies.html';
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        window.location.href = 'forecast.html';
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        window.location.href = 'onboarding.html';
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        window.location.href = 'licenses.html';
+                        break;
+                }
+            }
+        });
+
+        // Animation d'entrée
+        window.addEventListener('load', () => {
+            document.querySelector('main').classList.add('animate-fadeIn');
+        });
+    </script>
+</body>
+</html> chargement des données: ' + statsResult.error);
+                }
+            } catch (error) {
+                console.error('Erreur dashboard:', error);
+                showError('Erreur lors du
