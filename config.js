@@ -353,6 +353,164 @@ class CRMService {
         }
     }
     
+    // ========== CONTACTS ==========
+    
+    static async getContacts(companyId = null) {
+        try {
+            if (!supabase) {
+                // Mode démo - extraire les contacts des sociétés
+                const demoData = this.getDemoData();
+                let allContacts = [];
+                
+                demoData.companies.forEach(company => {
+                    if (company.company_contacts) {
+                        company.company_contacts.forEach(contact => {
+                            allContacts.push({
+                                ...contact,
+                                company_id: company.id,
+                                company_name: company.name,
+                                created_at: company.created_at,
+                                updated_at: company.created_at
+                            });
+                        });
+                    }
+                });
+                
+                // Ajouter quelques contacts supplémentaires pour la démo
+                allContacts.push({
+                    id: '3',
+                    first_name: 'Sophie',
+                    last_name: 'Durand',
+                    email: 's.durand@freelance.com',
+                    phone: '+33 6 12 34 56 78',
+                    position: 'Consultant',
+                    company_id: null,
+                    company_name: null,
+                    is_admin_contact: false,
+                    is_payment_contact: false,
+                    notes: 'Contact freelance intéressé par nos services',
+                    created_at: '2024-06-01T15:30:00Z',
+                    updated_at: '2024-06-01T15:30:00Z'
+                });
+                
+                if (companyId) {
+                    allContacts = allContacts.filter(c => c.company_id === companyId);
+                }
+                
+                return { success: true, data: allContacts };
+            }
+            
+            let query = supabase
+                .from('company_contacts')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+            
+            const { data, error } = await query;
+            if (error) throw error;
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur récupération contacts:', error);
+            
+            // Fallback en mode démo
+            const demoData = this.getDemoData();
+            let allContacts = [];
+            
+            demoData.companies.forEach(company => {
+                if (company.company_contacts) {
+                    company.company_contacts.forEach(contact => {
+                        allContacts.push({
+                            ...contact,
+                            company_id: company.id,
+                            company_name: company.name,
+                            created_at: company.created_at,
+                            updated_at: company.created_at
+                        });
+                    });
+                }
+            });
+            
+            return { success: true, data: allContacts };
+        }
+    }
+    
+    static async createContact(contactData) {
+        try {
+            if (!supabase) {
+                // Mode démo - simuler la création
+                const newContact = {
+                    ...contactData,
+                    id: Date.now().toString(),
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                return { success: true, data: newContact };
+            }
+            
+            const { data, error } = await supabase
+                .from('company_contacts')
+                .insert([{
+                    ...contactData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur création contact:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateContact(id, contactData) {
+        try {
+            if (!supabase) {
+                // Mode démo
+                return { success: true, data: { ...contactData, id } };
+            }
+            
+            const { data, error } = await supabase
+                .from('company_contacts')
+                .update({
+                    ...contactData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur mise à jour contact:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteContact(id) {
+        try {
+            if (!supabase) {
+                // Mode démo
+                return { success: true };
+            }
+            
+            const { error } = await supabase
+                .from('company_contacts')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur suppression contact:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
     // ========== LICENCES ==========
     
     static async getLicenses() {
