@@ -2,24 +2,12 @@
 // CONFIGURATION SUPABASE
 // ===================================
 
-// Configuration avec tes vraies clés Supabase
-const SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDM0MTgsImV4cCI6MjA2NTk3OTQxOH0.Wy_jbUB7D5Bly-rZB6oc2bXUHzZQ8MivDL4vdM1jcE0';
+// 🔥 REMPLACE CES VALEURS PAR TES VRAIES CLÉS SUPABASE
+const SUPABASE_URL = 'https://TON-PROJECT-ID.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // Ta vraie clé
 
 // Initialisation du client Supabase
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Test de connexion
-supabase.auth.getSession().then(({ data, error }) => {
-    if (error && error.message.includes('Invalid API key')) {
-        console.error('🚨 Clé API Supabase invalide');
-        alert('Clé API Supabase invalide. Vérifiez votre configuration.');
-    } else {
-        console.log('✅ Connexion Supabase OK');
-    }
-}).catch(err => {
-    console.error('🚨 Erreur de connexion Supabase:', err);
-});
 
 // ===================================
 // UTILITAIRES GLOBAUX
@@ -157,9 +145,226 @@ class CRMService {
         }
     }
     
-    // ========== LICENCES ==========
+    // ========== CONTACTS ==========
     
-    static async getLicenses() {
+    static async getContacts(companyId = null) {
+        try {
+            let query = supabase
+                .from('company_contacts')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+            
+            const { data, error } = await query;
+            if (error) throw error;
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur récupération contacts:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async createContact(contactData) {
+        try {
+            const { data, error } = await supabase
+                .from('company_contacts')
+                .insert([{
+                    ...contactData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur création contact:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateContact(id, contactData) {
+        try {
+            const { data, error } = await supabase
+                .from('company_contacts')
+                .update({
+                    ...contactData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur mise à jour contact:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteContact(id) {
+        try {
+            const { error } = await supabase
+                .from('company_contacts')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur suppression contact:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    // ========== ONBOARDING ==========
+    
+    static async getOnboardingSteps(companyId) {
+        try {
+            const { data, error } = await supabase
+                .from('onboarding_steps')
+                .select('*')
+                .eq('company_id', companyId)
+                .order('step_order', { ascending: true });
+            
+            if (error) throw error;
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur récupération étapes onboarding:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async createDefaultOnboardingSteps(companyId) {
+        const defaultSteps = [
+            { company_id: companyId, step_name: 'Kick-off effectué', step_order: 1 },
+            { company_id: companyId, step_name: 'Prérequis réseaux', step_order: 2 },
+            { company_id: companyId, step_name: 'Intégration système', step_order: 3 },
+            { company_id: companyId, step_name: 'Adresses emails validées', step_order: 4 },
+            { company_id: companyId, step_name: 'Tests utilisateurs fonctionnels', step_order: 5 },
+            { company_id: companyId, step_name: 'Meeting de clôture', step_order: 6 }
+        ];
+        
+        try {
+            const { data, error } = await supabase
+                .from('onboarding_steps')
+                .insert(defaultSteps)
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data };
+        } catch (error) {
+            console.error('Erreur création étapes par défaut:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateOnboardingStep(id, stepData) {
+        try {
+            const { data, error } = await supabase
+                .from('onboarding_steps')
+                .update({
+                    ...stepData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur mise à jour étape onboarding:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteOnboardingStep(id) {
+        try {
+            const { error } = await supabase
+                .from('onboarding_steps')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur suppression étape onboarding:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    
+    static async createLicense(licenseData) {
+        try {
+            const { data, error } = await supabase
+                .from('company_licenses')
+                .insert([{
+                    ...licenseData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur création licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateLicense(id, licenseData) {
+        try {
+            const { data, error } = await supabase
+                .from('company_licenses')
+                .update({
+                    ...licenseData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select();
+            
+            if (error) throw error;
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('Erreur mise à jour licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteLicense(id) {
+        try {
+            const { error } = await supabase
+                .from('company_licenses')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur suppression licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async getLicensePlans() {
+        try {
+            const { data, error } = await supabase
+                .from('license_plans')
+                .select('*')
+                .eq('is_active', true)
+                .order('price_per_user', { ascending: true });
+            
+            if (error) throw error;
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur récupération plans:', error);
+            return { success: false, error: error.message };
+        }
+    }
         try {
             const { data, error } = await supabase
                 .from('company_licenses')
