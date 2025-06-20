@@ -632,96 +632,11 @@
 
     <script src="config.js"></script>
     <script>
-        // Données simulées pour démo
-        let licenses = [
-            {
-                id: '1',
-                company_id: '1',
-                company_name: 'TechCorp Solutions',
-                plan_id: '2',
-                plan_name: 'Professional',
-                plan_price: 59.99,
-                license_count: 5,
-                start_date: '2024-01-15',
-                end_date: '2025-01-15',
-                renewal_date: '2024-12-15',
-                status: 'active',
-                payment_method: 'stripe',
-                monthly_cost: 299.95,
-                users_count: 4
-            },
-            {
-                id: '2',
-                company_id: '2',
-                company_name: 'Innovation Ltd',
-                plan_id: '3',
-                plan_name: 'Enterprise',
-                plan_price: 99.99,
-                license_count: 10,
-                start_date: '2024-03-01',
-                end_date: '2025-03-01',
-                renewal_date: '2025-02-01',
-                status: 'active',
-                payment_method: 'bank_transfer',
-                monthly_cost: 999.90,
-                users_count: 8
-            },
-            {
-                id: '3',
-                company_id: '3',
-                company_name: 'Digital Marketing Pro',
-                plan_id: '1',
-                plan_name: 'Starter',
-                plan_price: 29.99,
-                license_count: 3,
-                start_date: '2024-06-15',
-                end_date: '2025-06-15',
-                renewal_date: '2024-12-31',
-                status: 'active',
-                payment_method: 'stripe',
-                monthly_cost: 89.97,
-                users_count: 3
-            }
-        ];
-
-        let licenseUsers = [
-            {
-                id: '1',
-                license_id: '1',
-                name: 'Jean Dupont',
-                email: 'j.dupont@techcorp.com',
-                status: 'active',
-                last_login: '2024-06-19T14:30:00Z',
-                role: 'Admin',
-                created_at: '2024-01-15T09:00:00Z'
-            },
-            {
-                id: '2',
-                license_id: '1',
-                name: 'Marie Martin',
-                email: 'm.martin@techcorp.com',
-                status: 'active',
-                last_login: '2024-06-18T16:45:00Z',
-                role: 'User',
-                created_at: '2024-01-20T10:30:00Z'
-            }
-        ];
-
-        const companies = [
-            { id: '1', name: 'TechCorp Solutions', status: 'active' },
-            { id: '2', name: 'Innovation Ltd', status: 'active' },
-            { id: '3', name: 'Digital Marketing Pro', status: 'active' },
-            { id: '4', name: 'StartupX', status: 'prospect' },
-            { id: '5', name: 'Enterprise Global', status: 'active' }
-        ];
-
-        const licensePlans = [
-            { id: '1', name: 'Starter', price_per_user: 29.99 },
-            { id: '2', name: 'Professional', price_per_user: 59.99 },
-            { id: '3', name: 'Enterprise', price_per_user: 99.99 },
-            { id: '4', name: 'Premium', price_per_user: 149.99 }
-        ];
-
+        // Variables globales
+        let licenses = [];
+        let companies = [];
+        let licensePlans = [];
+        let licenseUsers = [];
         let filteredLicenses = [];
         let currentFilter = 'all';
         let editingLicense = null;
@@ -757,12 +672,89 @@
         }
 
         async function initializePage() {
-            populateCompanySelect();
-            populatePlanSelect();
+            await loadData();
+            populateSelects();
             updateStats();
             updateCounts();
             filterLicenses('all');
             initializeDates();
+        }
+
+        async function loadData() {
+            try {
+                // Charger les données depuis la base ou mode démo
+                const [licensesResult, companiesResult, plansResult] = await Promise.all([
+                    CRMService.getLicenses(),
+                    CRMService.getCompanies(),
+                    CRMService.getLicensePlans()
+                ]);
+
+                if (licensesResult.success) {
+                    licenses = licensesResult.data.map(license => ({
+                        id: license.id,
+                        company_id: license.company_id,
+                        company_name: license.companies?.name || 'Société inconnue',
+                        plan_id: license.plan_id,
+                        plan_name: license.license_plans?.name || 'Plan inconnu',
+                        plan_price: license.license_plans?.price_per_user || 0,
+                        license_count: license.license_count,
+                        start_date: license.start_date,
+                        end_date: license.end_date,
+                        renewal_date: license.renewal_date,
+                        status: license.status,
+                        payment_method: license.payment_method,
+                        monthly_cost: license.monthly_cost,
+                        users_count: 0 // À implémenter avec les utilisateurs
+                    }));
+                }
+
+                if (companiesResult.success) {
+                    companies = companiesResult.data;
+                }
+
+                if (plansResult.success) {
+                    licensePlans = plansResult.data;
+                }
+
+                // Simuler des utilisateurs pour la démo
+                licenseUsers = [
+                    {
+                        id: '1',
+                        license_id: '1',
+                        name: 'Jean Dupont',
+                        email: 'j.dupont@techcorp.com',
+                        status: 'active',
+                        last_login: '2024-06-19T14:30:00Z',
+                        role: 'Admin',
+                        created_at: '2024-01-15T09:00:00Z'
+                    },
+                    {
+                        id: '2',
+                        license_id: '1',
+                        name: 'Marie Martin',
+                        email: 'm.martin@techcorp.com',
+                        status: 'active',
+                        last_login: '2024-06-18T16:45:00Z',
+                        role: 'User',
+                        created_at: '2024-01-20T10:30:00Z'
+                    }
+                ];
+
+                // Mettre à jour le nombre d'utilisateurs par licence
+                licenses.forEach(license => {
+                    const usersForLicense = licenseUsers.filter(u => u.license_id === license.id);
+                    license.users_count = usersForLicense.length;
+                });
+
+            } catch (error) {
+                console.error('Erreur chargement données:', error);
+                showError('Erreur lors du chargement des données');
+            }
+        }
+
+        function populateSelects() {
+            populateCompanySelect();
+            populatePlanSelect();
         }
 
         function populateCompanySelect() {
@@ -1208,23 +1200,37 @@
             document.getElementById('licenseModal').classList.add('show');
         }
 
-        function deleteLicense(licenseId) {
+        async function deleteLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
             const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${license.company_name}" ?\n\nCette action est irréversible.`);
             if (!confirmed) return;
             
-            licenses = licenses.filter(l => l.id !== licenseId);
+            showLoading(true);
             
-            showSuccess('Licence supprimée avec succès');
-            updateStats();
-            updateCounts();
-            filterLicenses(currentFilter);
+            try {
+                // En mode réel, appeler l'API pour supprimer
+                const result = await CRMService.deleteLicense?.(licenseId);
+                
+                // En mode démo, supprimer localement
+                licenses = licenses.filter(l => l.id !== licenseId);
+                
+                showSuccess('Licence supprimée avec succès');
+                updateStats();
+                updateCounts();
+                filterLicenses(currentFilter);
+                
+            } catch (error) {
+                console.error('Erreur suppression licence:', error);
+                showError('Erreur lors de la suppression de la licence');
+            } finally {
+                showLoading(false);
+            }
         }
 
         // Gestion du formulaire
-        document.getElementById('licenseForm').addEventListener('submit', (e) => {
+        document.getElementById('licenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const companyId = document.getElementById('licenseCompany').value;
@@ -1238,42 +1244,58 @@
                 return;
             }
             
-            const planSelect = document.getElementById('licensePlan');
-            const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
-            const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
-            
-            const company = companies.find(c => c.id === companyId);
-            const plan = licensePlans.find(p => p.id === planId);
-            
-            const licenseData = {
-                id: editingLicense ? editingLicense.id : Date.now().toString(),
-                company_id: companyId,
-                company_name: company ? company.name : 'Société inconnue',
-                plan_id: planId,
-                plan_name: plan ? plan.name : 'Plan inconnu',
-                plan_price: pricePerUser,
-                license_count: licenseCount,
-                start_date: startDate,
-                end_date: endDate,
-                renewal_date: document.getElementById('renewalDate').value || endDate,
-                status: document.getElementById('licenseStatus').value || 'active',
-                payment_method: document.getElementById('paymentMethod').value || '',
-                monthly_cost: pricePerUser * licenseCount,
-                users_count: editingLicense ? (licenseUsers.filter(u => u.license_id === editingLicense.id).length) : 0
-            };
+            showLoading(true);
             
             try {
+                const planSelect = document.getElementById('licensePlan');
+                const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
+                const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
+                
+                const company = companies.find(c => c.id === companyId);
+                const plan = licensePlans.find(p => p.id === planId);
+                
+                const licenseData = {
+                    company_id: companyId,
+                    plan_id: planId,
+                    license_count: licenseCount,
+                    start_date: startDate,
+                    end_date: endDate,
+                    renewal_date: document.getElementById('renewalDate').value || endDate,
+                    status: document.getElementById('licenseStatus').value || 'active',
+                    payment_method: document.getElementById('paymentMethod').value || '',
+                    monthly_cost: pricePerUser * licenseCount
+                };
+                
                 if (editingLicense) {
+                    // Mise à jour
+                    const result = await CRMService.updateLicense?.(editingLicense.id, licenseData);
+                    
+                    // En mode démo, mettre à jour localement
                     const index = licenses.findIndex(l => l.id === editingLicense.id);
                     if (index !== -1) {
-                        licenses[index] = licenseData;
+                        licenses[index] = {
+                            ...licenses[index],
+                            ...licenseData,
+                            company_name: company ? company.name : 'Société inconnue',
+                            plan_name: plan ? plan.name : 'Plan inconnu',
+                            plan_price: pricePerUser
+                        };
                         showSuccess('Licence modifiée avec succès !');
-                    } else {
-                        showError('Erreur lors de la modification');
-                        return;
                     }
                 } else {
-                    licenses.push(licenseData);
+                    // Création
+                    const result = await CRMService.createLicense?.(licenseData);
+                    
+                    // En mode démo, ajouter localement
+                    const newLicense = {
+                        id: Date.now().toString(),
+                        ...licenseData,
+                        company_name: company ? company.name : 'Société inconnue',
+                        plan_name: plan ? plan.name : 'Plan inconnu',
+                        plan_price: pricePerUser,
+                        users_count: 0
+                    };
+                    licenses.push(newLicense);
                     showSuccess('Licence créée avec succès !');
                 }
                 
@@ -1283,8 +1305,10 @@
                 filterLicenses(currentFilter);
                 
             } catch (error) {
-                console.error('Erreur lors de la sauvegarde:', error);
+                console.error('Erreur sauvegarde licence:', error);
                 showError('Erreur lors de la sauvegarde de la licence');
+            } finally {
+                showLoading(false);
             }
         });
 
