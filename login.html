@@ -5,16 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Connexion</title>
     
-    <!-- Injection variables Netlify -->
-    <script>
-      if (window.location.hostname.includes('netlify')) {
-        window.NETLIFY_ENV = {
-          VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
-          VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
-        };
-        console.log('🌐 Variables Netlify injectées');
-      }
-    </script>
+    <!-- ✅ SUPPRIMÉ: Injection variables manuelle qui ne fonctionne pas -->
+    <!-- Netlify ne substitue PAS automatiquement les %VARIABLE% -->
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
@@ -317,6 +309,7 @@
         </div>
     </div>
     
+    <!-- ✅ Config.js chargera les variables via fonction Netlify -->
     <script src="config.js"></script>
     <script>
         let isSubmitting = false;
@@ -409,7 +402,8 @@
                 'Too many requests': 'Trop de tentatives. Réessayez plus tard',
                 'User not found': 'Utilisateur introuvable',
                 'Network request failed': 'Problème de connexion internet',
-                'Clé Supabase manquante': 'Configuration manquante. Contactez l\'administrateur.'
+                'Clé Supabase manquante': 'Configuration manquante. Contactez l\'administrateur.',
+                'Clé Supabase invalide - contient des placeholders ou est vide': 'Configuration Netlify incorrecte'
             };
             
             return messages[error] || 'Erreur de connexion. Réessayez';
@@ -436,13 +430,24 @@
         // Vérifier si l'utilisateur est déjà connecté
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const user = await AuthService.getCurrentUser();
-                if (user) {
-                    console.log('👤 Utilisateur déjà connecté, redirection');
-                    window.location.href = 'index.html';
+                // Attendre que la config soit chargée
+                let attempts = 0;
+                while (!window.AuthService && attempts < 100) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    attempts++;
+                }
+                
+                if (window.AuthService) {
+                    const user = await AuthService.getCurrentUser();
+                    if (user) {
+                        console.log('👤 Utilisateur déjà connecté, redirection');
+                        window.location.href = 'index.html';
+                    }
+                } else {
+                    console.warn('⚠️ AuthService non disponible après attente');
                 }
             } catch (error) {
-                console.log('👤 Pas d\'utilisateur connecté');
+                console.log('👤 Pas d\'utilisateur connecté ou erreur config:', error.message);
             }
         });
         
