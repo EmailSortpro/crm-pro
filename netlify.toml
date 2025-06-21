@@ -2,6 +2,7 @@
 publish = "."
 command = "echo 'Build CRM Pro terminé'"
 
+# ✅ Configuration des fonctions Netlify
 [build.processing]
 skip_processing = false
 
@@ -12,7 +13,24 @@ pretty_urls = true
 [build.environment]
 NODE_ENV = "production"
 
-# ✅ CORRIGÉ: Exclusions pour éviter les conflits de redirection
+# ✅ Configuration pour fonction à la racine
+[functions]
+directory = "."
+# Netlify cherchera les fonctions dans le dossier racine
+
+# ✅ Redirections pour les fonctions (AVANT les autres redirections)
+[[redirects]]
+from = "/.netlify/functions/env-vars"
+to = "/env-vars.js"
+status = 200
+force = true
+
+[[redirects]]
+from = "/api/env"
+to = "/.netlify/functions/env-vars"
+status = 200
+
+# Redirections pour fichiers statiques
 [[redirects]]
 from = "/config.js"
 to = "/config.js"
@@ -28,7 +46,6 @@ from = "/styles.css"
 to = "/styles.css"
 status = 200
 
-# Redirection pour fichiers statiques (éviter les conflits)
 [[redirects]]
 from = "/*.js"
 to = "/:splat.js"
@@ -39,13 +56,7 @@ from = "/*.css"
 to = "/:splat.css"
 status = 200
 
-# Redirection pour la fonction env-vars
-[[redirects]]
-from = "/api/env"
-to = "/.netlify/functions/env-vars"
-status = 200
-
-# ✅ SPA redirection EN DERNIER (pour éviter les conflits)
+# ✅ SPA redirection EN DERNIER
 [[redirects]]
 from = "/*"
 to = "/index.html"
@@ -59,7 +70,16 @@ X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
 X-Content-Type-Options = "nosniff"
 Referrer-Policy = "strict-origin-when-cross-origin"
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.netlify.app;"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.netlify.app wss://*.supabase.co;"
+
+# Headers spéciaux pour les fonctions
+[[headers]]
+for = "/.netlify/functions/*"
+[headers.values]
+Access-Control-Allow-Origin = "*"
+Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+Access-Control-Allow-Headers = "Content-Type"
+Cache-Control = "no-cache"
 
 # Cache pour fichiers statiques
 [[headers]]
@@ -76,11 +96,3 @@ Cache-Control = "public, max-age=31536000"
 for = "*.js"
 [headers.values]
 Cache-Control = "public, max-age=31536000"
-
-# Headers spéciaux pour les fonctions
-[[headers]]
-for = "/.netlify/functions/*"
-[headers.values]
-Access-Control-Allow-Origin = "*"
-Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-Access-Control-Allow-Headers = "Content-Type"
