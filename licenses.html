@@ -66,20 +66,6 @@
             border-color: var(--primary-color);
         }
 
-        .filter-controls {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
         /* Modal styles */
         .modal {
             display: none;
@@ -103,8 +89,8 @@
             background: var(--white);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-xl);
-            max-width: 700px;
-            width: 95%;
+            max-width: 600px;
+            width: 90%;
             max-height: 90vh;
             overflow-y: auto;
             animation: slideInUp 0.3s ease;
@@ -215,151 +201,6 @@
             display: none;
         }
 
-        .autocomplete-container {
-            position: relative;
-        }
-
-        .autocomplete-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--white);
-            border: 1px solid var(--gray-300);
-            border-top: none;
-            border-radius: 0 0 var(--radius) var(--radius);
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: var(--shadow-lg);
-            display: none;
-        }
-
-        .autocomplete-suggestion {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            border-bottom: 1px solid var(--gray-100);
-            transition: background-color 0.2s;
-        }
-
-        .autocomplete-suggestion:hover,
-        .autocomplete-suggestion.highlighted {
-            background: var(--gray-50);
-        }
-
-        .autocomplete-suggestion:last-child {
-            border-bottom: none;
-        }
-
-        .suggestion-name {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-
-        .suggestion-email {
-            font-size: 0.875rem;
-            color: var(--gray-600);
-            margin-bottom: 0.25rem;
-        }
-
-        .suggestion-company {
-            font-size: 0.75rem;
-            color: var(--gray-500);
-        }
-
-        .suggestion-match {
-            background: yellow;
-            font-weight: 600;
-        }
-
-        .no-suggestions {
-            padding: 1rem;
-            text-align: center;
-            color: var(--gray-500);
-            font-style: italic;
-        }
-
-        .existing-contact-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--blue-50);
-            color: var(--blue-700);
-            padding: 0.5rem;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-            margin-top: 0.5rem;
-        }
-
-        .license-assignment {
-            background: var(--blue-50);
-            border: 1px solid var(--blue-200);
-            border-radius: var(--radius);
-            padding: 1rem;
-            margin: 1rem 0;
-        }
-
-        .contact-assignment-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius);
-            margin-top: 0.5rem;
-        }
-
-        .contact-item {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--gray-200);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .contact-item:hover {
-            background: var(--gray-50);
-        }
-
-        .contact-item:last-child {
-            border-bottom: none;
-        }
-
-        .contact-item.assigned {
-            background: var(--blue-50);
-        }
-
-        .contact-info {
-            flex: 1;
-        }
-
-        .contact-name {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-
-        .contact-email {
-            font-size: 0.875rem;
-            color: var(--gray-600);
-        }
-
-        .assignment-status {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-weight: 600;
-        }
-
-        .assignment-status.assigned {
-            background: var(--green-100);
-            color: var(--green-800);
-        }
-
-        .assignment-status.available {
-            background: var(--gray-100);
-            color: var(--gray-600);
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
             .form-grid,
@@ -369,15 +210,6 @@
 
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
-            }
-
-            .filter-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-group {
-                flex-wrap: wrap;
             }
         }
 
@@ -497,9 +329,9 @@
         <!-- Filtres et recherche -->
         <div class="card" style="margin-bottom: 2rem;">
             <div class="card-body">
-                <div class="filter-controls">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <!-- Filtres par statut -->
-                    <div class="filter-group">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
                         <button class="filter-btn active" data-filter="all" onclick="filterLicenses('all')">
                             Toutes (<span id="count-all">0</span>)
@@ -515,19 +347,11 @@
                         </button>
                     </div>
                     
-                    <!-- Filtre par société -->
-                    <div class="filter-group">
-                        <span style="font-weight: 600; color: var(--gray-700);">Société :</span>
-                        <select id="companyFilter" onchange="applyFilters()" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: var(--radius);">
-                            <option value="">Toutes les sociétés</option>
-                        </select>
-                    </div>
-                    
                     <!-- Barre de recherche -->
                     <div style="flex: 1; min-width: 200px;">
-                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une licence ou un utilisateur..." 
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une licence..." 
                                style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius);"
-                               oninput="applyFilters()">
+                               oninput="searchLicenses()">
                     </div>
                 </div>
             </div>
@@ -571,22 +395,6 @@
         </div>
     </main>
 
-    <!-- Modal Détails de Licence -->
-    <div id="licenseDetailsModal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="licenseDetailsTitle">📄 Détails de la licence</h3>
-                <button class="close-btn" onclick="closeLicenseDetailsModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <div id="licenseDetailsContent">
-                    <!-- Contenu chargé dynamiquement -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal Nouvelle/Modifier Licence -->
     <div id="licenseModal" class="modal">
         <div class="modal-content">
@@ -608,13 +416,6 @@
                             <label for="licensePlan">Plan *</label>
                             <select id="licensePlan" required onchange="updatePricing()">
                                 <option value="">Sélectionner un plan</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="billingCycle">Cycle de facturation *</label>
-                            <select id="billingCycle" required onchange="updatePricing(); updateDates();">
-                                <option value="monthly">Mensuel</option>
-                                <option value="yearly">Annuel (-15%)</option>
                             </select>
                         </div>
                     </div>
@@ -666,27 +467,16 @@
                         <div class="form-grid-3" style="text-align: center;">
                             <div>
                                 <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);" class="pricing-label">par utilisateur/mois</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
                             </div>
                             <div>
                                 <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);" class="pricing-label">équivalent mensuel</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
                             </div>
                             <div>
                                 <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);" class="pricing-label">total annuel</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Assignation des contacts -->
-                    <div id="contactAssignment" class="license-assignment" style="display: none;">
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">👥 Assignation des contacts</h4>
-                        <p style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.875rem;">
-                            Assignez cette licence aux contacts de la société sélectionnée
-                        </p>
-                        <div id="contactsList" class="contact-assignment-list">
-                            <!-- Chargé dynamiquement -->
                         </div>
                     </div>
                     
@@ -724,13 +514,11 @@
         // Variables globales
         let licenses = [];
         let companies = [];
-        let contacts = [];
         let licensePlans = [];
         let filteredLicenses = [];
         let currentFilter = 'all';
         let editingLicense = null;
         let currentLicenseForUsers = null;
-        let selectedContacts = new Set();
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
@@ -765,7 +553,6 @@
         async function initializePage() {
             await loadData();
             populateSelects();
-            populateFilters();
             updateStats();
             updateCounts();
             renderLicenses();
@@ -777,68 +564,77 @@
                 console.log('🔄 Chargement des données...');
                 
                 // Charger toutes les données en parallèle
-                const [licensesResult, companiesResult, contactsResult, plansResult] = await Promise.all([
+                const [licensesResult, companiesResult, plansResult] = await Promise.all([
                     CRMService.getLicenses(),
                     CRMService.getCompanies(),
-                    CRMService.getContacts(),
                     CRMService.getLicensePlans()
                 ]);
 
                 console.log('📊 Résultats bruts:', {
                     licenses: licensesResult,
                     companies: companiesResult,
-                    contacts: contactsResult,
                     plans: plansResult
                 });
 
                 // Traiter les licences
                 if (licensesResult.success && licensesResult.data) {
-                    licenses = licensesResult.data.map(license => ({
-                        id: license.id,
-                        company_id: license.company_id,
-                        company_name: license.companies?.name || 'Société inconnue',
-                        plan_id: license.plan_id,
-                        plan_name: license.license_plans?.name || 'Plan inconnu',
-                        plan_price: license.license_plans?.price_per_user || 0,
-                        license_count: license.license_count || 0,
-                        start_date: license.start_date,
-                        end_date: license.end_date,
-                        renewal_date: license.renewal_date,
-                        status: license.status || 'active',
-                        payment_method: license.payment_method,
-                        monthly_cost: license.monthly_cost || 0,
-                        users: license.license_users || [],
-                        assigned_contacts: license.assigned_contacts || []
-                    }));
+                    licenses = licensesResult.data.map(license => {
+                        console.log('📝 Traitement licence:', license);
+                        
+                        return {
+                            id: license.id,
+                            company_id: license.company_id,
+                            company_name: license.companies?.name || 'Société inconnue',
+                            plan_id: license.plan_id,
+                            plan_name: license.license_plans?.name || 'Plan inconnu',
+                            plan_price: license.license_plans?.price_per_user || 0,
+                            license_count: license.license_count || 0,
+                            start_date: license.start_date,
+                            end_date: license.end_date,
+                            renewal_date: license.renewal_date,
+                            status: license.status || 'active',
+                            payment_method: license.payment_method,
+                            monthly_cost: license.monthly_cost || 0,
+                            users: license.license_users || []
+                        };
+                    });
                 } else {
+                    console.log('❌ Pas de licences trouvées ou erreur');
                     licenses = [];
                 }
 
                 // Traiter les sociétés
-                companies = companiesResult.success ? companiesResult.data : [];
-
-                // Traiter les contacts
-                contacts = contactsResult.success ? contactsResult.data : [];
+                if (companiesResult.success && companiesResult.data) {
+                    companies = companiesResult.data;
+                } else {
+                    console.log('❌ Pas de sociétés trouvées ou erreur');
+                    companies = [];
+                }
 
                 // Traiter les plans
-                licensePlans = plansResult.success ? plansResult.data : [];
+                if (plansResult.success && plansResult.data) {
+                    licensePlans = plansResult.data;
+                } else {
+                    console.log('❌ Pas de plans trouvés ou erreur');
+                    licensePlans = [];
+                }
 
                 console.log('✅ Données finales:', {
                     licenses: licenses.length,
                     companies: companies.length,
-                    contacts: contacts.length,
                     plans: licensePlans.length
                 });
 
+                // Initialiser les licences filtrées
                 filteredLicenses = [...licenses];
 
             } catch (error) {
                 console.error('❌ Erreur chargement données:', error);
                 showError('Erreur lors du chargement des données: ' + error.message);
                 
+                // En cas d'erreur, initialiser des tableaux vides
                 licenses = [];
                 companies = [];
-                contacts = [];
                 licensePlans = [];
                 filteredLicenses = [];
             }
@@ -847,18 +643,6 @@
         function populateSelects() {
             populateCompanySelect();
             populatePlanSelect();
-        }
-
-        function populateFilters() {
-            const companyFilter = document.getElementById('companyFilter');
-            companyFilter.innerHTML = '<option value="">Toutes les sociétés</option>';
-            
-            companies.forEach(company => {
-                const option = document.createElement('option');
-                option.value = company.id;
-                option.textContent = company.name;
-                companyFilter.appendChild(option);
-            });
         }
 
         function populateCompanySelect() {
@@ -897,27 +681,20 @@
 
         function updateDates() {
             const startDate = new Date(document.getElementById('startDate').value);
-            const billingCycle = document.getElementById('billingCycle').value;
-            
             if (!startDate || isNaN(startDate)) return;
             
             const endDate = new Date(startDate);
-            if (billingCycle === 'yearly') {
-                endDate.setFullYear(endDate.getFullYear() + 1);
-            } else {
-                endDate.setMonth(endDate.getMonth() + 1);
-            }
+            endDate.setFullYear(endDate.getFullYear() + 1);
             document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
             
             const renewalDate = new Date(endDate);
-            renewalDate.setDate(renewalDate.getDate() - 7); // 7 jours avant
+            renewalDate.setMonth(renewalDate.getMonth() - 1);
             document.getElementById('renewalDate').value = renewalDate.toISOString().split('T')[0];
         }
 
         function updatePricing() {
             const planSelect = document.getElementById('licensePlan');
             const licenseCount = parseInt(document.getElementById('licenseCount').value) || 0;
-            const billingCycle = document.getElementById('billingCycle').value;
             const selectedOption = planSelect.options[planSelect.selectedIndex];
             
             if (!selectedOption || !selectedOption.dataset.price) {
@@ -925,29 +702,13 @@
                 return;
             }
             
-            const basePricePerUser = parseFloat(selectedOption.dataset.price);
-            let pricePerUser = basePricePerUser;
-            let periodText = 'mois';
-            
-            // Appliquer la remise annuelle
-            if (billingCycle === 'yearly') {
-                pricePerUser = basePricePerUser * 0.85; // 15% de remise
-                periodText = 'an';
-            }
-            
-            const totalPrice = pricePerUser * licenseCount;
-            const monthlyEquivalent = billingCycle === 'yearly' ? totalPrice / 12 : totalPrice;
-            const yearlyTotal = billingCycle === 'yearly' ? totalPrice : totalPrice * 12;
+            const pricePerUser = parseFloat(selectedOption.dataset.price);
+            const monthlyTotal = pricePerUser * licenseCount;
+            const yearlyTotal = monthlyTotal * 12;
             
             document.getElementById('pricePerUser').textContent = formatCurrency(pricePerUser);
-            document.getElementById('monthlyTotal').textContent = formatCurrency(monthlyEquivalent);
+            document.getElementById('monthlyTotal').textContent = formatCurrency(monthlyTotal);
             document.getElementById('yearlyTotal').textContent = formatCurrency(yearlyTotal);
-            
-            // Mettre à jour les labels
-            document.querySelector('#pricingPreview .form-grid-3 div:first-child .pricing-label').textContent = `par utilisateur/${periodText}`;
-            document.querySelector('#pricingPreview .form-grid-3 div:nth-child(2) .pricing-label').textContent = 'équivalent mensuel';
-            document.querySelector('#pricingPreview .form-grid-3 div:nth-child(3) .pricing-label').textContent = 'total annuel';
-            
             document.getElementById('pricingPreview').style.display = 'block';
         }
 
@@ -1001,27 +762,21 @@
             });
             document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
             
-            applyFilters();
-        }
-
-        function applyFilters() {
             const now = new Date();
             const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-            const companyFilter = document.getElementById('companyFilter').value;
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
-            // Filtrer par statut
-            let filtered = [...licenses];
-            
-            switch (currentFilter) {
+            switch (filter) {
+                case 'all':
+                    filteredLicenses = [...licenses];
+                    break;
                 case 'active':
-                    filtered = filtered.filter(l => l.status === 'active');
+                    filteredLicenses = licenses.filter(l => l.status === 'active');
                     break;
                 case 'expired':
-                    filtered = filtered.filter(l => l.status === 'expired');
+                    filteredLicenses = licenses.filter(l => l.status === 'expired');
                     break;
                 case 'expiring':
-                    filtered = filtered.filter(l => {
+                    filteredLicenses = licenses.filter(l => {
                         if (l.status !== 'active' || !l.renewal_date) return false;
                         const renewalDate = new Date(l.renewal_date);
                         return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
@@ -1029,34 +784,35 @@
                     break;
             }
             
-            // Filtrer par société
-            if (companyFilter) {
-                filtered = filtered.filter(l => l.company_id === companyFilter);
-            }
-            
-            // Filtrer par recherche
+            const searchTerm = document.getElementById('searchInput').value;
             if (searchTerm) {
-                filtered = filtered.filter(license => {
-                    const matchesLicense = license.company_name.toLowerCase().includes(searchTerm) ||
-                                         license.plan_name.toLowerCase().includes(searchTerm);
-                    
-                    const matchesUsers = license.users?.some(user => 
-                        user.first_name?.toLowerCase().includes(searchTerm) ||
-                        user.last_name?.toLowerCase().includes(searchTerm) ||
-                        user.email?.toLowerCase().includes(searchTerm)
-                    );
-                    
-                    return matchesLicense || matchesUsers;
-                });
+                searchLicenses();
+            } else {
+                renderLicenses();
+            }
+        }
+
+        function searchLicenses() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderLicenses();
+                return;
             }
             
-            filteredLicenses = filtered;
-            renderLicenses();
+            const searchResults = filteredLicenses.filter(license => {
+                return license.company_name.toLowerCase().includes(searchTerm) ||
+                       license.plan_name.toLowerCase().includes(searchTerm);
+            });
+            
+            renderLicenses(searchResults);
         }
 
         function renderLicenses(licensesToRender = filteredLicenses) {
             const tableBody = document.getElementById('licensesTableBody');
             const emptyState = document.getElementById('emptyState');
+            
+            console.log('🎨 Rendu des licences:', licensesToRender);
             
             if (licensesToRender.length === 0) {
                 tableBody.innerHTML = '';
@@ -1071,17 +827,16 @@
                 const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
                 const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
                 const activeUsers = license.users?.filter(u => u.status === 'active').length || 0;
-                const billingType = getBillingType(license);
                 
                 return `
-                    <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;" title="Cliquer pour voir les détails">
+                    <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;">
                         <td>
                             <div style="font-weight: 600;">${escapeHtml(license.company_name)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
                         </td>
                         <td>
                             <div style="font-weight: 500;">${escapeHtml(license.plan_name)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/${billingType.period}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/mois</div>
                         </td>
                         <td>
                             <span style="font-weight: 600; font-size: 1.125rem;">${activeUsers}/${license.license_count}</span>
@@ -1099,16 +854,12 @@
                         </td>
                         <td>
                             <span style="font-weight: 600; font-size: 1.125rem;">${formatCurrency(license.monthly_cost || 0)}</span>
-                            <div style="font-size: 0.75rem; color: var(--gray-500);">${billingType.label}</div>
                         </td>
                         <td>
                             <span class="license-status ${statusClass}">${statusText}</span>
                         </td>
                         <td onclick="event.stopPropagation()">
                             <div style="display: flex; gap: 0.5rem;">
-                                <button class="btn btn-sm btn-primary" onclick="openLicenseDetails('${license.id}')" title="Voir détails">
-                                    👁️
-                                </button>
                                 <button class="btn btn-sm btn-secondary" onclick="editLicense('${license.id}')" title="Modifier">
                                     ✏️
                                 </button>
@@ -1160,274 +911,6 @@
             }
         }
 
-        function getBillingType(license) {
-            // Déterminer le type de facturation basé sur la durée
-            if (!license.start_date || !license.end_date) {
-                return { period: 'mois', label: 'Mensuel' };
-            }
-            
-            const start = new Date(license.start_date);
-            const end = new Date(license.end_date);
-            const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-            
-            if (diffMonths >= 12) {
-                return { period: 'an', label: 'Annuel' };
-            } else {
-                return { period: 'mois', label: 'Mensuel' };
-            }
-        }
-
-        function openLicenseDetails(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            document.getElementById('licenseDetailsTitle').textContent = `📄 ${license.company_name} - ${license.plan_name}`;
-            
-            const billingType = getBillingType(license);
-            const isExpiring = isLicenseExpiring(license);
-            const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
-            const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
-            const activeUsers = license.users?.filter(u => u.status === 'active').length || 0;
-            const inactiveUsers = license.users?.filter(u => u.status === 'inactive').length || 0;
-            
-            // Calculer les métriques financières
-            const totalPaidYearly = license.monthly_cost * 12;
-            const costPerUser = activeUsers > 0 ? license.monthly_cost / activeUsers : 0;
-            const utilizationRate = license.license_count > 0 ? Math.round((activeUsers / license.license_count) * 100) : 0;
-            
-            // Calculer les jours jusqu'à expiration
-            const daysUntilExpiry = getDaysUntilExpiration(license.end_date);
-            const daysUntilRenewal = getDaysUntilRenewal(license.renewal_date);
-            
-            document.getElementById('licenseDetailsContent').innerHTML = `
-                <!-- En-tête avec statut -->
-                <div style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">${escapeHtml(license.company_name)}</h2>
-                            <p style="margin: 0; opacity: 0.9; font-size: 1.125rem;">${escapeHtml(license.plan_name)} - ${billingType.label}</p>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem;">${formatCurrency(license.monthly_cost)}</div>
-                            <div style="opacity: 0.9;">${billingType.period === 'an' ? 'par an' : 'par mois'}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Métriques principales -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                    <div class="quick-stat">
-                        <div class="quick-stat-number" style="color: ${utilizationRate >= 80 ? 'var(--success-color)' : utilizationRate >= 50 ? 'var(--warning-color)' : 'var(--error-color)'};">${utilizationRate}%</div>
-                        <div class="quick-stat-label">Taux d'utilisation</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">${activeUsers}/${license.license_count} licences</div>
-                    </div>
-                    
-                    <div class="quick-stat">
-                        <div class="quick-stat-number">${formatCurrency(costPerUser)}</div>
-                        <div class="quick-stat-label">Coût par utilisateur</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">par mois</div>
-                    </div>
-                    
-                    <div class="quick-stat">
-                        <div class="quick-stat-number">${formatCurrency(totalPaidYearly)}</div>
-                        <div class="quick-stat-label">Coût annuel total</div>
-                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">estimation</div>
-                    </div>
-                    
-                    <div class="quick-stat">
-                        <div class="quick-stat-number" style="color: ${isExpiring ? 'var(--error-color)' : 'var(--success-color)'};">
-                            <span class="license-status ${statusClass}" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px;">${statusText}</span>
-                        </div>
-                        <div class="quick-stat-label">Statut actuel</div>
-                    </div>
-                </div>
-
-                <!-- Informations détaillées -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-                    <!-- Informations licence -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h4>📋 Informations de la licence</h4>
-                        </div>
-                        <div class="card-body">
-                            <div style="display: grid; gap: 1rem;">
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Type de facturation:</span>
-                                    <span style="font-weight: 600;">${billingType.label}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Date de début:</span>
-                                    <span style="font-weight: 600;">${formatDateLong(license.start_date)}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Date de fin:</span>
-                                    <span style="font-weight: 600;">${formatDateLong(license.end_date)}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Jours restants:</span>
-                                    <span style="font-weight: 600; color: ${daysUntilExpiry.includes('Expiré') ? 'var(--error-color)' : daysUntilExpiry.includes('aujourd') || daysUntilExpiry.includes('demain') ? 'var(--warning-color)' : 'var(--success-color)'};">${daysUntilExpiry}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Renouvellement:</span>
-                                    <span style="font-weight: 600;">${formatDateLong(license.renewal_date)}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Rappel renouvellement:</span>
-                                    <span style="font-weight: 600; color: ${daysUntilRenewal.includes('Expiré') || daysUntilRenewal.includes('aujourd') ? 'var(--error-color)' : 'var(--primary-color)'};">${daysUntilRenewal}</span>
-                                </div>
-                                ${license.payment_method ? `
-                                <div style="display: flex; justify-content: space-between;">
-                                    <span style="color: var(--gray-600);">Méthode de paiement:</span>
-                                    <span style="font-weight: 600;">${getPaymentMethodText(license.payment_method)}</span>
-                                </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Utilisateurs -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h4>👥 Utilisateurs (${activeUsers + inactiveUsers})</h4>
-                        </div>
-                        <div class="card-body">
-                            <div style="margin-bottom: 1rem;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="color: var(--gray-600);">Actifs:</span>
-                                    <span style="font-weight: 600; color: var(--success-color);">${activeUsers}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                    <span style="color: var(--gray-600);">Inactifs:</span>
-                                    <span style="font-weight: 600; color: var(--error-color);">${inactiveUsers}</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                                    <span style="color: var(--gray-600);">Places libres:</span>
-                                    <span style="font-weight: 600; color: var(--primary-color);">${license.license_count - activeUsers}</span>
-                                </div>
-                            </div>
-                            
-                            ${license.users && license.users.length > 0 ? `
-                                <div style="max-height: 200px; overflow-y: auto;">
-                                    ${license.users.map(user => `
-                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--gray-200); ${user.status === 'inactive' ? 'opacity: 0.6;' : ''}">
-                                            <div>
-                                                <div style="font-weight: 600; font-size: 0.875rem;">
-                                                    ${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}
-                                                    ${user.contact_id ? '<span style="color: var(--blue-600); font-size: 0.7rem; margin-left: 0.5rem;">🔗 Contact lié</span>' : ''}
-                                                </div>
-                                                <div style="font-size: 0.75rem; color: var(--gray-500);">${escapeHtml(user.email)}</div>
-                                                ${user.position ? `<div style="font-size: 0.7rem; color: var(--gray-400);">${escapeHtml(user.position)}</div>` : ''}
-                                            </div>
-                                            <div style="text-align: right;">
-                                                <div style="font-size: 0.75rem; color: ${user.status === 'active' ? 'var(--success-color)' : 'var(--error-color)'};">
-                                                    ${user.status === 'active' ? '🟢 Actif' : '🔴 Inactif'}
-                                                </div>
-                                                <div style="font-size: 0.7rem; color: var(--gray-500);">${user.role}</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : `
-                                <div style="text-align: center; color: var(--gray-500); font-style: italic; padding: 1rem;">
-                                    Aucun utilisateur assigné
-                                </div>
-                            `}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Historique et actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h4>⚡ Actions rapides</h4>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <button class="btn btn-primary" onclick="closeLicenseDetailsModal(); editLicense('${license.id}')">
-                                ✏️ Modifier la licence
-                            </button>
-                            <button class="btn btn-secondary" onclick="closeLicenseDetailsModal(); openUsersModal('${license.id}')">
-                                👥 Gérer les utilisateurs
-                            </button>
-                            ${isExpiring ? `
-                                <button class="btn btn-warning" onclick="renewLicense('${license.id}')">
-                                    🔄 Renouveler maintenant
-                                </button>
-                            ` : ''}
-                            <button class="btn btn-info" onclick="exportLicenseReport('${license.id}')">
-                                📊 Exporter rapport
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('licenseDetailsModal').classList.add('show');
-        }
-
-        function closeLicenseDetailsModal() {
-            document.getElementById('licenseDetailsModal').classList.remove('show');
-        }
-
-        function getDaysUntilExpiration(endDate) {
-            if (!endDate) return 'Non défini';
-            
-            const now = new Date();
-            const expiry = new Date(endDate);
-            const diffTime = expiry - now;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            if (diffDays < 0) {
-                return `Expiré depuis ${Math.abs(diffDays)} jour(s)`;
-            } else if (diffDays === 0) {
-                return 'Expire aujourd\'hui';
-            } else if (diffDays === 1) {
-                return 'Expire demain';
-            } else if (diffDays <= 30) {
-                return `${diffDays} jour(s)`;
-            } else if (diffDays <= 365) {
-                return `${Math.ceil(diffDays / 30)} mois`;
-            } else {
-                return `${Math.ceil(diffDays / 365)} an(s)`;
-            }
-        }
-
-        function formatDateLong(dateString) {
-            if (!dateString) return 'Non défini';
-            try {
-                return new Date(dateString).toLocaleDateString('fr-FR', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                });
-            } catch {
-                return 'Date invalide';
-            }
-        }
-
-        function getPaymentMethodText(method) {
-            const methodMap = {
-                'stripe': 'Stripe',
-                'bank_transfer': 'Virement bancaire',
-                'check': 'Chèque',
-                'cash': 'Espèces'
-            };
-            return methodMap[method] || method;
-        }
-
-        function renewLicense(licenseId) {
-            // Fonctionnalité de renouvellement automatique
-            if (confirm('Voulez-vous renouveler cette licence pour une nouvelle période ?')) {
-                showError('Fonctionnalité de renouvellement en cours de développement');
-            }
-        }
-
-        function exportLicenseReport(licenseId) {
-            // Export du rapport de licence
-            showError('Fonctionnalité d\'export en cours de développement');
-        }
-
         function getStatusText(status) {
             const statusMap = {
                 'active': 'Active',
@@ -1436,6 +919,13 @@
                 'cancelled': 'Annulée'
             };
             return statusMap[status] || status;
+        }
+
+        function openLicenseDetails(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            alert(`Détails de la licence ${license.company_name} - ${license.plan_name}\n\nCette fonctionnalité sera développée prochainement.`);
         }
 
         // Gestion des modals
@@ -1464,8 +954,6 @@
         function resetLicenseForm() {
             document.getElementById('licenseForm').reset();
             document.getElementById('pricingPreview').style.display = 'none';
-            document.getElementById('contactAssignment').style.display = 'none';
-            selectedContacts.clear();
             editingLicense = null;
             
             const today = new Date();
@@ -1481,7 +969,6 @@
             
             document.getElementById('licenseCompany').value = license.company_id;
             document.getElementById('licensePlan').value = license.plan_id;
-            document.getElementById('billingCycle').value = getBillingType(license).period === 'an' ? 'yearly' : 'monthly';
             document.getElementById('licenseCount').value = license.license_count;
             document.getElementById('startDate').value = license.start_date;
             document.getElementById('endDate').value = license.end_date;
@@ -1494,72 +981,8 @@
             
             updatePricing();
             
-            // Charger les contacts de la société pour l'assignation
-            if (license.company_id) {
-                loadCompanyContacts(license.company_id);
-                selectedContacts = new Set(license.assigned_contacts || []);
-            }
-            
             document.getElementById('licenseModal').classList.add('show');
         }
-
-        async function loadCompanyContacts(companyId) {
-            try {
-                const companyContacts = contacts.filter(c => c.company_id === companyId);
-                
-                if (companyContacts.length === 0) {
-                    document.getElementById('contactAssignment').style.display = 'none';
-                    return;
-                }
-                
-                document.getElementById('contactAssignment').style.display = 'block';
-                
-                const contactsList = document.getElementById('contactsList');
-                contactsList.innerHTML = companyContacts.map(contact => {
-                    const isAssigned = selectedContacts.has(contact.id);
-                    return `
-                        <div class="contact-item ${isAssigned ? 'assigned' : ''}" onclick="toggleContactAssignment('${contact.id}')">
-                            <div class="contact-info">
-                                <div class="contact-name">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}</div>
-                                <div class="contact-email">${escapeHtml(contact.email)}</div>
-                            </div>
-                            <div class="assignment-status ${isAssigned ? 'assigned' : 'available'}">
-                                ${isAssigned ? '✅ Assigné' : '⭕ Disponible'}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {
-                console.error('Erreur chargement contacts société:', error);
-                document.getElementById('contactAssignment').style.display = 'none';
-            }
-        }
-
-        function toggleContactAssignment(contactId) {
-            if (selectedContacts.has(contactId)) {
-                selectedContacts.delete(contactId);
-            } else {
-                selectedContacts.add(contactId);
-            }
-            
-            // Actualiser l'affichage
-            const companyId = document.getElementById('licenseCompany').value;
-            if (companyId) {
-                loadCompanyContacts(companyId);
-            }
-        }
-
-        // Event listener pour le changement de société
-        document.getElementById('licenseCompany').addEventListener('change', function() {
-            const companyId = this.value;
-            selectedContacts.clear();
-            
-            if (companyId) {
-                loadCompanyContacts(companyId);
-            } else {
-                document.getElementById('contactAssignment').style.display = 'none';
-            }
-        });
 
         async function deleteLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
@@ -1656,26 +1079,7 @@
                 <!-- Formulaire d'ajout d'utilisateur -->
                 <div id="addUserForm" class="add-user-form">
                     <h4 style="margin-bottom: 1rem;">➕ Nouvel utilisateur</h4>
-                    <p style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.875rem;">
-                        Commencez à taper le prénom, nom ou email. Les contacts existants seront suggérés automatiquement.
-                    </p>
-                    
                     <form id="userForm" onsubmit="addUser(event, '${license.id}')">
-                        <!-- Champ de recherche avec autocomplétion -->
-                        <div class="form-group" style="margin-bottom: 1rem;">
-                            <label for="userSearch">Rechercher un contact existant</label>
-                            <div class="autocomplete-container">
-                                <input type="text" id="userSearch" placeholder="Tapez un prénom, nom ou email..." autocomplete="off"
-                                       oninput="handleUserSearch()" onkeydown="handleSearchKeydown(event)">
-                                <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
-                            </div>
-                            <div id="selectedContactInfo" class="existing-contact-indicator" style="display: none;">
-                                <span>✅</span>
-                                <span id="selectedContactText"></span>
-                                <button type="button" onclick="clearSelectedContact()" style="background: none; border: none; color: var(--blue-700); cursor: pointer; margin-left: 0.5rem;">✖️</button>
-                            </div>
-                        </div>
-
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
                                 <label for="userFirstName">Prénom *</label>
@@ -1700,31 +1104,27 @@
                                 </select>
                             </div>
                         </div>
-                        
-                        <!-- Informations supplémentaires du contact -->
-                        <div id="contactExtraInfo" style="display: none; background: var(--blue-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 1rem;">
-                            <h5 style="margin-bottom: 0.5rem; color: var(--blue-800);">📋 Informations du contact</h5>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
-                                <div>
-                                    <strong>Téléphone:</strong> <span id="contactPhone">-</span>
-                                </div>
-                                <div>
-                                    <strong>Poste:</strong> <span id="contactPosition">-</span>
-                                </div>
-                                <div>
-                                    <strong>Société:</strong> <span id="contactCompany">-</span>
-                                </div>
-                                <div>
-                                    <strong>Statut:</strong> <span id="contactStatus">-</span>
-                                </div>
-                            </div>
-                        </div>
-
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                             <button type="button" class="btn btn-secondary" onclick="hideAddUserForm()">Annuler</button>
                         </div>
                     </form>
+                </div>
+
+                <!-- Formulaire d'import CSV -->
+                <div id="importUserForm" class="add-user-form">
+                    <h4 style="margin-bottom: 1rem;">📄 Import CSV</h4>
+                    <p style="margin-bottom: 1rem; color: var(--gray-600);">
+                        Format: prénom,nom,email,rôle
+                    </p>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <button class="btn btn-primary" onclick="importUsers('${license.id}')">Importer</button>
+                        <button class="btn btn-secondary" onclick="hideImportUserForm()">Annuler</button>
+                        <button class="btn btn-info" onclick="downloadTemplate()">📥 Télécharger modèle</button>
+                    </div>
                 </div>
 
                 <!-- Liste des utilisateurs -->
@@ -1734,12 +1134,8 @@
                         ${users.length > 0 ? users.map(user => `
                             <div class="user-card ${user.status === 'inactive' ? 'user-status-inactive' : ''}">
                                 <div class="user-info">
-                                    <div class="user-name">
-                                        ${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}
-                                        ${user.contact_id ? '<span style="color: var(--blue-600); font-size: 0.75rem; margin-left: 0.5rem;">🔗 Contact lié</span>' : ''}
-                                    </div>
+                                    <div class="user-name">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
                                     <div class="user-email">${escapeHtml(user.email)}</div>
-                                    ${user.position ? `<div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">${escapeHtml(user.position)}</div>` : ''}
                                     <div>
                                         <span class="user-role">${user.role}</span>
                                         <span style="margin-left: 0.5rem; font-size: 0.75rem; color: var(--gray-500);">
@@ -1764,6 +1160,9 @@
                     <button class="btn btn-secondary" onclick="closeUsersModal()">
                         Fermer
                     </button>
+                    <button class="btn btn-primary" onclick="saveUsersChanges('${license.id}')">
+                        💾 Sauvegarder
+                    </button>
                 </div>
             `;
         }
@@ -1771,260 +1170,22 @@
         // Gestion des utilisateurs - Fonctions
         function showAddUserForm() {
             document.getElementById('addUserForm').style.display = 'block';
-            // Focus sur le champ de recherche
-            setTimeout(() => {
-                document.getElementById('userSearch').focus();
-            }, 100);
+            document.getElementById('importUserForm').style.display = 'none';
         }
 
         function hideAddUserForm() {
             document.getElementById('addUserForm').style.display = 'none';
             document.getElementById('userForm').reset();
-            clearSelectedContact();
-            hideAutocompleteSuggestions();
         }
 
-        // Système d'autocomplétion
-        function handleUserSearch() {
-            const searchInput = document.getElementById('userSearch');
-            const query = searchInput.value.trim();
-            
-            // Effacer le timeout précédent
-            if (autocompleteTimeout) {
-                clearTimeout(autocompleteTimeout);
-            }
-            
-            // Attendre 300ms avant de chercher (debounce)
-            autocompleteTimeout = setTimeout(() => {
-                if (query.length >= 1) {
-                    searchContacts(query);
-                } else {
-                    hideAutocompleteSuggestions();
-                }
-            }, 300);
-        }
-
-        function searchContacts(query) {
-            const suggestionContainer = document.getElementById('autocompleteSuggestions');
-            const queryLower = query.toLowerCase();
-            
-            // Chercher dans tous les contacts
-            const matchingContacts = contacts.filter(contact => {
-                const firstName = (contact.first_name || '').toLowerCase();
-                const lastName = (contact.last_name || '').toLowerCase();
-                const email = (contact.email || '').toLowerCase();
-                const fullName = `${firstName} ${lastName}`.trim();
-                
-                return firstName.includes(queryLower) || 
-                       lastName.includes(queryLower) || 
-                       email.includes(queryLower) ||
-                       fullName.includes(queryLower);
-            });
-            
-            // Trier par pertinence (correspondance au début prioritaire)
-            matchingContacts.sort((a, b) => {
-                const aFirstName = (a.first_name || '').toLowerCase();
-                const bFirstName = (b.first_name || '').toLowerCase();
-                const aLastName = (a.last_name || '').toLowerCase();
-                const bLastName = (b.last_name || '').toLowerCase();
-                
-                const aStartsWithFirst = aFirstName.startsWith(queryLower);
-                const bStartsWithFirst = bFirstName.startsWith(queryLower);
-                const aStartsWithLast = aLastName.startsWith(queryLower);
-                const bStartsWithLast = bLastName.startsWith(queryLower);
-                
-                if (aStartsWithFirst && !bStartsWithFirst) return -1;
-                if (!aStartsWithFirst && bStartsWithFirst) return 1;
-                if (aStartsWithLast && !bStartsWithLast) return -1;
-                if (!aStartsWithLast && bStartsWithLast) return 1;
-                
-                return 0;
-            });
-            
-            // Limiter à 8 résultats
-            const limitedResults = matchingContacts.slice(0, 8);
-            
-            if (limitedResults.length > 0) {
-                suggestionContainer.innerHTML = limitedResults.map((contact, index) => {
-                    const companyName = contact.companies?.name || 'Société inconnue';
-                    const highlightedName = highlightMatch(`${contact.first_name} ${contact.last_name}`, query);
-                    const highlightedEmail = highlightMatch(contact.email, query);
-                    
-                    return `
-                        <div class="autocomplete-suggestion" data-contact-id="${contact.id}" data-index="${index}">
-                            <div class="suggestion-name">${highlightedName}</div>
-                            <div class="suggestion-email">${highlightedEmail}</div>
-                            <div class="suggestion-company">${escapeHtml(companyName)}</div>
-                        </div>
-                    `;
-                }).join('');
-                
-                // Ajouter les événements de clic
-                suggestionContainer.querySelectorAll('.autocomplete-suggestion').forEach(suggestion => {
-                    suggestion.addEventListener('click', () => {
-                        const contactId = suggestion.dataset.contactId;
-                        selectContact(contactId);
-                    });
-                });
-                
-                showAutocompleteSuggestions();
-            } else {
-                suggestionContainer.innerHTML = '<div class="no-suggestions">Aucun contact trouvé</div>';
-                showAutocompleteSuggestions();
-            }
-        }
-
-        function highlightMatch(text, query) {
-            if (!text || !query) return escapeHtml(text);
-            
-            const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-            const escapedText = escapeHtml(text);
-            return escapedText.replace(regex, '<span class="suggestion-match">$1</span>');
-        }
-
-        function escapeRegex(string) {
-            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\        // Gestion des utilisateurs - Fonctions
-        function showAddUserForm() {
-            document.getElementById('addUserForm').style.display = 'block';
-        }
-
-        function hideAddUserForm() {
+        function showImportUserForm() {
+            document.getElementById('importUserForm').style.display = 'block';
             document.getElementById('addUserForm').style.display = 'none';
-            document.getElementById('userForm').reset();
-        }');
         }
 
-        function showAutocompleteSuggestions() {
-            document.getElementById('autocompleteSuggestions').style.display = 'block';
-        }
-
-        function hideAutocompleteSuggestions() {
-            document.getElementById('autocompleteSuggestions').style.display = 'none';
-        }
-
-        function handleSearchKeydown(event) {
-            const suggestions = document.querySelectorAll('.autocomplete-suggestion');
-            const currentHighlighted = document.querySelector('.autocomplete-suggestion.highlighted');
-            
-            switch (event.key) {
-                case 'ArrowDown':
-                    event.preventDefault();
-                    if (currentHighlighted) {
-                        currentHighlighted.classList.remove('highlighted');
-                        const next = currentHighlighted.nextElementSibling;
-                        if (next) {
-                            next.classList.add('highlighted');
-                        } else {
-                            suggestions[0]?.classList.add('highlighted');
-                        }
-                    } else {
-                        suggestions[0]?.classList.add('highlighted');
-                    }
-                    break;
-                    
-                case 'ArrowUp':
-                    event.preventDefault();
-                    if (currentHighlighted) {
-                        currentHighlighted.classList.remove('highlighted');
-                        const prev = currentHighlighted.previousElementSibling;
-                        if (prev) {
-                            prev.classList.add('highlighted');
-                        } else {
-                            suggestions[suggestions.length - 1]?.classList.add('highlighted');
-                        }
-                    } else {
-                        suggestions[suggestions.length - 1]?.classList.add('highlighted');
-                    }
-                    break;
-                    
-                case 'Enter':
-                    event.preventDefault();
-                    if (currentHighlighted) {
-                        const contactId = currentHighlighted.dataset.contactId;
-                        selectContact(contactId);
-                    }
-                    break;
-                    
-                case 'Escape':
-                    hideAutocompleteSuggestions();
-                    break;
-            }
-        }
-
-        function selectContact(contactId) {
-            const contact = contacts.find(c => c.id === contactId);
-            if (!contact) return;
-            
-            selectedContact = contact;
-            
-            // Remplir les champs du formulaire
-            document.getElementById('userFirstName').value = contact.first_name || '';
-            document.getElementById('userLastName').value = contact.last_name || '';
-            document.getElementById('userEmail').value = contact.email || '';
-            
-            // Déterminer le rôle par défaut basé sur la position
-            const position = (contact.position || '').toLowerCase();
-            let defaultRole = 'user';
-            if (position.includes('admin') || position.includes('directeur') || position.includes('ceo') || position.includes('président')) {
-                defaultRole = 'admin';
-            } else if (position.includes('manager') || position.includes('chef') || position.includes('responsable')) {
-                defaultRole = 'manager';
-            }
-            document.getElementById('userRole').value = defaultRole;
-            
-            // Afficher les informations du contact sélectionné
-            document.getElementById('selectedContactText').textContent = 
-                `${contact.first_name} ${contact.last_name} (${contact.email})`;
-            document.getElementById('selectedContactInfo').style.display = 'flex';
-            
-            // Afficher les informations supplémentaires
-            document.getElementById('contactPhone').textContent = contact.phone || 'Non renseigné';
-            document.getElementById('contactPosition').textContent = contact.position || 'Non renseigné';
-            document.getElementById('contactCompany').textContent = contact.companies?.name || 'Non renseigné';
-            document.getElementById('contactStatus').textContent = getContactStatusText(contact.status);
-            document.getElementById('contactExtraInfo').style.display = 'block';
-            
-            // Effacer le champ de recherche et masquer les suggestions
-            document.getElementById('userSearch').value = '';
-            hideAutocompleteSuggestions();
-        }
-
-        function clearSelectedContact() {
-            selectedContact = null;
-            document.getElementById('selectedContactInfo').style.display = 'none';
-            document.getElementById('contactExtraInfo').style.display = 'none';
-            document.getElementById('userFirstName').value = '';
-            document.getElementById('userLastName').value = '';
-            document.getElementById('userEmail').value = '';
-            document.getElementById('userRole').value = 'user';
-        }
-
-        function getContactStatusText(status) {
-            const statusMap = {
-                'active': '🟢 Actif',
-                'inactive': '🔴 Inactif',
-                'pending': '🟡 En attente'
-            };
-            return statusMap[status] || status || 'Non défini';
-        }
-
-        // Fermer l'autocomplétion quand on clique ailleurs
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.autocomplete-container')) {
-                hideAutocompleteSuggestions();
-            }
-        });
-
-        }
-
-        function showImportUserForm() {
-            // Fonctionnalité à implémenter
-            showError('Fonctionnalité en cours de développement');
-        }
-
-        function showImportUserForm() {
-            // Fonctionnalité à implémenter
-            showError('Fonctionnalité en cours de développement');
+        function hideImportUserForm() {
+            document.getElementById('importUserForm').style.display = 'none';
+            document.getElementById('csvFile').value = '';
         }
 
         async function addUser(event, licenseId) {
@@ -2060,31 +1221,14 @@
                     last_name: lastName,
                     email: email,
                     role: role,
-                    status: 'active',
-                    // Ajouter les informations du contact si sélectionné
-                    contact_id: selectedContact?.id || null,
-                    phone: selectedContact?.phone || null,
-                    position: selectedContact?.position || null
+                    status: 'active'
                 };
                 
                 const result = await CRMService.createLicenseUser(userData);
                 
                 if (result.success) {
-                    showSuccess(`Utilisateur ajouté avec succès${selectedContact ? ' (lié au contact existant)' : ''}`);
+                    showSuccess('Utilisateur ajouté avec succès');
                     hideAddUserForm();
-                    
-                    // Si c'était un contact existant, mettre à jour son statut
-                    if (selectedContact) {
-                        try {
-                            await CRMService.updateContact(selectedContact.id, {
-                                ...selectedContact,
-                                has_license: true,
-                                license_id: licenseId
-                            });
-                        } catch (error) {
-                            console.warn('Erreur mise à jour contact:', error);
-                        }
-                    }
                     
                     // Recharger les données et la modal
                     await loadData();
@@ -2102,7 +1246,135 @@
             }
         }
 
+        function downloadTemplate() {
+            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'modele_utilisateurs.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        async function importUsers(licenseId) {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Veuillez sélectionner un fichier CSV');
+                return;
+            }
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            showLoading(true);
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n');
+                    
+                    if (lines.length < 2) {
+                        showError('Le fichier CSV doit contenir au moins une ligne de données');
+                        return;
+                    }
+                    
+                    // Ignorer la première ligne (en-têtes)
+                    const dataLines = lines.slice(1).filter(line => line.trim());
+                    
+                    const currentUsers = license.users?.filter(u => u.status === 'active') || [];
+                    const availableSlots = license.license_count - currentUsers.length;
+                    
+                    if (dataLines.length > availableSlots) {
+                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
+                        return;
+                    }
+                    
+                    let importedCount = 0;
+                    const errors = [];
+                    
+                    for (let index = 0; index < dataLines.length; index++) {
+                        const line = dataLines[index];
+                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+                        
+                        if (columns.length < 3) {
+                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
+                            continue;
+                        }
+                        
+                        const [firstName, lastName, email, role = 'user'] = columns;
+                        
+                        if (!firstName || !lastName || !email) {
+                            errors.push(`Ligne ${index + 2}: Données manquantes`);
+                            continue;
+                        }
+                        
+                        // Vérifier si l'email existe déjà
+                        const existingUser = license.users?.find(u => u.email === email);
+                        if (existingUser) {
+                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
+                            continue;
+                        }
+                        
+                        try {
+                            const userData = {
+                                license_id: licenseId,
+                                first_name: firstName,
+                                last_name: lastName,
+                                email: email,
+                                role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
+                                status: 'active'
+                            };
+                            
+                            const result = await CRMService.createLicenseUser(userData);
+                            
+                            if (result.success) {
+                                importedCount++;
+                            } else {
+                                errors.push(`Ligne ${index + 2}: ${result.error || 'Erreur création'}`);
+                            }
+                        } catch (error) {
+                            errors.push(`Ligne ${index + 2}: ${error.message}`);
+                        }
+                    }
+                    
+                    if (errors.length > 0) {
+                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
+                    } else {
+                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
+                    }
+                    
+                    hideImportUserForm();
+                    
+                    // Recharger les données
+                    await loadData();
+                    updateStats();
+                    renderLicenses();
+                    openUsersModal(licenseId);
+                    
+                } catch (error) {
+                    console.error('Erreur import CSV:', error);
+                    showError('Erreur lors de l\'import du fichier CSV: ' + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
         async function toggleUserStatus(userId) {
+            // Cette fonction devrait appeler l'API pour changer le statut
+            // Pour l'instant, on simule avec les données locales
             showError('Fonctionnalité en cours de développement');
         }
 
@@ -2111,7 +1383,14 @@
                 return;
             }
             
+            // Cette fonction devrait appeler l'API pour supprimer l'utilisateur
+            // Pour l'instant, on simule
             showError('Fonctionnalité en cours de développement');
+        }
+
+        function saveUsersChanges(licenseId) {
+            showSuccess('Modifications sauvegardées');
+            closeUsersModal();
         }
 
         // Gestion du formulaire
@@ -2134,17 +1413,7 @@
             try {
                 const planSelect = document.getElementById('licensePlan');
                 const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
-                const basePricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
-                const billingCycle = document.getElementById('billingCycle').value;
-                
-                // Calculer le prix avec remise éventuelle
-                let finalPricePerUser = basePricePerUser;
-                let monthlyEquivalent = basePricePerUser * licenseCount;
-                
-                if (billingCycle === 'yearly') {
-                    finalPricePerUser = basePricePerUser * 0.85; // 15% de remise
-                    monthlyEquivalent = (finalPricePerUser * licenseCount) / 12;
-                }
+                const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
                 
                 const licenseData = {
                     company_id: companyId,
@@ -2155,9 +1424,7 @@
                     renewal_date: document.getElementById('renewalDate').value || endDate,
                     status: document.getElementById('licenseStatus').value || 'active',
                     payment_method: document.getElementById('paymentMethod').value || null,
-                    monthly_cost: monthlyEquivalent,
-                    billing_cycle: billingCycle,
-                    assigned_contacts: Array.from(selectedContacts)
+                    monthly_cost: pricePerUser * licenseCount
                 };
                 
                 let result;
@@ -2193,8 +1460,6 @@
                     closeLicenseModal();
                 } else if (e.target.id === 'usersModal') {
                     closeUsersModal();
-                } else if (e.target.id === 'licenseDetailsModal') {
-                    closeLicenseDetailsModal();
                 }
             }
         });
@@ -2204,14 +1469,11 @@
             if (e.key === 'Escape') {
                 const licenseModal = document.getElementById('licenseModal');
                 const usersModal = document.getElementById('usersModal');
-                const detailsModal = document.getElementById('licenseDetailsModal');
                 
                 if (licenseModal.classList.contains('show')) {
                     closeLicenseModal();
                 } else if (usersModal.classList.contains('show')) {
                     closeUsersModal();
-                } else if (detailsModal.classList.contains('show')) {
-                    closeLicenseDetailsModal();
                 }
             }
         });
