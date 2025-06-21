@@ -507,6 +507,14 @@ class CRMService {
                         name,
                         price_per_user,
                         features
+                    ),
+                    individual_contact:company_contacts!individual_contact_id (
+                        id,
+                        first_name,
+                        last_name,
+                        email,
+                        position,
+                        phone
                     )
                 `);
             
@@ -550,6 +558,14 @@ class CRMService {
                         name,
                         price_per_user,
                         features
+                    ),
+                    individual_contact:company_contacts!individual_contact_id (
+                        id,
+                        first_name,
+                        last_name,
+                        email,
+                        position,
+                        phone
                     )
                 `);
             
@@ -668,6 +684,7 @@ class CRMService {
                 phone: user.company_contacts?.phone || null,
                 is_active: user.is_active,
                 activated_at: user.activated_at,
+                deactivated_at: user.deactivated_at,
                 status: user.is_active ? 'active' : 'inactive'
             }));
             
@@ -696,6 +713,19 @@ class CRMService {
                 
             if (contactError || !contact) {
                 throw new Error('Contact non trouvé');
+            }
+            
+            // Vérifier que l'utilisateur n'est pas déjà dans cette licence
+            const { data: existingUser } = await supabase
+                .from('license_users')
+                .select('id')
+                .eq('company_license_id', licenseId)
+                .eq('contact_id', contactId)
+                .eq('is_active', true)
+                .single();
+                
+            if (existingUser) {
+                throw new Error('Ce contact est déjà utilisateur de cette licence');
             }
             
             const { data, error } = await supabase
@@ -741,10 +771,16 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
-            const { error } = await supabase
+            // Marquer comme inactif au lieu de supprimer
+            const { data, error } = await supabase
                 .from('license_users')
-                .delete()
-                .eq('id', userId);
+                .update({
+                    is_active: false,
+                    deactivated_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', userId)
+                .select();
             
             if (error) {
                 console.error('❌ Erreur suppression utilisateur licence:', error);
@@ -752,9 +788,90 @@ class CRMService {
             }
             
             this.log('Utilisateur licence supprimé avec succès');
-            return { success: true };
+            return { success: true, data: data[0] };
         } catch (error) {
             console.error('❌ Erreur suppression utilisateur licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ========== ACTIVITÉ DES UTILISATEURS ==========
+    
+    static async getUserActivity(licenseUserId) {
+        try {
+            this.log('Récupération activité utilisateur', { licenseUserId });
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+            
+            const { data, error } = await supabase
+                .from('license_user_activity')
+                .select('*')
+                .eq('license_user_id', licenseUserId)
+                .single();
+            
+            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+                console.error('❌ Erreur récupération activité utilisateur:', error);
+                throw error;
+            }
+            
+            this.log('Activité utilisateur récupérée', data);
+            return { success: true, data: data || null };
+        } catch (error) {
+            console.error('❌ Erreur récupération activité utilisateur:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateUserActivity(licenseUserId, activityData) {
+        try {
+            this.log('Mise à jour activité utilisateur', { licenseUserId, activityData });
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+            
+            // Vérifier si l'enregistrement existe
+            const { data: existing } = await supabase
+                .from('license_user_activity')
+                .select('id')
+                .eq('license_user_id', licenseUserId)
+                .single();
+            
+            let result;
+            if (existing) {
+                // Mettre à jour
+                result = await supabase
+                    .from('license_user_activity')
+                    .update({
+                        ...activityData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('license_user_id', licenseUserId)
+                    .select();
+            } else {
+                // Créer
+                result = await supabase
+                    .from('license_user_activity')
+                    .insert([{
+                        license_user_id: licenseUserId,
+                        ...activityData,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }])
+                    .select();
+            }
+            
+            if (result.error) {
+                console.error('❌ Erreur mise à jour activité utilisateur:', result.error);
+                throw result.error;
+            }
+            
+            this.log('Activité utilisateur mise à jour avec succès', result.data[0]);
+            return { success: true, data: result.data[0] };
+        } catch (error) {
+            console.error('❌ Erreur mise à jour activité utilisateur:', error);
             return { success: false, error: error.message };
         }
     }
