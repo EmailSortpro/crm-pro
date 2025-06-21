@@ -1,20 +1,26 @@
 // ===================================
-// CONFIGURATION SUPABASE
+// CONFIGURATION SUPABASE SÉCURISÉE
 // ===================================
 
-// Configuration avec tes vraies clés Supabase
-const SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDM0MTgsImV4cCI6MjA2NTk3OTQxOH0.Wy_jbUB7D5Bly-rZB6oc2bXUHzZQ8MivDL4vdM1jcE0';
+// Configuration sécurisée avec variables d'environnement
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://oxyiamruvyliueecpaam.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Validation des variables d'environnement
+if (!SUPABASE_ANON_KEY) {
+    console.error('🚨 ERREUR: VITE_SUPABASE_ANON_KEY manquante dans les variables d\'environnement');
+    console.warn('Veuillez configurer les variables d\'environnement sur Netlify ou dans votre .env local');
+}
 
 // Initialisation du client Supabase avec gestion d'erreur
 let supabase = null;
 
 try {
-    if (typeof window !== 'undefined' && window.supabase) {
+    if (typeof window !== 'undefined' && window.supabase && SUPABASE_ANON_KEY) {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Connexion Supabase initialisée');
         
-        // Test de connexion
+        // Test de connexion sécurisé
         supabase.auth.getSession().then(({ data, error }) => {
             if (error && error.message.includes('Invalid API key')) {
                 console.error('🚨 Clé API Supabase invalide');
@@ -25,8 +31,8 @@ try {
             console.warn('⚠️ Test de connexion Supabase échoué:', err.message);
         });
     } else {
-        console.warn('⚠️ Supabase client non disponible');
-        throw new Error('Supabase non disponible');
+        console.warn('⚠️ Supabase client non disponible ou clé manquante');
+        throw new Error('Configuration Supabase incomplète');
     }
 } catch (error) {
     console.error('❌ Erreur initialisation Supabase:', error.message);
@@ -66,12 +72,13 @@ class AuthService {
             
             if (error) throw error;
             
-            // Sauvegarder les infos utilisateur
+            // Sauvegarder les infos utilisateur (sans données sensibles)
             if (data.user) {
                 const userInfo = {
                     id: data.user.id,
                     email: data.user.email,
-                    role: data.user.user_metadata?.role || 'user'
+                    role: data.user.user_metadata?.role || 'user',
+                    created_at: data.user.created_at
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
             }
@@ -131,15 +138,19 @@ class CRMService {
         console.log(`🔄 CRM Service - ${action}`, data ? data : '');
     }
 
+    // Méthode utilitaire pour valider la connexion
+    static validateConnection() {
+        if (!supabase) {
+            throw new Error('Base de données non disponible. Vérifiez votre configuration.');
+        }
+    }
+
     // ========== SOCIÉTÉS ==========
     
     static async getCompanies() {
         try {
             this.log('Récupération des sociétés');
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             const { data, error } = await supabase
                 .from('companies')
@@ -176,12 +187,9 @@ class CRMService {
     static async createCompany(companyData) {
         try {
             this.log('Création société', companyData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
 
-            // Valider les données
+            // Validation des données
             if (!companyData.name) {
                 throw new Error('Le nom de la société est obligatoire');
             }
@@ -211,10 +219,7 @@ class CRMService {
     static async updateCompany(id, companyData) {
         try {
             this.log('Mise à jour société', { id, data: companyData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             if (!id) {
                 throw new Error('ID de société manquant');
@@ -249,10 +254,7 @@ class CRMService {
     static async deleteCompany(id) {
         try {
             this.log('Suppression société', { id });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             if (!id) {
                 throw new Error('ID de société manquant');
@@ -291,10 +293,7 @@ class CRMService {
     static async getContacts(companyId = null) {
         try {
             this.log('Récupération des contacts', { companyId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             let query = supabase
                 .from('company_contacts')
@@ -330,12 +329,9 @@ class CRMService {
     static async createContact(contactData) {
         try {
             this.log('Création contact', contactData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
 
-            // Valider les données
+            // Validation des données
             if (!contactData.company_id || !contactData.first_name || !contactData.last_name) {
                 throw new Error('Société, prénom et nom sont obligatoires');
             }
@@ -365,10 +361,7 @@ class CRMService {
     static async updateContact(id, contactData) {
         try {
             this.log('Mise à jour contact', { id, data: contactData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             const { data, error } = await supabase
                 .from('company_contacts')
@@ -395,10 +388,7 @@ class CRMService {
     static async deleteContact(id) {
         try {
             this.log('Suppression contact', { id });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             const { error } = await supabase
                 .from('company_contacts')
@@ -423,12 +413,8 @@ class CRMService {
     static async getLicenses() {
         try {
             this.log('Récupération des licences');
+            this.validateConnection();
             
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Requête simplifiée pour éviter l'erreur 400
             const { data, error } = await supabase
                 .from('company_licenses')
                 .select(`
@@ -463,12 +449,9 @@ class CRMService {
     static async createLicense(licenseData) {
         try {
             this.log('Création licence', licenseData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
 
-            // Valider les données
+            // Validation des données
             if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
                 throw new Error('Société, plan et nombre de licences sont obligatoires');
             }
@@ -511,10 +494,7 @@ class CRMService {
     static async updateLicense(id, licenseData) {
         try {
             this.log('Mise à jour licence', { id, data: licenseData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             const { data, error } = await supabase
                 .from('company_licenses')
@@ -554,12 +534,9 @@ class CRMService {
     static async deleteLicense(id) {
         try {
             this.log('Suppression licence', { id });
+            this.validateConnection();
             
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Supprimer d'abord les utilisateurs associés de la nouvelle table
+            // Supprimer d'abord les utilisateurs associés
             await supabase
                 .from('license_users')
                 .delete()
@@ -586,10 +563,7 @@ class CRMService {
     static async getLicensePlans() {
         try {
             this.log('Récupération des plans de licence');
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             const { data, error } = await supabase
                 .from('license_plans')
@@ -610,17 +584,13 @@ class CRMService {
         }
     }
 
-    // ========== UTILISATEURS DE LICENCE (nouvelle structure) ==========
+    // ========== UTILISATEURS DE LICENCE ==========
     
     static async getLicenseUsers(licenseId) {
         try {
             this.log('Récupération utilisateurs licence', { licenseId });
+            this.validateConnection();
             
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Utiliser la nouvelle structure avec license_users qui référence les contacts
             const { data, error } = await supabase
                 .from('license_users')
                 .select(`
@@ -669,10 +639,7 @@ class CRMService {
     static async createLicenseUser(licenseId, contactId) {
         try {
             this.log('Création utilisateur licence', { licenseId, contactId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             // Vérifier que le contact existe
             const { data: contact, error: contactError } = await supabase
@@ -723,10 +690,7 @@ class CRMService {
     static async deleteLicenseUser(userId) {
         try {
             this.log('Suppression utilisateur licence', { userId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             const { error } = await supabase
                 .from('license_users')
@@ -746,15 +710,12 @@ class CRMService {
         }
     }
 
-    // ========== MÉTHODE POUR OBTENIR TOUS LES CONTACTS DISPONIBLES ==========
+    // ========== MÉTHODES UTILES ==========
     
     static async getAvailableContacts(companyId = null) {
         try {
             this.log('Récupération contacts disponibles', { companyId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            this.validateConnection();
             
             let query = supabase
                 .from('company_contacts')
@@ -832,11 +793,6 @@ class CRMService {
                 totalLicenseCount: licenses
                     .filter(l => l.status === 'active')
                     .reduce((sum, l) => sum + (l.license_count || 0), 0),
-                
-                // Utilisateurs
-                totalUsers: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.license_users?.filter(u => u.status === 'active').length || 0), 0),
                 
                 // Revenus
                 monthlyRevenue: licenses
@@ -1160,7 +1116,30 @@ window.addEventListener('error', (e) => {
 
 window.addEventListener('unhandledrejection', (e) => {
     console.error('Promise rejetée:', e.reason);
-    e.preventDefault(); // Empêcher l'affichage dans la console
+    e.preventDefault();
 });
 
-console.log('🚀 Configuration CRM Pro chargée avec succès');
+// Message d'avertissement si pas de clé
+if (!SUPABASE_ANON_KEY) {
+    console.warn(`
+🚨 CONFIGURATION REQUISE 🚨
+
+Variables d'environnement manquantes :
+- VITE_SUPABASE_ANON_KEY
+
+📋 ÉTAPES POUR CORRIGER :
+
+1. Sur Netlify :
+   Dashboard → Site Settings → Environment Variables
+   Ajouter : VITE_SUPABASE_ANON_KEY=votre_nouvelle_cle
+
+2. En local :
+   Créer un fichier .env avec :
+   VITE_SUPABASE_ANON_KEY=votre_nouvelle_cle
+
+3. Sur Supabase :
+   Dashboard → Settings → API → Régénérer "anon" key
+    `);
+}
+
+console.log('🚀 Configuration CRM Pro sécurisée chargée');
