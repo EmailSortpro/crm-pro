@@ -418,7 +418,7 @@ class CRMService {
         }
     }
     
-    // ========== LICENCES ==========
+    // ========== LICENCES (Table company_licenses) ==========
     
     static async getLicenses() {
         try {
@@ -428,7 +428,6 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
-            // Requête simplifiée pour éviter l'erreur 400
             const { data, error } = await supabase
                 .from('company_licenses')
                 .select(`
@@ -559,7 +558,7 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
-            // Supprimer d'abord les utilisateurs associés de la nouvelle table
+            // Supprimer d'abord les utilisateurs associés
             await supabase
                 .from('license_users')
                 .delete()
@@ -610,7 +609,7 @@ class CRMService {
         }
     }
 
-    // ========== UTILISATEURS DE LICENCE (nouvelle structure) ==========
+    // ========== UTILISATEURS DE LICENCE ==========
     
     static async getLicenseUsers(licenseId) {
         try {
@@ -620,7 +619,6 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
-            // Utiliser la nouvelle structure avec license_users qui référence les contacts
             const { data, error } = await supabase
                 .from('license_users')
                 .select(`
@@ -635,7 +633,6 @@ class CRMService {
                     )
                 `)
                 .eq('company_license_id', licenseId)
-                .eq('is_active', true)
                 .order('activated_at', { ascending: false });
             
             if (error) {
@@ -746,51 +743,6 @@ class CRMService {
         }
     }
 
-    // ========== MÉTHODE POUR OBTENIR TOUS LES CONTACTS DISPONIBLES ==========
-    
-    static async getAvailableContacts(companyId = null) {
-        try {
-            this.log('Récupération contacts disponibles', { companyId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            let query = supabase
-                .from('company_contacts')
-                .select(`
-                    id,
-                    first_name,
-                    last_name,
-                    email,
-                    position,
-                    company_id,
-                    companies (
-                        id,
-                        name
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-            
-            const { data, error } = await query;
-            
-            if (error) {
-                console.error('❌ Erreur récupération contacts disponibles:', error);
-                throw error;
-            }
-            
-            this.log('Contacts disponibles récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération contacts disponibles:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
     // ========== STATISTIQUES ==========
     
     static async getStats() {
@@ -832,11 +784,6 @@ class CRMService {
                 totalLicenseCount: licenses
                     .filter(l => l.status === 'active')
                     .reduce((sum, l) => sum + (l.license_count || 0), 0),
-                
-                // Utilisateurs
-                totalUsers: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.license_users?.filter(u => u.status === 'active').length || 0), 0),
                 
                 // Revenus
                 monthlyRevenue: licenses
