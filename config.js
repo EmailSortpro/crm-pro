@@ -1,16 +1,14 @@
 // ===================================
-// CRM PRO - CONFIGURATION UNIFIÉE V2
-// Gestion optimisée Netlify + fallbacks
+// CRM PRO - CONFIGURATION SÉCURISÉE
 // ===================================
 
 console.log('🚀 CRM Pro - Initialisation...');
 
-// Configuration par défaut
+// Configuration par défaut (SANS CLÉS)
 const DEFAULT_CONFIG = {
     SUPABASE_URL: 'https://oxyiamruvyliueecpaam.supabase.co',
-    SUPABASE_ANON_KEY: ''
+    SUPABASE_ANON_KEY: '' // ❌ JAMAIS de clé en dur ici
 };
-
 // Détection de l'environnement
 function detectEnvironment() {
     const hostname = window.location.hostname;
