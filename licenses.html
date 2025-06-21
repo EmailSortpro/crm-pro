@@ -2031,8 +2031,16 @@
                 selectedEntity: null,
                 selectedPlan: null,
                 customPricing: false,
-                configuration: {}
+                configuration: {},
+                editingLicense: null
             };
+            
+            // Réinitialiser le titre
+            document.getElementById('wizardTitle').innerHTML = `
+                <span>🎯</span>
+                <span>Assistant de Création de Licence</span>
+            `;
+            
             updateWizardStep();
         }
 
@@ -2072,7 +2080,7 @@
             prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
             
             if (currentStep === 5) {
-                nextBtn.textContent = '✅ Créer la licence';
+                nextBtn.textContent = wizardData.editingLicense ? '💾 Sauvegarder' : '✅ Créer la licence';
                 nextBtn.className = 'nav-btn primary';
             } else {
                 nextBtn.textContent = 'Suivant →';
@@ -2110,7 +2118,7 @@
 
         function nextStep() {
             if (currentStep === 5) {
-                // Créer la licence
+                // Créer ou modifier la licence
                 createLicenseFromWizard();
             } else if (canProceedToNextStep()) {
                 currentStep++;
@@ -2319,22 +2327,48 @@
         function loadPlanSelection() {
             const plansGrid = document.getElementById('plansGrid');
             
-            plansGrid.innerHTML = licensePlans.map(plan => `
-                <div class="plan-card ${wizardData.selectedPlan?.id === plan.id ? 'selected' : ''}" 
-                     onclick="selectPlan('${plan.id}')">
-                    <div class="plan-header">
-                        <h4 class="plan-name">${escapeHtml(plan.name)}</h4>
-                        <div class="plan-price">${formatCurrency(plan.price_per_user)}</div>
-                        <div class="plan-period">par utilisateur/mois</div>
+            plansGrid.innerHTML = licensePlans.map(plan => {
+                let featuresHtml = '';
+                
+                // Gérer les features de manière sécurisée
+                if (plan.features) {
+                    try {
+                        let features = plan.features;
+                        if (typeof features === 'string') {
+                            features = JSON.parse(features);
+                        }
+                        if (Array.isArray(features)) {
+                            featuresHtml = `
+                                <ul class="plan-features">
+                                    ${features.map(feature => `<li>${escapeHtml(feature)}</li>`).join('')}
+                                </ul>
+                            `;
+                        }
+                    } catch (error) {
+                        console.warn('Erreur parsing features pour le plan:', plan.name, error);
+                        // Features par défaut si erreur de parsing
+                        featuresHtml = `
+                            <ul class="plan-features">
+                                <li>Fonctionnalités de base</li>
+                                <li>Support par email</li>
+                            </ul>
+                        `;
+                    }
+                }
+                
+                return `
+                    <div class="plan-card ${wizardData.selectedPlan?.id === plan.id ? 'selected' : ''}" 
+                         onclick="selectPlan('${plan.id}')">
+                        <div class="plan-header">
+                            <h4 class="plan-name">${escapeHtml(plan.name)}</h4>
+                            <div class="plan-price">${formatCurrency(plan.price_per_user)}</div>
+                            <div class="plan-period">par utilisateur/mois</div>
+                        </div>
+                        
+                        ${featuresHtml}
                     </div>
-                    
-                    ${plan.features ? `
-                        <ul class="plan-features">
-                            ${JSON.parse(plan.features).map(feature => `<li>${escapeHtml(feature)}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             // Restaurer la sélection personnalisée si active
             if (wizardData.customPricing) {
@@ -2545,21 +2579,401 @@
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            alert(`Affichage des détails de la licence:\n\n${JSON.stringify(license, null, 2)}`);
+            // Créer une modal de détails
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">
+                            <span>👁️</span>
+                            <span>Détails de la licence</span>
+                        </h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        ${renderLicenseDetailsModal(license)}
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        function renderLicenseDetailsModal(license) {
+            const displayName = license.license_type === 'individual' ? 
+                `${license.individual_contact?.first_name} ${license.individual_contact?.last_name}` :
+                license.company_name;
+            
+            const displayPrice = license.custom_price_per_user || license.plan_price;
+            const isCustomPrice = license.custom_price_per_user !== null;
+            const activeUsers = license.users?.filter(u => u.is_active).length || 0;
+            
+            return `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">
+                            ${license.license_type === 'individual' ? '👤' : '🏢'} ${escapeHtml(displayName)}
+                        </h4>
+                        <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius);">
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Type :</strong> ${license.license_type === 'individual' ? 'Licence individuelle' : 'Licence société'}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Plan :</strong> ${escapeHtml(license.plan_name)}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Prix :</strong> ${formatCurrency(displayPrice)}/mois/utilisateur
+                                ${isCustomPrice ? '<br><span style="color: #f59e0b; font-size: 0.875rem;">⚙️ Tarification personnalisée</span>' : ''}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Utilisateurs :</strong> ${activeUsers}/${license.license_count}
+                            </div>
+                            <div>
+                                <strong>Coût mensuel :</strong> <span style="color: var(--primary-color); font-weight: 600;">${formatCurrency(license.monthly_cost || 0)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">📅 Période et facturation</h4>
+                        <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius);">
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Début :</strong> ${formatDate(license.start_date)}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Fin :</strong> ${formatDate(license.end_date)}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Renouvellement :</strong> ${formatDate(license.renewal_date)}
+                            </div>
+                            <div style="margin-bottom: 1rem;">
+                                <strong>Statut :</strong> <span class="license-status license-${license.status}">${getStatusText(license.status)}</span>
+                            </div>
+                            <div>
+                                <strong>Paiement :</strong> ${license.payment_method || 'Non défini'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${license.custom_description ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">⚙️ Tarification personnalisée</h4>
+                        <div style="background: #fef3c7; padding: 1rem; border-radius: var(--radius); color: #92400e;">
+                            ${escapeHtml(license.custom_description)}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${license.notes ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--primary-color);">📝 Notes</h4>
+                        <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius);">
+                            ${escapeHtml(license.notes)}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--primary-color);">👥 Utilisateurs</h4>
+                    ${license.users && license.users.length > 0 ? license.users.map(user => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); margin-bottom: 0.5rem;">
+                            <div>
+                                <div style="font-weight: 600;">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">
+                                    📧 ${escapeHtml(user.email)}
+                                    ${user.position ? ` • 💼 ${escapeHtml(user.position)}` : ''}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--gray-500);">
+                                    📅 Ajouté le ${formatDateShort(user.activated_at)}
+                                    ${user.last_login ? ` • 🔗 Dernière connexion: ${formatDateShort(user.last_login)}` : ' • 🔗 Jamais connecté'}
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;">
+                                    <span style="width: 8px; height: 8px; border-radius: 50%; background: ${user.is_active ? '#10b981' : '#ef4444'};"></span>
+                                    ${user.is_active ? 'Actif' : 'Inactif'}
+                                </span>
+                                <button class="btn btn-sm btn-danger" onclick="removeUserFromLicense('${user.id}', '${license.id}'); this.closest('.modal').remove();" title="Supprimer">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') : '<p style="color: var(--gray-500); font-style: italic; text-align: center; padding: 2rem;">Aucun utilisateur assigné</p>'}
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                        Fermer
+                    </button>
+                    <button class="btn btn-info" onclick="manageUsers('${license.id}'); this.closest('.modal').remove();">
+                        👥 Gérer utilisateurs
+                    </button>
+                    <button class="btn btn-primary" onclick="editLicense('${license.id}'); this.closest('.modal').remove();">
+                        ✏️ Modifier
+                    </button>
+                </div>
+            `;
         }
 
         function editLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            alert(`Modification de la licence: ${license.company_name || license.individual_contact?.first_name + ' ' + license.individual_contact?.last_name}\n\nFonctionnalité en développement.`);
+            // Réinitialiser le wizard avec les données de la licence
+            resetWizard();
+            
+            // Pré-remplir les données
+            wizardData.licenseType = license.license_type;
+            wizardData.selectedEntity = license.license_type === 'individual' ? 
+                allContacts.find(c => c.id === license.individual_contact_id) :
+                companies.find(c => c.id === license.company_id);
+            wizardData.selectedPlan = licensePlans.find(p => p.id === license.plan_id);
+            wizardData.customPricing = license.custom_price_per_user !== null;
+            wizardData.editingLicense = license;
+            
+            // Changer le titre du wizard
+            document.getElementById('wizardTitle').innerHTML = `
+                <span>✏️</span>
+                <span>Modifier la licence</span>
+            `;
+            
+            // Aller directement à l'étape de configuration pour l'édition
+            currentStep = 4;
+            updateWizardStep();
+            
+            // Pré-remplir les champs de configuration
+            setTimeout(() => {
+                document.getElementById('licenseCount').value = license.license_count;
+                document.getElementById('startDate').value = license.start_date;
+                document.getElementById('endDate').value = license.end_date;
+                document.getElementById('renewalDate').value = license.renewal_date || '';
+                document.getElementById('licenseStatus').value = license.status;
+                document.getElementById('paymentMethod').value = license.payment_method || '';
+                document.getElementById('licenseNotes').value = license.notes || '';
+                
+                if (license.custom_price_per_user !== null) {
+                    document.getElementById('customPricingToggle').checked = true;
+                    toggleCustomPricing();
+                    document.getElementById('customPrice').value = license.custom_price_per_user;
+                    document.getElementById('customDescription').value = license.custom_description || '';
+                }
+            }, 100);
+            
+            document.getElementById('licenseWizard').classList.add('show');
         }
 
         function manageUsers(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            alert(`Gestion des utilisateurs pour: ${license.company_name || license.individual_contact?.first_name + ' ' + license.individual_contact?.last_name}\n\nUtilisateurs actifs: ${license.users?.filter(u => u.is_active).length}/${license.license_count}\n\nFonctionnalité en développement.`);
+            // Créer une modal de gestion des utilisateurs
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">
+                            <span>👥</span>
+                            <span>Gestion des utilisateurs</span>
+                        </h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        ${renderUsersManagementModal(license)}
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        function renderUsersManagementModal(license) {
+            const activeUsers = license.users?.filter(u => u.is_active).length || 0;
+            const availableSlots = license.license_count - activeUsers;
+            
+            // Obtenir les contacts disponibles pour cette licence
+            let availableContacts = [];
+            if (license.license_type === 'company' && license.company_id) {
+                availableContacts = allContacts.filter(contact => {
+                    // Contacts de la même société
+                    if (contact.company_id !== license.company_id) return false;
+                    // Exclure ceux déjà assignés
+                    const assignedContactIds = license.users?.map(u => u.contact_id) || [];
+                    return !assignedContactIds.includes(contact.id);
+                });
+            }
+            
+            return `
+                <div style="background: var(--gray-50); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${activeUsers}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Utilisateurs actifs</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--gray-700);">${license.license_count}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Licences disponibles</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: ${availableSlots > 0 ? 'var(--success-color)' : 'var(--error-color)'};">${availableSlots}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Places libres</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Utilisateurs actuels -->
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="margin-bottom: 1rem;">👥 Utilisateurs de cette licence</h4>
+                    ${license.users && license.users.length > 0 ? license.users.map(user => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); margin-bottom: 0.5rem; ${!user.is_active ? 'opacity: 0.6;' : ''}">
+                            <div>
+                                <div style="font-weight: 600;">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);">
+                                    📧 ${escapeHtml(user.email)}
+                                    ${user.position ? ` • 💼 ${escapeHtml(user.position)}` : ''}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--gray-500);">
+                                    📅 Ajouté le ${formatDateShort(user.activated_at)}
+                                    ${user.last_login ? ` • 🔗 Dernière connexion: ${formatDateShort(user.last_login)}` : ' • 🔗 Jamais connecté'}
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;">
+                                    <span style="width: 8px; height: 8px; border-radius: 50%; background: ${user.is_active ? '#10b981' : '#ef4444'};"></span>
+                                    ${user.is_active ? 'Actif' : 'Inactif'}
+                                </span>
+                                <button class="btn btn-sm btn-danger" onclick="removeUserFromLicense('${user.id}', '${license.id}'); this.closest('.modal').remove(); manageUsers('${license.id}');" title="Supprimer">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') : '<p style="color: var(--gray-500); font-style: italic; text-align: center; padding: 2rem;">Aucun utilisateur assigné</p>'}
+                </div>
+
+                <!-- Ajouter un utilisateur -->
+                ${license.license_type === 'company' && availableSlots > 0 && availableContacts.length > 0 ? `
+                    <div style="background: #dcfce7; border: 1px solid #10b981; border-radius: var(--radius); padding: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: #166534;">➕ Ajouter un utilisateur</h4>
+                        <div style="display: flex; gap: 1rem; align-items: end;">
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Sélectionner un contact :</label>
+                                <select id="newUserSelect" style="width: 100%; padding: 0.75rem; border: 1px solid #10b981; border-radius: var(--radius);">
+                                    <option value="">Choisir un contact...</option>
+                                    ${availableContacts.map(contact => `
+                                        <option value="${contact.id}">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)} (${escapeHtml(contact.email)})</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <button class="btn btn-success" onclick="addUserToLicenseFromModal('${license.id}')">
+                                ➕ Ajouter
+                            </button>
+                        </div>
+                    </div>
+                ` : availableSlots <= 0 ? `
+                    <div style="background: #fee2e2; border: 1px solid #dc2626; border-radius: var(--radius); padding: 1.5rem; text-align: center; color: #991b1b;">
+                        <p>🚫 Aucune place disponible. Augmentez le nombre de licences pour ajouter plus d'utilisateurs.</p>
+                    </div>
+                ` : license.license_type === 'individual' ? `
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: var(--radius); padding: 1.5rem; text-align: center; color: #92400e;">
+                        <p>ℹ️ Les licences individuelles ne peuvent pas avoir d'utilisateurs supplémentaires.</p>
+                    </div>
+                ` : `
+                    <div style="background: #fee2e2; border: 1px solid #dc2626; border-radius: var(--radius); padding: 1.5rem; text-align: center; color: #991b1b;">
+                        <p>🚫 Aucun contact disponible pour cette société.</p>
+                    </div>
+                `}
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                        Fermer
+                    </button>
+                    <button class="btn btn-info" onclick="refreshUsers('${license.id}'); this.closest('.modal').remove(); manageUsers('${license.id}');">
+                        🔄 Actualiser
+                    </button>
+                </div>
+            `;
+        }
+
+        async function addUserToLicenseFromModal(licenseId) {
+            const selectElement = document.getElementById('newUserSelect');
+            const contactId = selectElement.value;
+            
+            if (!contactId) {
+                showError('Veuillez sélectionner un contact');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const result = await CRMService.createLicenseUser(licenseId, contactId);
+                
+                if (result.success) {
+                    const contact = allContacts.find(c => c.id === contactId);
+                    showSuccess(`Utilisateur ${contact.first_name} ${contact.last_name} ajouté avec succès`);
+                    
+                    // Recharger les données et fermer/rouvrir la modal
+                    await loadData();
+                    updateStats();
+                    renderCurrentView();
+                    
+                    // Fermer la modal actuelle et rouvrir la gestion des utilisateurs
+                    document.querySelector('.modal').remove();
+                    manageUsers(licenseId);
+                } else {
+                    throw new Error(result.error || 'Erreur lors de l\'ajout de l\'utilisateur');
+                }
+            } catch (error) {
+                console.error('Erreur ajout utilisateur:', error);
+                showError('Erreur lors de l\'ajout de l\'utilisateur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function removeUserFromLicense(userId, licenseId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur de cette licence ?')) {
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const result = await CRMService.deleteLicenseUser(userId);
+                
+                if (result.success) {
+                    showSuccess('Utilisateur supprimé avec succès');
+                    
+                    // Recharger les données et la vue
+                    await loadData();
+                    updateStats();
+                    renderCurrentView();
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la suppression');
+                }
+            } catch (error) {
+                console.error('Erreur suppression utilisateur:', error);
+                showError('Erreur lors de la suppression de l\'utilisateur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function refreshUsers(licenseId) {
+            showLoading(true);
+            try {
+                await loadData();
+                updateStats();
+                renderCurrentView();
+                showSuccess('Liste des utilisateurs actualisée');
+            } catch (error) {
+                console.error('Erreur actualisation utilisateurs:', error);
+                showError('Erreur lors de l\'actualisation: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
         }
 
         async function deleteLicense(licenseId) {
