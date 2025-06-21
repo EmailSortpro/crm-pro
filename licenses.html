@@ -554,6 +554,15 @@
                 align-items: stretch;
             }
 
+            .view-controls > div:last-child {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-input {
+                min-width: auto;
+            }
+
             .company-stats {
                 flex-direction: column;
                 gap: 0.5rem;
@@ -662,7 +671,22 @@
                     📋 Liste complète
                 </button>
             </div>
-            <input type="text" class="search-input" placeholder="🔍 Rechercher..." oninput="searchLicenses()" id="searchInput">
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <input type="text" class="search-input" placeholder="🔍 Rechercher par nom, email ou société..." oninput="searchLicenses()" id="searchInput">
+                
+                <select class="form-select" id="sortSelect" onchange="applySorting()" style="min-width: 200px;">
+                    <option value="created_desc">➕ Plus récentes</option>
+                    <option value="created_asc">📅 Plus anciennes</option>
+                    <option value="renewal_asc">🔄 Renouvellement proche</option>
+                    <option value="renewal_desc">📆 Renouvellement lointain</option>
+                    <option value="price_desc">💰 Prix décroissant</option>
+                    <option value="price_asc">💸 Prix croissant</option>
+                    <option value="company_asc">🏢 Société A-Z</option>
+                    <option value="company_desc">🏢 Société Z-A</option>
+                    <option value="status_active">✅ Actives d'abord</option>
+                    <option value="status_expiring">⚠️ À renouveler d'abord</option>
+                </select>
+            </div>
         </div>
 
         <!-- Contenu principal -->
@@ -866,6 +890,10 @@
                 renderContent();
                 populateSelects();
                 
+                // Initialiser les filtres avec toutes les licences
+                appData.filteredData = [...appData.licenses];
+                applyFiltersAndSorting();
+                
             } catch (error) {
                 console.error('❌ Erreur chargement:', error);
                 showError('Erreur lors du chargement des données');
@@ -980,7 +1008,8 @@
             document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(viewType === 'companies' ? 'viewCompanies' : 'viewList').classList.add('active');
             
-            renderContent();
+            // Réappliquer les filtres et le tri lors du changement de vue
+            applyFiltersAndSorting();
         }
 
         function renderContent() {
@@ -995,7 +1024,20 @@
 
         function renderCompanyView(container) {
             // Grouper les licences par société
-            const companiesWithLicenses = getCompaniesWithLicenses();
+            let companiesWithLicenses = getCompaniesWithLicenses();
+            
+            // Appliquer le tri et les filtres si on a des données filtrées
+            if (appData.filteredData.length > 0) {
+                const filteredCompanyIds = [...new Set(appData.filteredData.map(l => l.company_id))];
+                companiesWithLicenses = companiesWithLicenses.filter(company => 
+                    filteredCompanyIds.includes(company.id)
+                );
+                
+                // Mettre à jour les licences de chaque société avec les données filtrées
+                companiesWithLicenses.forEach(company => {
+                    company.licenses = appData.filteredData.filter(l => l.company_id === company.id);
+                });
+            }
             
             if (companiesWithLicenses.length === 0) {
                 showEmptyState();
@@ -1047,7 +1089,9 @@
         }
 
         function renderListView(container) {
-            if (appData.licenses.length === 0) {
+            const licensesToShow = appData.filteredData.length > 0 ? appData.filteredData : appData.licenses;
+            
+            if (licensesToShow.length === 0) {
                 showEmptyState();
                 return;
             }
@@ -1067,7 +1111,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${appData.licenses.map(license => renderLicenseRow(license)).join('')}
+                            ${licensesToShow.map(license => renderLicenseRow(license)).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -1454,6 +1498,8 @@
                     showSuccess(appData.isEditing ? 'Licence modifiée avec succès' : 'Licence créée avec succès');
                     closeModal();
                     await loadAllData();
+                    // Réappliquer les filtres après rechargement
+                    applyFiltersAndSorting();
                 } else {
                     throw new Error(result.error || 'Erreur lors de la sauvegarde');
                 }
@@ -1803,6 +1849,8 @@
                 if (result.success) {
                     showSuccess('Licence supprimée');
                     await loadAllData();
+                    // Réappliquer les filtres après suppression
+                    applyFiltersAndSorting();
                 } else {
                     throw new Error(result.error || 'Erreur lors de la suppression');
                 }
@@ -1815,9 +1863,142 @@
         }
 
         function searchLicenses() {
-            // Implémentation simplifiée
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            console.log('Recherche:', search);
+            applyFiltersAndSorting();
+        }
+
+        function applySorting() {
+            applyFiltersAndSorting();
+        }
+
+        function applyFiltersAndSorting() {
+            let filtered = [...appData.licenses];
+
+            // Recherche
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (search) {
+                filtered = filtered.filter(license => {
+                    // Recherche dans le nom de la société
+                    const company = appData.companies.find(c => c.id === license.company_id);
+                    const companyMatch = company?.name?.toLowerCase().includes(search);
+                    
+                    // Recherche dans le nom du plan
+                    const plan = appData.plans.find(p => p.id === license.plan_id);
+                    const planMatch = plan?.name?.toLowerCase().includes(search);
+                    
+                    // Recherche dans les utilisateurs (email, nom, prénom)
+                    const usersMatch = license.users?.some(user => 
+                        user.email?.toLowerCase().includes(search) ||
+                        user.first_name?.toLowerCase().includes(search) ||
+                        user.last_name?.toLowerCase().includes(search) ||
+                        `${user.first_name} ${user.last_name}`.toLowerCase().includes(search)
+                    );
+                    
+                    // Recherche dans le contact individuel si c'est une licence individuelle
+                    let individualMatch = false;
+                    if (license.license_type === 'individual' && license.individual_contact_id) {
+                        const contact = appData.contacts.find(c => c.id === license.individual_contact_id);
+                        if (contact) {
+                            individualMatch = 
+                                contact.email?.toLowerCase().includes(search) ||
+                                contact.first_name?.toLowerCase().includes(search) ||
+                                contact.last_name?.toLowerCase().includes(search) ||
+                                `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(search);
+                        }
+                    }
+                    
+                    return companyMatch || planMatch || usersMatch || individualMatch;
+                });
+            }
+
+            // Tri
+            const sortValue = document.getElementById('sortSelect').value;
+            filtered = sortLicenses(filtered, sortValue);
+
+            appData.filteredData = filtered;
+            renderContent();
+        }
+
+        function sortLicenses(licenses, sortType) {
+            const sortedLicenses = [...licenses];
+
+            switch (sortType) {
+                case 'created_desc':
+                    return sortedLicenses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
+                case 'created_asc':
+                    return sortedLicenses.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                
+                case 'renewal_asc':
+                    return sortedLicenses.sort((a, b) => {
+                        const dateA = a.renewal_date ? new Date(a.renewal_date) : new Date('2099-12-31');
+                        const dateB = b.renewal_date ? new Date(b.renewal_date) : new Date('2099-12-31');
+                        return dateA - dateB;
+                    });
+                
+                case 'renewal_desc':
+                    return sortedLicenses.sort((a, b) => {
+                        const dateA = a.renewal_date ? new Date(a.renewal_date) : new Date('1900-01-01');
+                        const dateB = b.renewal_date ? new Date(b.renewal_date) : new Date('1900-01-01');
+                        return dateB - dateA;
+                    });
+                
+                case 'price_desc':
+                    return sortedLicenses.sort((a, b) => (b.monthly_cost || 0) - (a.monthly_cost || 0));
+                
+                case 'price_asc':
+                    return sortedLicenses.sort((a, b) => (a.monthly_cost || 0) - (b.monthly_cost || 0));
+                
+                case 'company_asc':
+                    return sortedLicenses.sort((a, b) => {
+                        const nameA = getClientName(a).toLowerCase();
+                        const nameB = getClientName(b).toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    });
+                
+                case 'company_desc':
+                    return sortedLicenses.sort((a, b) => {
+                        const nameA = getClientName(a).toLowerCase();
+                        const nameB = getClientName(b).toLowerCase();
+                        return nameB.localeCompare(nameA);
+                    });
+                
+                case 'status_active':
+                    return sortedLicenses.sort((a, b) => {
+                        const statusA = getStatusPriority(a);
+                        const statusB = getStatusPriority(b);
+                        return statusA - statusB;
+                    });
+                
+                case 'status_expiring':
+                    return sortedLicenses.sort((a, b) => {
+                        const statusA = getExpiringPriority(a);
+                        const statusB = getExpiringPriority(b);
+                        return statusA - statusB;
+                    });
+                
+                default:
+                    return sortedLicenses;
+            }
+        }
+
+        function getStatusPriority(license) {
+            if (license.status === 'active') return 1;
+            if (license.status === 'expired') return 3;
+            if (license.status === 'suspended') return 4;
+            return 2; // autres statuts
+        }
+
+        function getExpiringPriority(license) {
+            if (license.status !== 'active' || !license.renewal_date) return 99;
+            
+            const now = new Date();
+            const renewal = new Date(license.renewal_date);
+            const daysUntil = Math.ceil((renewal - now) / (1000 * 60 * 60 * 24));
+            
+            if (daysUntil <= 0) return 1; // Expirées
+            if (daysUntil <= 7) return 2; // Dans la semaine
+            if (daysUntil <= 30) return 3; // Dans le mois
+            return 4; // Plus tard
         }
 
         function closeModal() {
