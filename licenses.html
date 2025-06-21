@@ -463,9 +463,9 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Société</th>
+                                <th>Société / Contact</th>
                                 <th>Plan & Prix</th>
-                                <th>Utilisateurs</th>
+                                <th>Utilisateurs / Contact</th>
                                 <th>Période</th>
                                 <th>Renouvellement</th>
                                 <th>Coût mensuel</th>
@@ -503,12 +503,12 @@
             </div>
             
             <!-- Onglets de navigation -->
-            <div id="licenseTabsContainer" style="border-bottom: 1px solid var(--gray-200);">
+            <div id="licenseTabsContainer" style="border-bottom: 1px solid var(--gray-200); display: none;">
                 <div style="display: flex; padding: 0 1.5rem;">
                     <button class="tab-btn active" data-tab="license-form" onclick="switchLicenseTab('license-form')">
                         📝 Licence actuelle
                     </button>
-                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')" id="companyLicensesTabBtn" style="display: none;">
+                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')" id="companyLicensesTabBtn">
                         📄 Toutes les licences
                     </button>
                 </div>
@@ -517,17 +517,64 @@
             <div class="modal-body">
                 <!-- Onglet 1: Formulaire de licence -->
                 <div id="licenseFormTab" class="tab-content active">
+                    <!-- Sélecteur de type de licence -->
+                    <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">🎯 Type de licence</h4>
+                        <div style="display: flex; gap: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; border: 2px solid var(--gray-200); border-radius: var(--radius); background: var(--white); transition: var(--transition);" id="companyLicenseOption">
+                                <input type="radio" name="licenseType" value="company" checked onchange="switchLicenseType('company')">
+                                <div>
+                                    <div style="font-weight: 600;">🏢 Licence Société</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">Licence pour une société avec plusieurs utilisateurs</div>
+                                </div>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.75rem; border: 2px solid var(--gray-200); border-radius: var(--radius); background: var(--white); transition: var(--transition);" id="individualLicenseOption">
+                                <input type="radio" name="licenseType" value="individual" onchange="switchLicenseType('individual')">
+                                <div>
+                                    <div style="font-weight: 600;">👤 Licence Individuelle</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">Licence pour un contact spécifique</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <form id="licenseForm">
-                        <div class="form-grid">
+                        <!-- Section Licence Société -->
+                        <div id="companyLicenseSection">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="licenseCompany">Société *</label>
+                                    <select id="licenseCompany" onchange="updateCompanyInfo()">
+                                        <option value="">Sélectionner une société</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="licensePlan">Plan de base *</label>
+                                    <select id="licensePlan" onchange="updatePricing()">
+                                        <option value="">Sélectionner un plan</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section Licence Individuelle -->
+                        <div id="individualLicenseSection" style="display: none;">
                             <div class="form-group">
-                                <label for="licenseCompany">Société *</label>
-                                <select id="licenseCompany" required onchange="updateCompanyInfo()">
-                                    <option value="">Sélectionner une société</option>
+                                <label for="individualContact">Contact *</label>
+                                <select id="individualContact" onchange="updateIndividualContactInfo()">
+                                    <option value="">Sélectionner un contact</option>
                                 </select>
                             </div>
+                            
+                            <!-- Informations du contact sélectionné -->
+                            <div id="contactInfo" style="display: none; background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin: 1rem 0;">
+                                <h5 style="margin-bottom: 0.5rem; color: var(--gray-800);">👤 Informations du contact</h5>
+                                <div id="contactDetails"></div>
+                            </div>
+
                             <div class="form-group">
-                                <label for="licensePlan">Plan de base *</label>
-                                <select id="licensePlan" required onchange="updatePricing()">
+                                <label for="individualPlan">Plan de licence *</label>
+                                <select id="individualPlan" onchange="updateIndividualPricing()">
                                     <option value="">Sélectionner un plan</option>
                                 </select>
                             </div>
@@ -546,7 +593,7 @@
                             <div id="customPricingFields" style="display: none;">
                                 <div class="form-grid">
                                     <div class="form-group">
-                                        <label for="customPricePerUser">Prix par utilisateur/mois (€) *</label>
+                                        <label for="customPricePerUser">Prix <span id="pricingLabel">par utilisateur/mois</span> (€) *</label>
                                         <input type="number" id="customPricePerUser" step="0.01" min="0" onchange="updatePricing()">
                                     </div>
                                     <div class="form-group">
@@ -557,11 +604,16 @@
                             </div>
                         </div>
                         
-                        <div class="form-grid-3">
+                        <!-- Nombre de licences (seulement pour les sociétés) -->
+                        <div id="licenseCountSection">
                             <div class="form-group">
                                 <label for="licenseCount">Nombre de licences *</label>
                                 <input type="number" id="licenseCount" value="1" min="1" required onchange="updatePricing()">
                             </div>
+                        </div>
+                        
+                        <!-- Dates -->
+                        <div class="form-grid-3">
                             <div class="form-group">
                                 <label for="startDate">Date de début *</label>
                                 <input type="date" id="startDate" required onchange="updateDates()">
@@ -570,13 +622,13 @@
                                 <label for="endDate">Date de fin *</label>
                                 <input type="date" id="endDate" required>
                             </div>
-                        </div>
-                        
-                        <div class="form-grid-3">
                             <div class="form-group">
                                 <label for="renewalDate">Date de renouvellement</label>
                                 <input type="date" id="renewalDate">
                             </div>
+                        </div>
+                        
+                        <div class="form-grid-3">
                             <div class="form-group">
                                 <label for="licenseStatus">Statut</label>
                                 <select id="licenseStatus">
@@ -596,25 +648,16 @@
                                     <option value="cash">Espèces</option>
                                 </select>
                             </div>
+                            <div class="form-group" id="notesSection">
+                                <label for="licenseNotes">Notes</label>
+                                <input type="text" id="licenseNotes" placeholder="Notes sur la licence...">
+                            </div>
                         </div>
                         
                         <!-- Aperçu des coûts -->
                         <div id="pricingPreview" class="pricing-preview" style="display: none;">
                             <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
-                            <div class="form-grid-3" style="text-align: center;">
-                                <div>
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
-                                </div>
-                                <div>
-                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
-                                </div>
-                            </div>
+                            <div id="pricingDetails"></div>
                         </div>
                         
                         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
@@ -666,6 +709,7 @@
         let editingLicense = null;
         let currentLicenseForUsers = null;
         let selectedContactId = null;
+        let currentLicenseType = 'company'; // 'company' ou 'individual'
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
@@ -738,30 +782,15 @@
                     contacts: contactsResult
                 });
 
-                // Traiter les licences
-                if (licensesResult.success && licensesResult.data) {
-                    licenses = licensesResult.data.map(license => {
-                        return {
-                            id: license.id,
-                            company_id: license.company_id,
-                            company_name: license.companies?.name || 'Société inconnue',
-                            plan_id: license.plan_id,
-                            plan_name: license.license_plans?.name || 'Plan inconnu',
-                            plan_price: license.license_plans?.price_per_user || 0,
-                            license_count: license.license_count || 0,
-                            start_date: license.start_date,
-                            end_date: license.end_date,
-                            renewal_date: license.renewal_date,
-                            status: license.status || 'active',
-                            payment_method: license.payment_method,
-                            monthly_cost: license.monthly_cost || 0,
-                            custom_price_per_user: license.custom_price_per_user || null,
-                            custom_description: license.custom_description || null,
-                            users: []
-                        };
-                    });
-                } else {
-                    licenses = [];
+                // Charger les utilisateurs pour chaque licence
+                await loadLicenseUsers();
+
+                // Initialiser les licences filtrées
+                filteredLicenses = [...licenses];
+
+                function getContactName(contactId) {
+                    const contact = allContacts.find(c => c.id === contactId);
+                    return contact ? `${contact.first_name} ${contact.last_name}` : 'Contact inconnu';
                 }
 
                 // Traiter les sociétés
@@ -816,6 +845,7 @@
         function populateSelects() {
             populateCompanySelect();
             populatePlanSelect();
+            populateContactSelect();
         }
 
         function populateCompanySelect() {
@@ -831,16 +861,51 @@
         }
 
         function populatePlanSelect() {
-            const select = document.getElementById('licensePlan');
-            select.innerHTML = '<option value="">Sélectionner un plan</option>';
+            const companySelect = document.getElementById('licensePlan');
+            const individualSelect = document.getElementById('individualPlan');
             
-            licensePlans.forEach(plan => {
-                const option = document.createElement('option');
-                option.value = plan.id;
-                option.textContent = `${plan.name} - ${formatCurrency(plan.price_per_user)}/mois`;
-                option.dataset.price = plan.price_per_user;
-                option.dataset.name = plan.name;
-                select.appendChild(option);
+            const optionsHtml = '<option value="">Sélectionner un plan</option>' + 
+                licensePlans.map(plan => 
+                    `<option value="${plan.id}" data-price="${plan.price_per_user}" data-name="${plan.name}">
+                        ${plan.name} - ${formatCurrency(plan.price_per_user)}/mois
+                    </option>`
+                ).join('');
+                
+            companySelect.innerHTML = optionsHtml;
+            individualSelect.innerHTML = optionsHtml;
+        }
+
+        function populateContactSelect() {
+            const select = document.getElementById('individualContact');
+            select.innerHTML = '<option value="">Sélectionner un contact</option>';
+            
+            // Grouper les contacts par société
+            const contactsByCompany = allContacts.reduce((acc, contact) => {
+                const companyName = contact.companies?.name || 'Sans société';
+                if (!acc[companyName]) acc[companyName] = [];
+                acc[companyName].push(contact);
+                return acc;
+            }, {});
+            
+            Object.keys(contactsByCompany).sort().forEach(companyName => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = companyName;
+                
+                contactsByCompany[companyName].forEach(contact => {
+                    const option = document.createElement('option');
+                    option.value = contact.id;
+                    option.textContent = `${contact.first_name} ${contact.last_name} (${contact.email})`;
+                    option.dataset.firstName = contact.first_name;
+                    option.dataset.lastName = contact.last_name;
+                    option.dataset.email = contact.email;
+                    option.dataset.position = contact.position || '';
+                    option.dataset.phone = contact.phone || '';
+                    option.dataset.companyId = contact.company_id || '';
+                    option.dataset.companyName = contact.companies?.name || '';
+                    optgroup.appendChild(option);
+                });
+                
+                select.appendChild(optgroup);
             });
         }
 
@@ -853,7 +918,104 @@
             }
         }
 
-        function updateCompanyInfo() {
+        // Gestion des types de licence
+        function switchLicenseType(type) {
+            currentLicenseType = type;
+            
+            const companySection = document.getElementById('companyLicenseSection');
+            const individualSection = document.getElementById('individualLicenseSection');
+            const licenseCountSection = document.getElementById('licenseCountSection');
+            const pricingLabel = document.getElementById('pricingLabel');
+            
+            // Mise à jour visuelle des options
+            const companyOption = document.getElementById('companyLicenseOption');
+            const individualOption = document.getElementById('individualLicenseOption');
+            
+            if (type === 'company') {
+                companySection.style.display = 'block';
+                individualSection.style.display = 'none';
+                licenseCountSection.style.display = 'block';
+                pricingLabel.textContent = 'par utilisateur/mois';
+                
+                companyOption.style.borderColor = 'var(--primary-color)';
+                companyOption.style.backgroundColor = '#eff6ff';
+                individualOption.style.borderColor = 'var(--gray-200)';
+                individualOption.style.backgroundColor = 'var(--white)';
+                
+                // Marquer les champs requis
+                document.getElementById('licenseCompany').required = true;
+                document.getElementById('licensePlan').required = true;
+                document.getElementById('individualContact').required = false;
+                document.getElementById('individualPlan').required = false;
+            } else {
+                companySection.style.display = 'none';
+                individualSection.style.display = 'block';
+                licenseCountSection.style.display = 'none';
+                pricingLabel.textContent = 'mensuel';
+                
+                // Fixer le nombre de licences à 1 pour les licences individuelles
+                document.getElementById('licenseCount').value = 1;
+                
+                individualOption.style.borderColor = 'var(--primary-color)';
+                individualOption.style.backgroundColor = '#eff6ff';
+                companyOption.style.borderColor = 'var(--gray-200)';
+                companyOption.style.backgroundColor = 'var(--white)';
+                
+                // Marquer les champs requis
+                document.getElementById('licenseCompany').required = false;
+                document.getElementById('licensePlan').required = false;
+                document.getElementById('individualContact').required = true;
+                document.getElementById('individualPlan').required = true;
+            }
+            
+            // Réinitialiser les aperçus
+            document.getElementById('pricingPreview').style.display = 'none';
+            document.getElementById('contactInfo').style.display = 'none';
+        }
+
+        function updateIndividualContactInfo() {
+            const select = document.getElementById('individualContact');
+            const contactInfo = document.getElementById('contactInfo');
+            const contactDetails = document.getElementById('contactDetails');
+            
+            if (select.value) {
+                const option = select.options[select.selectedIndex];
+                const contactData = {
+                    firstName: option.dataset.firstName,
+                    lastName: option.dataset.lastName,
+                    email: option.dataset.email,
+                    position: option.dataset.position,
+                    phone: option.dataset.phone,
+                    companyName: option.dataset.companyName
+                };
+                
+                contactDetails.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <strong>Nom complet:</strong> ${contactData.firstName} ${contactData.lastName}
+                        </div>
+                        <div>
+                            <strong>Email:</strong> ${contactData.email}
+                        </div>
+                        <div>
+                            <strong>Poste:</strong> ${contactData.position || 'Non défini'}
+                        </div>
+                        <div>
+                            <strong>Téléphone:</strong> ${contactData.phone || 'Non défini'}
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <strong>Société:</strong> ${contactData.companyName || 'Aucune société'}
+                        </div>
+                    </div>
+                `;
+                
+                contactInfo.style.display = 'block';
+            } else {
+                contactInfo.style.display = 'none';
+            }
+        }
+
+        function updateIndividualPricing() {
             updatePricing();
         }
 
@@ -887,12 +1049,22 @@
             document.getElementById('renewalDate').value = renewalDate.toISOString().split('T')[0];
         }
 
+        function updateCompanyInfo() {
+            updatePricing();
+        }
+
         function updatePricing() {
-            const planSelect = document.getElementById('licensePlan');
-            const licenseCount = parseInt(document.getElementById('licenseCount').value) || 0;
-            const isCustomPricing = document.getElementById('enableCustomPricing').checked;
+            let planSelect, licenseCount, pricePerUser = 0;
             
-            let pricePerUser = 0;
+            if (currentLicenseType === 'company') {
+                planSelect = document.getElementById('licensePlan');
+                licenseCount = parseInt(document.getElementById('licenseCount').value) || 0;
+            } else {
+                planSelect = document.getElementById('individualPlan');
+                licenseCount = 1; // Toujours 1 pour les licences individuelles
+            }
+            
+            const isCustomPricing = document.getElementById('enableCustomPricing').checked;
             
             if (isCustomPricing) {
                 pricePerUser = parseFloat(document.getElementById('customPricePerUser').value) || 0;
@@ -911,9 +1083,41 @@
             const monthlyTotal = pricePerUser * licenseCount;
             const yearlyTotal = monthlyTotal * 12;
             
-            document.getElementById('pricePerUser').textContent = formatCurrency(pricePerUser);
-            document.getElementById('monthlyTotal').textContent = formatCurrency(monthlyTotal);
-            document.getElementById('yearlyTotal').textContent = formatCurrency(yearlyTotal);
+            // Mise à jour de l'affichage selon le type de licence
+            const pricingDetails = document.getElementById('pricingDetails');
+            
+            if (currentLicenseType === 'individual') {
+                pricingDetails.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(pricePerUser)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">prix mensuel</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(yearlyTotal)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                pricingDetails.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(pricePerUser)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(monthlyTotal)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">${formatCurrency(yearlyTotal)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             document.getElementById('pricingPreview').style.display = 'block';
         }
 
@@ -1037,11 +1241,22 @@
                 const displayPrice = license.custom_price_per_user || license.plan_price;
                 const isCustomPrice = license.custom_price_per_user !== null;
                 
+                // Affichage spécifique selon le type de licence
+                const licenseTypeIcon = license.license_type === 'individual' ? '👤' : '🏢';
+                const licenseTypeText = license.license_type === 'individual' ? 'Individuelle' : 'Société';
+                
+                const usersDisplay = license.license_type === 'individual' 
+                    ? `<span style="font-weight: 600; font-size: 1.125rem;">👤 ${license.individual_contact_name || 'Contact inconnu'}</span>`
+                    : `<span style="font-weight: 600; font-size: 1.125rem;">${activeUsers}/${license.license_count}</span>
+                       <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openUsersModal('${license.id}')" title="Gérer les utilisateurs" style="margin-left: 0.5rem;">
+                           👥
+                       </button>`;
+                
                 return `
                     <tr onclick="editLicense('${license.id}')" style="cursor: pointer;">
                         <td>
-                            <div style="font-weight: 600;">${escapeHtml(license.company_name)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
+                            <div style="font-weight: 600;">${licenseTypeIcon} ${escapeHtml(license.company_name)}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${licenseTypeText} • ID: ${license.company_id}</div>
                         </td>
                         <td>
                             <div style="font-weight: 500;">${escapeHtml(license.plan_name)}</div>
@@ -1052,10 +1267,7 @@
                             ${license.custom_description ? `<div style="font-size: 0.75rem; color: var(--gray-400);">${escapeHtml(license.custom_description)}</div>` : ''}
                         </td>
                         <td>
-                            <span style="font-weight: 600; font-size: 1.125rem;">${activeUsers}/${license.license_count}</span>
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openUsersModal('${license.id}')" title="Gérer les utilisateurs" style="margin-left: 0.5rem;">
-                                👥
-                            </button>
+                            ${usersDisplay}
                         </td>
                         <td>
                             <div>${formatDateShort(license.start_date)}</div>
@@ -1289,8 +1501,8 @@
             document.getElementById('submitLicenseBtn').textContent = '💾 Créer la licence';
             editingLicense = null;
             
-            // Masquer le deuxième onglet pour les nouvelles licences
-            document.getElementById('companyLicensesTabBtn').style.display = 'none';
+            // Masquer les onglets pour les nouvelles licences
+            document.getElementById('licenseTabsContainer').style.display = 'none';
             
             const modal = document.getElementById('licenseModal');
             modal.classList.add('show');
@@ -1314,8 +1526,14 @@
             document.getElementById('enableCustomPricing').checked = false;
             document.getElementById('customPricingFields').style.display = 'none';
             document.getElementById('customPricePerUser').required = false;
-            document.getElementById('companyLicensesTabBtn').style.display = 'none';
+            document.getElementById('licenseTabsContainer').style.display = 'none';
+            document.getElementById('contactInfo').style.display = 'none';
             editingLicense = null;
+            
+            // Réinitialiser le type de licence à 'company'
+            currentLicenseType = 'company';
+            document.querySelector('input[name="licenseType"][value="company"]').checked = true;
+            switchLicenseType('company');
             
             // Réinitialiser les onglets
             switchLicenseTab('license-form');
@@ -1337,19 +1555,34 @@
             
             editingLicense = license;
             
-            // Afficher le deuxième onglet en mode édition
-            document.getElementById('companyLicensesTabBtn').style.display = 'block';
+            // Afficher les onglets en mode édition
+            document.getElementById('licenseTabsContainer').style.display = 'block';
+            
+            // Détecter le type de licence et configurer l'interface
+            const licenseType = license.license_type || (license.individual_contact_id ? 'individual' : 'company');
+            
+            // Configurer le type de licence
+            document.querySelector(`input[name="licenseType"][value="${licenseType}"]`).checked = true;
+            switchLicenseType(licenseType);
             
             // Remplir le formulaire
             try {
-                document.getElementById('licenseCompany').value = license.company_id;
-                document.getElementById('licensePlan').value = license.plan_id;
-                document.getElementById('licenseCount').value = license.license_count;
+                if (licenseType === 'individual') {
+                    document.getElementById('individualContact').value = license.individual_contact_id || '';
+                    document.getElementById('individualPlan').value = license.plan_id;
+                    updateIndividualContactInfo();
+                } else {
+                    document.getElementById('licenseCompany').value = license.company_id;
+                    document.getElementById('licensePlan').value = license.plan_id;
+                    document.getElementById('licenseCount').value = license.license_count;
+                }
+                
                 document.getElementById('startDate').value = license.start_date;
                 document.getElementById('endDate').value = license.end_date;
                 document.getElementById('renewalDate').value = license.renewal_date || '';
                 document.getElementById('licenseStatus').value = license.status;
                 document.getElementById('paymentMethod').value = license.payment_method || '';
+                document.getElementById('licenseNotes').value = license.notes || '';
                 
                 // Gérer la tarification personnalisée
                 if (license.custom_price_per_user !== null) {
@@ -1838,15 +2071,38 @@
         document.getElementById('licenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const companyId = document.getElementById('licenseCompany').value;
-            const planId = document.getElementById('licensePlan').value;
-            const licenseCount = parseInt(document.getElementById('licenseCount').value);
+            let companyId, planId, licenseCount, contactId = null;
+            
+            if (currentLicenseType === 'company') {
+                companyId = document.getElementById('licenseCompany').value;
+                planId = document.getElementById('licensePlan').value;
+                licenseCount = parseInt(document.getElementById('licenseCount').value);
+                
+                if (!companyId || !planId || !licenseCount) {
+                    showError('Veuillez remplir tous les champs obligatoires pour la licence société');
+                    return;
+                }
+            } else {
+                contactId = document.getElementById('individualContact').value;
+                planId = document.getElementById('individualPlan').value;
+                licenseCount = 1;
+                
+                if (!contactId || !planId) {
+                    showError('Veuillez sélectionner un contact et un plan pour la licence individuelle');
+                    return;
+                }
+                
+                // Récupérer la société du contact pour la licence
+                const contactOption = document.getElementById('individualContact').options[document.getElementById('individualContact').selectedIndex];
+                companyId = contactOption.dataset.companyId || null;
+            }
+            
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             const isCustomPricing = document.getElementById('enableCustomPricing').checked;
             
-            if (!companyId || !planId || !licenseCount || !startDate || !endDate) {
-                showError('Veuillez remplir tous les champs obligatoires');
+            if (!startDate || !endDate) {
+                showError('Veuillez définir les dates de début et de fin');
                 return;
             }
             
@@ -1867,7 +2123,9 @@
                     customDescription = document.getElementById('customDescription').value.trim() || null;
                     pricePerUser = customPricePerUser;
                 } else {
-                    const planSelect = document.getElementById('licensePlan');
+                    const planSelect = currentLicenseType === 'company' ? 
+                        document.getElementById('licensePlan') : 
+                        document.getElementById('individualPlan');
                     const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
                     pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
                 }
@@ -1883,7 +2141,10 @@
                     payment_method: document.getElementById('paymentMethod').value || null,
                     monthly_cost: pricePerUser * licenseCount,
                     custom_price_per_user: customPricePerUser,
-                    custom_description: customDescription
+                    custom_description: customDescription,
+                    notes: document.getElementById('licenseNotes').value.trim() || null,
+                    license_type: currentLicenseType,
+                    individual_contact_id: currentLicenseType === 'individual' ? contactId : null
                 };
                 
                 let result;
@@ -1894,7 +2155,9 @@
                 }
                 
                 if (result.success) {
-                    showSuccess(editingLicense ? 'Licence modifiée avec succès !' : 'Licence créée avec succès !');
+                    const actionText = editingLicense ? 'modifiée' : 'créée';
+                    const licenseTypeText = currentLicenseType === 'individual' ? 'individuelle' : 'société';
+                    showSuccess(`Licence ${licenseTypeText} ${actionText} avec succès !`);
                     closeLicenseModal();
                     await loadData();
                     updateStats();
