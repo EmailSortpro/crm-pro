@@ -4,18 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Contacts</title>
-    
-    <!-- Injection variables Netlify -->
-    <script>
-      if (window.location.hostname.includes('netlify')) {
-        window.NETLIFY_ENV = {
-          VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
-          VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
-        };
-        console.log('🌐 Variables Netlify injectées');
-      }
-    </script>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -35,7 +23,7 @@
                 </a>
                 <a href="dashboard.html" class="nav-link">
                     <span class="nav-icon">📊</span>
-                    Tableau de bord
+                    <span style="line-height: 1.2;">Tableau<br>de bord</span>
                 </a>
                 <a href="companies.html" class="nav-link">
                     <span class="nav-icon">🏢</span>
@@ -64,7 +52,7 @@
                     <span class="user-name" id="userName">Utilisateur</span>
                     <span class="user-role" id="userRole">user</span>
                 </div>
-                <button onclick="AuthService.logout()" class="logout-btn">
+                <button onclick="handleLogout()" class="logout-btn">
                     <span>🚪</span>
                     Déconnexion
                 </button>
@@ -256,6 +244,8 @@
             showLoading(true);
             
             try {
+                await waitForAuthService();
+                
                 if (!await AuthService.requireAuth()) return;
                 
                 loadUserInfo();
@@ -270,6 +260,17 @@
                 showLoading(false);
             }
         });
+
+        async function waitForAuthService() {
+            let attempts = 0;
+            while (!window.AuthService && attempts < 100) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                attempts++;
+            }
+            if (!window.AuthService) {
+                throw new Error('AuthService non disponible');
+            }
+        }
 
         function loadUserInfo() {
             try {
@@ -686,6 +687,21 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        async function handleLogout() {
+            try {
+                if (window.AuthService) {
+                    await AuthService.logout();
+                } else {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Erreur déconnexion:', error);
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
         }
 
         // Event listeners
