@@ -4,8 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Accueil</title>
+    
+    <!-- Injection variables Netlify -->
+    <script>
+      if (window.location.hostname.includes('netlify')) {
+        window.NETLIFY_ENV = {
+          VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
+          VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
+        };
+        console.log('🌐 Variables Netlify injectées');
+      }
+    </script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
+    
     <style>
         .hero-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -244,19 +257,19 @@
         <!-- Statistiques rapides -->
         <div class="stats-preview">
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewTotalCompanies">12</div>
+                <div class="stat-preview-number" id="previewTotalCompanies">-</div>
                 <div class="stat-preview-label">Sociétés</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewTotalContacts">45</div>
+                <div class="stat-preview-number" id="previewTotalContacts">-</div>
                 <div class="stat-preview-label">Contacts</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewActiveLicenses">8</div>
+                <div class="stat-preview-number" id="previewActiveLicenses">-</div>
                 <div class="stat-preview-label">Licences actives</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewRevenue">2 450 €</div>
+                <div class="stat-preview-number" id="previewRevenue">-</div>
                 <div class="stat-preview-label">Revenus mensuels</div>
             </div>
         </div>
@@ -393,38 +406,23 @@
             <p>&copy; 2025 CRM Pro - Solution de gestion de la relation client</p>
         </div>
     </footer>
-<script>
-  // Injection des variables Netlify (sera remplacé au build)
-  if (window.location.hostname.includes('netlify')) {
-    window.NETLIFY_ENV = {
-      VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
-      VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
-    };
-  }
-</script>
+
     <script src="config.js"></script>
     <script>
-        // Variables globales ULTRA SIMPLES
         let isInitialized = false;
 
-        // Initialisation SANS BOUCLE
-        document.addEventListener('DOMContentLoaded', function() {
-            if (isInitialized) {
-                console.log('⚠️ Déjà initialisé, abandon');
-                return;
-            }
-            
-            console.log('🚀 Initialisation page d\'accueil');
+        // Initialisation simplifiée
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (isInitialized) return;
             isInitialized = true;
-            initPage();
-        });
-
-        async function initPage() {
+            
+            console.log('🏠 Initialisation page d\'accueil');
+            
             try {
-                // Vérifier auth SANS rechargement
-                const user = await getCurrentUser();
+                // Vérifier l'authentification
+                const user = await AuthService.getCurrentUser();
                 if (!user) {
-                    console.log('👤 Pas d\'utilisateur connecté, redirection');
+                    console.log('👤 Redirection vers login');
                     window.location.href = 'login.html';
                     return;
                 }
@@ -432,86 +430,36 @@
                 // Charger les infos utilisateur
                 loadUserInfo(user);
 
-                // Charger les stats UNE SEULE FOIS avec timeout court
-                loadStatsOnce();
+                // Charger les stats avec timeout
+                await loadStatsWithTimeout();
 
                 console.log('✅ Page d\'accueil initialisée');
 
             } catch (error) {
-                console.error('❌ Erreur initialisation:', error);
-                // Continuer avec les valeurs par défaut
-                setDefaultStats();
-            }
-        }
-
-        // Fonction auth SIMPLIFIÉE
-        async function getCurrentUser() {
-            try {
-                if (!window.AuthService || !window.AuthService.getCurrentUser) {
-                    throw new Error('AuthService non disponible');
-                }
-                
-                const user = await Promise.race([
-                    window.AuthService.getCurrentUser(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
-                ]);
-                
-                return user;
-            } catch (error) {
-                console.warn('⚠️ Erreur auth:', error.message);
-                return null;
-            }
-        }
-
-        function loadUserInfo(user) {
-            try {
-                if (user && user.email) {
-                    document.getElementById('userName').textContent = user.email.split('@')[0];
-                    document.getElementById('userRole').textContent = 'Utilisateur';
-                } else {
-                    // Valeurs par défaut
-                    document.getElementById('userName').textContent = 'Utilisateur';
-                    document.getElementById('userRole').textContent = 'User';
-                }
-            } catch (error) {
-                console.warn('⚠️ Erreur chargement user info:', error);
-                // Valeurs par défaut
+                console.warn('⚠️ Erreur loadUserInfo:', error);
                 document.getElementById('userName').textContent = 'Utilisateur';
                 document.getElementById('userRole').textContent = 'User';
             }
         }
 
-        // Charger les stats UNE SEULE FOIS avec timeout très court
-        function loadStatsOnce() {
-            console.log('📊 Tentative de chargement des stats...');
-            
-            // Timeout très court pour éviter les blocages
-            const timeout = setTimeout(() => {
-                console.log('⏰ Timeout stats, utilisation des valeurs par défaut');
-                setDefaultStats();
-            }, 2000);
+        async function loadStatsWithTimeout() {
+            try {
+                // Timeout de 3 secondes pour éviter les blocages
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Timeout')), 3000)
+                );
 
-            // Essayer de charger les vraies stats
-            if (window.CRMService && window.CRMService.getStats) {
-                window.CRMService.getStats()
-                    .then(result => {
-                        clearTimeout(timeout);
-                        if (result && result.success && result.data) {
-                            console.log('✅ Stats chargées:', result.data);
-                            updateStatsDisplay(result.data);
-                        } else {
-                            console.log('⚠️ Stats vides, valeurs par défaut');
-                            setDefaultStats();
-                        }
-                    })
-                    .catch(error => {
-                        clearTimeout(timeout);
-                        console.warn('⚠️ Erreur stats:', error.message);
-                        setDefaultStats();
-                    });
-            } else {
-                clearTimeout(timeout);
-                console.log('⚠️ CRMService non disponible, valeurs par défaut');
+                const statsPromise = CRMService.getStats();
+                const result = await Promise.race([statsPromise, timeoutPromise]);
+
+                if (result.success && result.data) {
+                    console.log('✅ Stats chargées:', result.data);
+                    updateStatsDisplay(result.data);
+                } else {
+                    throw new Error('Stats vides');
+                }
+            } catch (error) {
+                console.warn('⚠️ Stats timeout/erreur:', error.message);
                 setDefaultStats();
             }
         }
@@ -529,12 +477,12 @@
         }
 
         function setDefaultStats() {
-            console.log('📊 Affichage des stats par défaut');
             try {
                 document.getElementById('previewTotalCompanies').textContent = '12';
                 document.getElementById('previewTotalContacts').textContent = '45';
                 document.getElementById('previewActiveLicenses').textContent = '8';
                 document.getElementById('previewRevenue').textContent = '2 450 €';
+                console.log('📊 Stats par défaut affichées');
             } catch (error) {
                 console.warn('⚠️ Erreur stats par défaut:', error);
             }
@@ -553,41 +501,32 @@
             }
         }
 
-        // Déconnexion SIMPLE
         function logout() {
             try {
-                if (window.AuthService && window.AuthService.logout) {
-                    window.AuthService.logout();
-                } else {
-                    // Fallback simple
-                    localStorage.clear();
-                    window.location.href = 'login.html';
-                }
+                AuthService.logout();
             } catch (error) {
                 console.warn('⚠️ Erreur logout:', error);
-                // Fallback simple
                 localStorage.clear();
                 window.location.href = 'login.html';
             }
         }
 
-        // Désactiver les rechargements automatiques
-        window.addEventListener('beforeunload', function() {
+        // Éviter les rechargements multiples
+        window.addEventListener('beforeunload', () => {
             isInitialized = false;
         });
 
-        // Éviter les erreurs qui pourraient causer des boucles
-        window.addEventListener('error', function(e) {
-            console.warn('⚠️ Erreur capturée:', e.error?.message || 'Erreur inconnue');
-            e.preventDefault(); // Empêcher la propagation
+        // Gestion d'erreurs silencieuse
+        window.addEventListener('error', (e) => {
+            console.warn('⚠️ Erreur capturée:', e.error?.message);
+            e.preventDefault();
         });
 
-        window.addEventListener('unhandledrejection', function(e) {
-            console.warn('⚠️ Promise rejetée:', e.reason?.message || 'Raison inconnue');
-            e.preventDefault(); // Empêcher la propagation
+        window.addEventListener('unhandledrejection', (e) => {
+            console.warn('⚠️ Promise rejetée:', e.reason?.message);
+            e.preventDefault();
         });
-
-        console.log('📄 Script index.html chargé');
     </script>
 </body>
 </html>
+                
