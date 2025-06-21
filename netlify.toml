@@ -1,98 +1,48 @@
 [build]
 publish = "."
-command = "echo 'Build CRM Pro terminé'"
+command = "echo 'Build terminé'"
 
-# ✅ Configuration des fonctions Netlify
-[build.processing]
-skip_processing = false
-
-[build.processing.html]
-pretty_urls = true
+# ✅ Dossier des fonctions = racine
+[functions]
+directory = "."
 
 # Variables d'environnement
 [build.environment]
 NODE_ENV = "production"
 
-# ✅ Configuration pour fonction à la racine
-[functions]
-directory = "."
-# Netlify cherchera les fonctions dans le dossier racine
-
-# ✅ Redirections pour les fonctions (AVANT les autres redirections)
+# ✅ Redirection pour la fonction (PRIORITÉ ABSOLUE)
 [[redirects]]
 from = "/.netlify/functions/env-vars"
 to = "/env-vars.js"
 status = 200
 force = true
 
-[[redirects]]
-from = "/api/env"
-to = "/.netlify/functions/env-vars"
-status = 200
-
-# Redirections pour fichiers statiques
-[[redirects]]
-from = "/config.js"
-to = "/config.js"
-status = 200
-
-[[redirects]]
-from = "/login.html"
-to = "/login.html"
-status = 200
-
-[[redirects]]
-from = "/styles.css"
-to = "/styles.css"
-status = 200
-
+# Autres redirections
 [[redirects]]
 from = "/*.js"
 to = "/:splat.js"
 status = 200
 
 [[redirects]]
-from = "/*.css"
+from = "/*.css"  
 to = "/:splat.css"
 status = 200
 
-# ✅ SPA redirection EN DERNIER
+[[redirects]]
+from = "/*.html"
+to = "/:splat.html"
+status = 200
+
+# SPA fallback EN DERNIER
 [[redirects]]
 from = "/*"
 to = "/index.html"
 status = 200
 
-# Headers de sécurité
-[[headers]]
-for = "/*"
-[headers.values]
-X-Frame-Options = "DENY"
-X-XSS-Protection = "1; mode=block"
-X-Content-Type-Options = "nosniff"
-Referrer-Policy = "strict-origin-when-cross-origin"
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.netlify.app wss://*.supabase.co;"
-
-# Headers spéciaux pour les fonctions
+# Headers CORS pour fonctions
 [[headers]]
 for = "/.netlify/functions/*"
 [headers.values]
 Access-Control-Allow-Origin = "*"
-Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+Access-Control-Allow-Methods = "GET, OPTIONS"
 Access-Control-Allow-Headers = "Content-Type"
-Cache-Control = "no-cache"
-
-# Cache pour fichiers statiques
-[[headers]]
-for = "/assets/*"
-[headers.values]
-Cache-Control = "public, max-age=31536000"
-
-[[headers]]
-for = "*.css"
-[headers.values]
-Cache-Control = "public, max-age=31536000"
-
-[[headers]]
-for = "*.js"
-[headers.values]
-Cache-Control = "public, max-age=31536000"
