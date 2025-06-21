@@ -6,15 +6,215 @@
     <title>CRM Pro - Gestion des Sociétés</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Styles spécifiques pour la page sociétés */
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--gray-100);
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+        .filter-btn:hover {
+            background: var(--gray-200);
+        }
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+            border-color: var(--primary-color);
+        }
+
+        .companies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .company-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            transition: all var(--transition);
+            cursor: pointer;
+        }
+        .company-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary-color);
+        }
+
+        .company-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .company-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .company-industry {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .status-prospect {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .status-sponsor {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+        .status-client {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .status-onboarded {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .company-info {
+            display: grid;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .company-info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .company-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideInUp 0.3s ease;
+        }
+
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-500);
+            padding: 0.25rem;
+            border-radius: var(--radius);
+            transition: all var(--transition);
+        }
+        .close-btn:hover {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .companies-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-grid-2,
+            .form-grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="index.html" class="nav-logo">
+            <div class="nav-logo">
                 <span class="logo-icon">🚀</span>
                 <span class="logo-text">CRM Pro</span>
-            </a>
+            </div>
             
             <div class="nav-menu">
                 <a href="index.html" class="nav-link">
@@ -49,10 +249,8 @@
             
             <div class="nav-user">
                 <div class="user-info">
-                    <div>
-                        <div class="user-name" id="userName">Utilisateur</div>
-                        <div class="user-role" id="userRole">user</div>
-                    </div>
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
                 </div>
                 <button onclick="AuthService.logout()" class="logout-btn">
                     <span>🚪</span>
@@ -74,7 +272,7 @@
                     Gérez vos prospects, clients et sociétés onboardées
                 </p>
             </div>
-            <button class="btn btn-primary" onclick="openModal('add-company')">
+            <button class="btn btn-primary" onclick="openAddCompanyModal()">
                 ➕ Nouvelle Société
             </button>
         </div>
@@ -106,7 +304,7 @@
                     <!-- Barre de recherche -->
                     <div style="flex: 1; min-width: 200px;">
                         <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
-                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius-md);"
+                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius);"
                                oninput="searchCompanies()">
                     </div>
                 </div>
@@ -125,22 +323,22 @@
             <p style="color: var(--gray-500); margin-bottom: 2rem;">
                 Commencez par ajouter votre première société
             </p>
-            <button class="btn btn-primary" onclick="openModal('add-company')">
+            <button class="btn btn-primary" onclick="openAddCompanyModal()">
                 ➕ Créer ma première société
             </button>
         </div>
     </main>
 
     <!-- Modal Nouvelle/Modifier Société -->
-    <div id="modal-add-company" class="modal">
+    <div id="companyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">➕ Nouvelle Société</h3>
-                <button class="close-btn" onclick="closeModal('add-company')">&times;</button>
+                <button class="close-btn" onclick="closeCompanyModal()">&times;</button>
             </div>
             
-            <form id="addCompanyForm">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <form id="companyForm">
+                <div class="form-grid-2" style="margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyName">Nom de la société *</label>
                         <input type="text" id="companyName" required>
@@ -156,7 +354,7 @@
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-grid-2" style="margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyIndustry">Secteur d'activité</label>
                         <input type="text" id="companyIndustry" placeholder="Ex: Technologie, Santé...">
@@ -167,7 +365,7 @@
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-grid-2" style="margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyWebsite">Site web</label>
                         <input type="url" id="companyWebsite" placeholder="https://exemple.com">
@@ -188,7 +386,7 @@
                     <textarea id="companyAddress" rows="2" placeholder="123 rue de l'Exemple"></textarea>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div class="form-grid-3" style="margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyCity">Ville</label>
                         <input type="text" id="companyCity" placeholder="Paris">
@@ -209,7 +407,7 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-company')">
+                    <button type="button" class="btn btn-secondary" onclick="closeCompanyModal()">
                         Annuler
                     </button>
                     <button type="submit" class="btn btn-primary" id="submitBtn">
@@ -221,14 +419,14 @@
     </div>
 
     <!-- Modal Détails Société -->
-    <div id="modal-company-details" class="modal">
+    <div id="detailsModal" class="modal">
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
-                <h3 class="modal-title" id="companyDetailsTitle">Détails de la société</h3>
-                <button class="close-btn" onclick="closeModal('company-details')">&times;</button>
+                <h3 class="modal-title" id="detailsTitle">Détails de la société</h3>
+                <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
             </div>
             
-            <div id="companyDetailsContent">
+            <div id="detailsContent">
                 <!-- Contenu chargé dynamiquement -->
             </div>
         </div>
@@ -240,178 +438,31 @@
         let companies = [];
         let filteredCompanies = [];
         let currentFilter = 'all';
-        let selectedCompany = null;
-        let editMode = false; // VARIABLE IMPORTANTE POUR GÉRER L'ÉDITION
-
-        // Styles pour les filtres
-        const filterBtnStyle = `
-            .filter-btn {
-                padding: 0.5rem 1rem;
-                background: var(--gray-100);
-                border: 1px solid var(--gray-300);
-                border-radius: var(--radius-md);
-                cursor: pointer;
-                font-size: 0.875rem;
-                font-weight: 500;
-                color: var(--gray-700);
-                transition: all var(--transition);
-                white-space: nowrap;
-            }
-            .filter-btn:hover {
-                background: var(--gray-200);
-            }
-            .filter-btn.active {
-                background: var(--primary-color);
-                color: var(--white);
-                border-color: var(--primary-color);
-            }
-            .companies-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-                gap: 1.5rem;
-            }
-            .company-card {
-                background: var(--white);
-                border: 1px solid var(--gray-200);
-                border-radius: var(--radius-lg);
-                padding: 1.5rem;
-                transition: all var(--transition);
-                cursor: pointer;
-            }
-            .company-card:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-lg);
-                border-color: var(--primary-color);
-            }
-            .company-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 1rem;
-            }
-            .company-name {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: var(--gray-800);
-                margin-bottom: 0.25rem;
-            }
-            .company-industry {
-                font-size: 0.875rem;
-                color: var(--gray-500);
-            }
-            .status-badge {
-                padding: 0.25rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.025em;
-            }
-            .status-prospect {
-                background: #fef3c7;
-                color: #92400e;
-            }
-            .status-sponsor {
-                background: #f3e8ff;
-                color: #7c3aed;
-            }
-            .status-client {
-                background: #dbeafe;
-                color: #1e40af;
-            }
-            .status-onboarded {
-                background: #dcfce7;
-                color: #166534;
-            }
-            .company-info {
-                display: grid;
-                gap: 0.5rem;
-                margin-bottom: 1rem;
-            }
-            .company-info-item {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                font-size: 0.875rem;
-                color: var(--gray-600);
-            }
-            .company-actions {
-                display: flex;
-                gap: 0.5rem;
-                justify-content: flex-end;
-            }
-            .modal {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 1000;
-                align-items: center;
-                justify-content: center;
-            }
-            .modal.show {
-                display: flex;
-            }
-            .modal-content {
-                background: var(--white);
-                border-radius: var(--radius-lg);
-                padding: 2rem;
-                width: 90%;
-                max-width: 600px;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-            .modal-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 1.5rem;
-                padding-bottom: 1rem;
-                border-bottom: 1px solid var(--gray-200);
-            }
-            .modal-title {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: var(--gray-800);
-            }
-            .close-btn {
-                background: none;
-                border: none;
-                font-size: 1.5rem;
-                cursor: pointer;
-                color: var(--gray-500);
-                padding: 0.25rem;
-                border-radius: var(--radius);
-                transition: all var(--transition);
-            }
-            .close-btn:hover {
-                background: var(--gray-100);
-                color: var(--gray-700);
-            }
-        `;
-
-        // Injecter les styles
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = filterBtnStyle;
-        document.head.appendChild(styleSheet);
+        let editingCompany = null;
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
-            // Vérifier l'authentification
-            const isAuthenticated = await AuthService.requireAuth();
-            if (!isAuthenticated) return;
-
-            // Charger les informations utilisateur
-            loadUserInfo();
-
-            // Charger les sociétés
-            await loadCompanies();
-
-            // Gérer les paramètres URL
-            handleUrlParams();
+            showLoading(true);
+            
+            try {
+                // Vérifier l'authentification
+                if (!await AuthService.requireAuth()) return;
+                
+                // Charger les informations utilisateur
+                loadUserInfo();
+                
+                // Charger les sociétés
+                await loadCompanies();
+                
+                // Gérer les paramètres URL
+                handleUrlParams();
+                
+            } catch (error) {
+                console.error('Erreur initialisation:', error);
+                showError('Erreur lors du chargement de la page');
+            } finally {
+                showLoading(false);
+            }
         });
 
         // Charger les informations utilisateur
@@ -425,33 +476,45 @@
 
         // Charger les sociétés
         async function loadCompanies() {
-            showLoading(true);
-            
             try {
+                console.log('🔄 Chargement des sociétés...');
+                
                 const result = await CRMService.getCompanies();
                 if (result.success) {
                     companies = result.data;
                     updateCounts();
                     filterCompanies(currentFilter);
-                    showSuccess(`${companies.length} société(s) chargée(s)`);
+                    console.log(`✅ ${companies.length} société(s) chargée(s)`);
                 } else {
-                    showError('Erreur lors du chargement des sociétés: ' + result.error);
+                    throw new Error(result.error || 'Erreur lors du chargement');
                 }
             } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors du chargement des données');
-            } finally {
-                showLoading(false);
+                console.error('❌ Erreur chargement sociétés:', error);
+                showError('Erreur lors du chargement des sociétés: ' + error.message);
+                
+                // Afficher l'état vide en cas d'erreur
+                companies = [];
+                filteredCompanies = [];
+                renderCompanies();
             }
         }
 
         // Mettre à jour les compteurs
         function updateCounts() {
-            document.getElementById('count-all').textContent = companies.length;
-            document.getElementById('count-prospect').textContent = companies.filter(c => c.status === 'prospect').length;
-            document.getElementById('count-sponsor').textContent = companies.filter(c => c.status === 'sponsor').length;
-            document.getElementById('count-client').textContent = companies.filter(c => c.status === 'client').length;
-            document.getElementById('count-onboarded').textContent = companies.filter(c => c.status === 'onboarded').length;
+            const counts = {
+                all: companies.length,
+                prospect: companies.filter(c => c.status === 'prospect').length,
+                sponsor: companies.filter(c => c.status === 'sponsor').length,
+                client: companies.filter(c => c.status === 'client').length,
+                onboarded: companies.filter(c => c.status === 'onboarded').length
+            };
+            
+            Object.keys(counts).forEach(key => {
+                const element = document.getElementById(`count-${key}`);
+                if (element) {
+                    element.textContent = counts[key];
+                }
+            });
         }
 
         // Filtrer les sociétés
@@ -492,7 +555,8 @@
             const searchResults = filteredCompanies.filter(company =>
                 company.name.toLowerCase().includes(searchTerm) ||
                 (company.industry && company.industry.toLowerCase().includes(searchTerm)) ||
-                (company.city && company.city.toLowerCase().includes(searchTerm))
+                (company.city && company.city.toLowerCase().includes(searchTerm)) ||
+                (company.account_manager && company.account_manager.toLowerCase().includes(searchTerm))
             );
             
             renderCompanies(searchResults);
@@ -503,6 +567,8 @@
             const grid = document.getElementById('companiesGrid');
             const emptyState = document.getElementById('emptyState');
             
+            console.log('🎨 Rendu des sociétés:', companiesToRender.length);
+            
             if (companiesToRender.length === 0) {
                 grid.style.display = 'none';
                 emptyState.style.display = 'block';
@@ -512,102 +578,130 @@
             grid.style.display = 'grid';
             emptyState.style.display = 'none';
             
-            grid.innerHTML = companiesToRender.map(company => `
-                <div class="company-card" onclick="openCompanyDetails('${company.id}')">
-                    <div class="company-header">
-                        <div>
-                            <div class="company-name">${company.name}</div>
-                            <div class="company-industry">${company.industry || 'Secteur non spécifié'}</div>
+            grid.innerHTML = companiesToRender.map(company => {
+                const contactsCount = company.company_contacts ? company.company_contacts.length : 0;
+                
+                return `
+                    <div class="company-card" onclick="openCompanyDetails('${company.id}')">
+                        <div class="company-header">
+                            <div>
+                                <div class="company-name">${escapeHtml(company.name)}</div>
+                                <div class="company-industry">${escapeHtml(company.industry || 'Secteur non spécifié')}</div>
+                            </div>
+                            <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span>
                         </div>
-                        <span class="status-badge status-${company.status}">${company.status}</span>
-                    </div>
-                    
-                    <div class="company-info">
-                        ${company.website ? `
+                        
+                        <div class="company-info">
+                            ${company.account_manager ? `
+                                <div class="company-info-item">
+                                    <span>👤</span>
+                                    <span>${escapeHtml(company.account_manager)}</span>
+                                </div>
+                            ` : ''}
+                            ${company.website ? `
+                                <div class="company-info-item">
+                                    <span>🌐</span>
+                                    <span>${escapeHtml(company.website)}</span>
+                                </div>
+                            ` : ''}
+                            ${company.phone ? `
+                                <div class="company-info-item">
+                                    <span>📞</span>
+                                    <span>${escapeHtml(company.phone)}</span>
+                                </div>
+                            ` : ''}
+                            ${company.city ? `
+                                <div class="company-info-item">
+                                    <span>📍</span>
+                                    <span>${escapeHtml(company.city)}${company.country ? ', ' + escapeHtml(company.country) : ''}</span>
+                                </div>
+                            ` : ''}
                             <div class="company-info-item">
-                                <span>🌐</span>
-                                <span>${company.website}</span>
+                                <span>👥</span>
+                                <span>${contactsCount} contact(s)</span>
                             </div>
-                        ` : ''}
-                        ${company.phone ? `
-                            <div class="company-info-item">
-                                <span>📞</span>
-                                <span>${company.phone}</span>
-                            </div>
-                        ` : ''}
-                        ${company.city ? `
-                            <div class="company-info-item">
-                                <span>📍</span>
-                                <span>${company.city}${company.country ? ', ' + company.country : ''}</span>
-                            </div>
-                        ` : ''}
-                        <div class="company-info-item">
-                            <span>👥</span>
-                            <span>${company.company_contacts ? company.company_contacts.length : 0} contact(s)</span>
                         </div>
-                    </div>
-                    
-                    <div class="company-actions" onclick="event.stopPropagation()">
-                        <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')">
-                            ✏️ Modifier
-                        </button>
-                        ${AuthService.isAdmin() ? `
-                            <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}')">
-                                🗑️ Supprimer
+                        
+                        <div class="company-actions" onclick="event.stopPropagation()">
+                            <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')" title="Modifier">
+                                ✏️
                             </button>
-                        ` : ''}
+                            <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}')" title="Supprimer">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        // Utilitaire pour échapper le HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Obtenir le texte du statut
+        function getStatusText(status) {
+            const statusMap = {
+                'prospect': 'Prospect',
+                'sponsor': 'Sponsor',
+                'client': 'Client',
+                'onboarded': 'Onboardé'
+            };
+            return statusMap[status] || status;
         }
 
         // Gestion des modals
-        function openModal(modalId) {
-            const modal = document.getElementById(`modal-${modalId}`);
+        function openAddCompanyModal() {
+            resetCompanyForm();
+            document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
+            document.getElementById('submitBtn').textContent = '💾 Créer la société';
+            editingCompany = null;
+            
+            const modal = document.getElementById('companyModal');
             modal.classList.add('show');
-            
-            if (modalId === 'add-company') {
-                // Réinitialiser le formulaire et les variables si on ouvre pour une nouvelle société
-                if (!editMode) {
-                    document.getElementById('addCompanyForm').reset();
-                    document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
-                    document.getElementById('submitBtn').textContent = '💾 Créer la société';
-                    selectedCompany = null;
-                }
-            }
         }
 
-        function closeModal(modalId) {
-            const modal = document.getElementById(`modal-${modalId}`);
+        function closeCompanyModal() {
+            const modal = document.getElementById('companyModal');
             modal.classList.remove('show');
-            
-            // Réinitialiser les variables d'édition quand on ferme le modal
-            if (modalId === 'add-company') {
-                editMode = false;
-                selectedCompany = null;
-            }
+            resetCompanyForm();
         }
 
-        // FONCTION CORRIGÉE POUR LA MODIFICATION
+        function closeDetailsModal() {
+            const modal = document.getElementById('detailsModal');
+            modal.classList.remove('show');
+        }
+
+        function resetCompanyForm() {
+            document.getElementById('companyForm').reset();
+            document.getElementById('companyCountry').value = 'France';
+            editingCompany = null;
+        }
+
+        // Modifier une société
         function editCompany(companyId) {
-            console.log('Editing company:', companyId); // Debug
+            console.log('📝 Modification société:', companyId);
             
             const company = companies.find(c => c.id === companyId);
             if (!company) {
                 console.error('Société non trouvée:', companyId);
+                showError('Société non trouvée');
                 return;
             }
             
             // Fermer le modal de détails s'il est ouvert
-            closeModal('company-details');
+            closeDetailsModal();
             
-            // IMPORTANT: Passer en mode édition AVANT d'ouvrir le modal
-            editMode = true;
-            selectedCompany = company;
+            // Passer en mode édition
+            editingCompany = company;
             
-            // Remplir le formulaire avec les données existantes
+            // Remplir le formulaire
             document.getElementById('companyName').value = company.name || '';
-            document.getElementById('companyStatus').value = company.status || '';
+            document.getElementById('companyStatus').value = company.status || 'prospect';
             document.getElementById('companyIndustry').value = company.industry || '';
             document.getElementById('accountManager').value = company.account_manager || '';
             document.getElementById('companyWebsite').value = company.website || '';
@@ -616,7 +710,7 @@
             document.getElementById('companyAddress').value = company.address || '';
             document.getElementById('companyCity').value = company.city || '';
             document.getElementById('companyPostalCode').value = company.postal_code || '';
-            document.getElementById('companyCountry').value = company.country || '';
+            document.getElementById('companyCountry').value = company.country || 'France';
             document.getElementById('companyNotes').value = company.notes || '';
             
             // Modifier les textes du modal
@@ -624,40 +718,169 @@
             document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
             
             // Ouvrir le modal
-            openModal('add-company');
+            document.getElementById('companyModal').classList.add('show');
         }
 
-        // Gestion du formulaire d'ajout/modification
-        document.getElementById('addCompanyForm').addEventListener('submit', async (e) => {
+        // Supprimer une société
+        async function deleteCompany(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) {
+                showError('Société non trouvée');
+                return;
+            }
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${company.name}" ?\n\nCette action est irréversible et supprimera également tous les contacts associés.`)) {
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                console.log('🗑️ Suppression société:', companyId);
+                
+                const result = await CRMService.deleteCompany(companyId);
+                if (result.success) {
+                    showSuccess('Société supprimée avec succès');
+                    await loadCompanies();
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la suppression');
+                }
+            } catch (error) {
+                console.error('❌ Erreur suppression société:', error);
+                showError('Erreur lors de la suppression: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Ouvrir les détails d'une société
+        function openCompanyDetails(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) {
+                showError('Société non trouvée');
+                return;
+            }
+            
+            console.log('👁️ Ouverture détails société:', company.name);
+            
+            document.getElementById('detailsTitle').textContent = company.name;
+            
+            // Contenu des détails
+            const contactsHtml = company.company_contacts && company.company_contacts.length > 0 ? 
+                company.company_contacts.map(contact => `
+                    <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 0.5rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;">
+                            ${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}
+                        </div>
+                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
+                            ${escapeHtml(contact.position || 'Poste non spécifié')} • ${escapeHtml(contact.email)}
+                        </div>
+                        ${contact.phone ? `
+                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
+                                📞 ${escapeHtml(contact.phone)}
+                            </div>
+                        ` : ''}
+                        ${contact.is_admin_contact || contact.is_payment_contact ? `
+                            <div style="margin-top: 0.5rem;">
+                                ${contact.is_admin_contact ? '<span style="background: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; margin-right: 0.25rem;">Admin</span>' : ''}
+                                ${contact.is_payment_contact ? '<span style="background: #fef3c7; color: #92400e; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">Facturation</span>' : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('') :
+                '<p style="color: var(--gray-500); font-style: italic;">Aucun contact enregistré</p>';
+
+            document.getElementById('detailsContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📋 Informations générales</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Statut :</strong> <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span></div>
+                            <div><strong>Secteur :</strong> ${escapeHtml(company.industry || 'Non spécifié')}</div>
+                            <div><strong>Site web :</strong> ${company.website ? `<a href="${escapeHtml(company.website)}" target="_blank" style="color: var(--primary-color);">${escapeHtml(company.website)}</a>` : 'Non spécifié'}</div>
+                            <div><strong>Téléphone :</strong> ${escapeHtml(company.phone || 'Non spécifié')}</div>
+                            <div><strong>SIRET :</strong> ${escapeHtml(company.siret || 'Non spécifié')}</div>
+                            <div><strong>Responsable :</strong> ${escapeHtml(company.account_manager || 'Non assigné')}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📍 Adresse</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Adresse :</strong> ${escapeHtml(company.address || 'Non spécifiée')}</div>
+                            <div><strong>Ville :</strong> ${escapeHtml(company.city || 'Non spécifiée')}</div>
+                            <div><strong>Code postal :</strong> ${escapeHtml(company.postal_code || 'Non spécifié')}</div>
+                            <div><strong>Pays :</strong> ${escapeHtml(company.country || 'Non spécifié')}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${company.notes ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📝 Notes</h4>
+                        <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); color: var(--gray-700);">
+                            ${escapeHtml(company.notes).replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">👥 Contacts (${company.company_contacts ? company.company_contacts.length : 0})</h4>
+                    ${contactsHtml}
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="closeDetailsModal()">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="editCompany('${company.id}')">
+                        ✏️ Modifier
+                    </button>
+                    <a href="contacts.html?company=${company.id}" class="btn btn-success">
+                        👥 Gérer les contacts
+                    </a>
+                </div>
+            `;
+            
+            document.getElementById('detailsModal').classList.add('show');
+        }
+
+        // Gestion du formulaire
+        document.getElementById('companyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = {
-                name: document.getElementById('companyName').value,
+                name: document.getElementById('companyName').value.trim(),
                 status: document.getElementById('companyStatus').value,
-                industry: document.getElementById('companyIndustry').value,
-                account_manager: document.getElementById('accountManager').value,
-                website: document.getElementById('companyWebsite').value,
-                phone: document.getElementById('companyPhone').value,
-                siret: document.getElementById('companySiret').value,
-                address: document.getElementById('companyAddress').value,
-                city: document.getElementById('companyCity').value,
-                postal_code: document.getElementById('companyPostalCode').value,
-                country: document.getElementById('companyCountry').value,
-                notes: document.getElementById('companyNotes').value
+                industry: document.getElementById('companyIndustry').value.trim(),
+                account_manager: document.getElementById('accountManager').value.trim(),
+                website: document.getElementById('companyWebsite').value.trim(),
+                phone: document.getElementById('companyPhone').value.trim(),
+                siret: document.getElementById('companySiret').value.trim(),
+                address: document.getElementById('companyAddress').value.trim(),
+                city: document.getElementById('companyCity').value.trim(),
+                postal_code: document.getElementById('companyPostalCode').value.trim(),
+                country: document.getElementById('companyCountry').value.trim(),
+                notes: document.getElementById('companyNotes').value.trim()
             };
+            
+            // Validation
+            if (!formData.name) {
+                showError('Le nom de la société est obligatoire');
+                return;
+            }
             
             showLoading(true);
             
             try {
                 let result;
-                if (editMode && selectedCompany) {
-                    console.log('Updating company:', selectedCompany.id, formData); // Debug
-                    result = await CRMService.updateCompany(selectedCompany.id, formData);
+                if (editingCompany) {
+                    console.log('📝 Mise à jour société:', editingCompany.id, formData);
+                    result = await CRMService.updateCompany(editingCompany.id, formData);
                     if (result.success) {
                         showSuccess('Société modifiée avec succès !');
                     }
                 } else {
-                    console.log('Creating new company:', formData); // Debug
+                    console.log('➕ Création société:', formData);
                     result = await CRMService.createCompany(formData);
                     if (result.success) {
                         showSuccess('Société créée avec succès !');
@@ -665,126 +888,18 @@
                 }
                 
                 if (result.success) {
-                    closeModal('add-company');
+                    closeCompanyModal();
                     await loadCompanies();
                 } else {
-                    showError('Erreur lors de la sauvegarde: ' + result.error);
+                    throw new Error(result.error || 'Erreur lors de la sauvegarde');
                 }
             } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors de la sauvegarde de la société');
+                console.error('❌ Erreur sauvegarde société:', error);
+                showError('Erreur lors de la sauvegarde: ' + error.message);
             } finally {
                 showLoading(false);
             }
         });
-
-        // Ouvrir les détails d'une société
-        function openCompanyDetails(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) return;
-            
-            selectedCompany = company;
-            document.getElementById('companyDetailsTitle').textContent = company.name;
-            
-            // Contenu des détails
-            document.getElementById('companyDetailsContent').innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Informations générales</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Statut :</strong> <span class="status-badge status-${company.status}">${company.status}</span></div>
-                            <div><strong>Secteur :</strong> ${company.industry || 'Non spécifié'}</div>
-                            <div><strong>Site web :</strong> ${company.website ? `<a href="${company.website}" target="_blank">${company.website}</a>` : 'Non spécifié'}</div>
-                            <div><strong>Téléphone :</strong> ${company.phone || 'Non spécifié'}</div>
-                            <div><strong>SIRET :</strong> ${company.siret || 'Non spécifié'}</div>
-                            <div><strong>Responsable :</strong> ${company.account_manager || 'Non assigné'}</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Adresse</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Adresse :</strong> ${company.address || 'Non spécifiée'}</div>
-                            <div><strong>Ville :</strong> ${company.city || 'Non spécifiée'}</div>
-                            <div><strong>Code postal :</strong> ${company.postal_code || 'Non spécifié'}</div>
-                            <div><strong>Pays :</strong> ${company.country || 'Non spécifié'}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                ${company.notes ? `
-                    <div style="margin-top: 2rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Notes</h4>
-                        <p style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); color: var(--gray-700);">
-                            ${company.notes}
-                        </p>
-                    </div>
-                ` : ''}
-                
-                <div style="margin-top: 2rem;">
-                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">Contacts (${company.company_contacts ? company.company_contacts.length : 0})</h4>
-                    ${company.company_contacts && company.company_contacts.length > 0 ? `
-                        <div style="display: grid; gap: 1rem;">
-                            ${company.company_contacts.map(contact => `
-                                <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius);">
-                                    <div style="font-weight: 600; margin-bottom: 0.25rem;">
-                                        ${contact.first_name} ${contact.last_name}
-                                    </div>
-                                    <div style="font-size: 0.875rem; color: var(--gray-600);">
-                                        ${contact.position || 'Poste non spécifié'} • ${contact.email}
-                                    </div>
-                                    ${contact.is_admin_contact || contact.is_payment_contact ? `
-                                        <div style="margin-top: 0.5rem;">
-                                            ${contact.is_admin_contact ? '<span class="badge badge-info">Admin</span>' : ''}
-                                            ${contact.is_payment_contact ? '<span class="badge badge-warning">Facturation</span>' : ''}
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <p style="color: var(--gray-500); font-style: italic;">Aucun contact enregistré</p>
-                    `}
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
-                    <button class="btn btn-secondary" onclick="closeModal('company-details')">
-                        Fermer
-                    </button>
-                    <button class="btn btn-primary" onclick="editCompany('${company.id}')">
-                        ✏️ Modifier
-                    </button>
-                </div>
-            `;
-            
-            openModal('company-details');
-        }
-
-        // Supprimer une société
-        async function deleteCompany(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) return;
-            
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${company.name}" ?\n\nCette action est irréversible.`)) {
-                return;
-            }
-            
-            showLoading(true);
-            
-            try {
-                const result = await CRMService.deleteCompany(companyId);
-                if (result.success) {
-                    showSuccess('Société supprimée avec succès');
-                    await loadCompanies();
-                } else {
-                    showError('Erreur lors de la suppression: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors de la suppression');
-            } finally {
-                showLoading(false);
-            }
-        }
 
         // Gérer les paramètres URL
         function handleUrlParams() {
@@ -792,33 +907,39 @@
             const action = urlParams.get('action');
             
             if (action === 'add') {
-                openModal('add-company');
+                setTimeout(() => openAddCompanyModal(), 100);
             }
         }
 
         // Fermer les modals en cliquant à l'extérieur
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
-                const modalId = e.target.id.replace('modal-', '');
-                closeModal(modalId);
+                if (e.target.id === 'companyModal') {
+                    closeCompanyModal();
+                } else if (e.target.id === 'detailsModal') {
+                    closeDetailsModal();
+                }
             }
         });
 
         // Raccourcis clavier
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                // Fermer tous les modals ouverts
-                document.querySelectorAll('.modal.show').forEach(modal => {
-                    const modalId = modal.id.replace('modal-', '');
-                    closeModal(modalId);
-                });
+                const companyModal = document.getElementById('companyModal');
+                const detailsModal = document.getElementById('detailsModal');
+                
+                if (companyModal.classList.contains('show')) {
+                    closeCompanyModal();
+                } else if (detailsModal.classList.contains('show')) {
+                    closeDetailsModal();
+                }
             }
             
             if (e.ctrlKey || e.metaKey) {
                 switch (e.key) {
                     case 'n':
                         e.preventDefault();
-                        openModal('add-company');
+                        openAddCompanyModal();
                         break;
                     case 'f':
                         e.preventDefault();
