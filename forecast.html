@@ -8,6 +8,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        .debug-toggle {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            z-index: 1001;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+        
         .filter-btn {
             padding: 0.375rem 0.75rem;
             background: #f3f4f6;
@@ -178,39 +200,6 @@
             padding-bottom: 0.5rem;
         }
 
-        .controls-row::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .controls-row::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 2px;
-        }
-
-        .controls-row::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 2px;
-        }
-
-        .controls-row::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-
-        .left-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .right-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-shrink: 0;
-        }
-
         .status-filters {
             display: flex;
             gap: 0.5rem;
@@ -353,71 +342,18 @@
             background: #f3f4f6;
             color: #374151;
         }
-
-        /* Responsive - Ligne unique optimisée */
-        @media (max-width: 1400px) {
-            .filter-btn {
-                padding: 0.3rem 0.6rem;
-                font-size: 0.75rem;
-            }
-            
-            .search-input {
-                width: 180px;
-            }
-        }
-
-        @media (max-width: 1200px) {
-            .per-page-selector span {
-                display: none;
-            }
-            
-            .search-input {
-                width: 160px;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .controls-row {
-                flex-wrap: wrap;
-                gap: 0.75rem;
-            }
-            
-            .per-page-selector {
-                order: 1;
-            }
-            
-            .search-input {
-                order: 2;
-                flex: 1;
-                width: auto;
-            }
-            
-            .status-filters {
-                order: 3;
-                width: 100%;
-            }
-            
-            .controls-row > div:last-child {
-                order: 4;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .opportunities-table {
-                overflow-x: auto;
-            }
-            
-            .opportunities-table table {
-                min-width: 900px;
-            }
-            
-            .pagination {
-                flex-wrap: wrap;
-            }
-        }
     </style>
 </head>
 <body>
+    <!-- Debug Toggle Button -->
+    <button class="debug-toggle" onclick="toggleDebug()">🐛 Debug</button>
+    
+    <!-- Debug Panel -->
+    <div id="debugPanel" class="debug-panel" style="display: none;">
+        <h4>🐛 Debug Info</h4>
+        <div id="debugContent">Chargement...</div>
+    </div>
+
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
@@ -503,7 +439,7 @@
             </div>
         </div>
 
-        <!-- Contrôles et filtres pour le tableau - UNE SEULE LIGNE -->
+        <!-- Contrôles et filtres pour le tableau -->
         <div class="table-controls">
             <div class="controls-row">
                 <!-- Sélecteur nombre par page -->
@@ -580,13 +516,13 @@
                     </tr>
                 </thead>
                 <tbody id="opportunitiesTableBody">
-                    <!-- Chargé dynamiquement -->
+                    <tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;">Chargement des opportunités...</td></tr>
                 </tbody>
             </table>
         </div>
 
         <!-- Pagination -->
-        <div id="paginationContainer" class="pagination">
+        <div id="paginationContainer" class="pagination" style="display: none;">
             <!-- Chargé dynamiquement -->
         </div>
 
@@ -651,7 +587,7 @@
                             </tr>
                         </thead>
                         <tbody id="forecastTableBody">
-                            <!-- Chargé dynamiquement -->
+                            <tr><td colspan="6" style="text-align: center; padding: 2rem; color: #6b7280;">Chargement des prévisions...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -761,9 +697,47 @@
         let currentSort = { field: null, direction: 'asc' };
         let currentPage = 1;
         let itemsPerPage = 25;
+        let debugMode = false;
+
+        // Fonction de debug
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const panel = document.getElementById('debugPanel');
+            panel.style.display = debugMode ? 'block' : 'none';
+            if (debugMode) {
+                updateDebugInfo();
+            }
+        }
+
+        function updateDebugInfo() {
+            if (!debugMode) return;
+            
+            const debugContent = document.getElementById('debugContent');
+            debugContent.innerHTML = `
+                <strong>🔍 État des données:</strong><br>
+                • Companies: ${companies.length} éléments<br>
+                • Opportunities: ${opportunities.length} éléments<br>
+                • Licenses: ${licenses.length} éléments<br>
+                • Filtered Opportunities: ${filteredOpportunities.length} éléments<br>
+                <br>
+                <strong>🏢 Companies:</strong><br>
+                ${companies.map(c => `- ${c.name} (${c.status})`).join('<br>') || 'Aucune société'}
+                <br><br>
+                <strong>🎯 Opportunities:</strong><br>
+                ${opportunities.map(o => `- ${o.company_name || 'Société inconnue'} - ${formatCurrency(o.value)} - ${o.stage}`).join('<br>') || 'Aucune opportunité'}
+                <br><br>
+                <strong>📊 Config CRM:</strong><br>
+                • CRMService disponible: ${typeof CRMService !== 'undefined'}<br>
+                • AuthService disponible: ${typeof AuthService !== 'undefined'}<br>
+                • getOpportunities method: ${typeof CRMService?.getOpportunities === 'function'}<br>
+                • getCompanies method: ${typeof CRMService?.getCompanies === 'function'}<br>
+            `;
+        }
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Initialisation Forecast...');
+            
             const isAuthenticated = await AuthService.requireAuth();
             if (!isAuthenticated) return;
 
@@ -781,69 +755,113 @@
             }
         }
 
-        // Charger toutes les données
+        // Charger toutes les données avec debug avancé
         async function loadAllData() {
+            console.log('🔄 Début chargement des données...');
             showLoading(true);
             
             try {
-                const [companiesResult, licensesResult, opportunitiesResult] = await Promise.all([
-                    CRMService.getCompanies(),
-                    CRMService.getLicenses(),
-                    CRMService.getOpportunities()
-                ]);
+                // Test de la disponibilité des services
+                if (typeof CRMService === 'undefined') {
+                    throw new Error('CRMService non disponible - vérifiez que config.js est chargé');
+                }
+
+                console.log('📡 Appel des API...');
+                
+                // Chargement des sociétés
+                console.log('🏢 Chargement des sociétés...');
+                const companiesResult = await CRMService.getCompanies();
+                console.log('🏢 Résultat sociétés:', companiesResult);
                 
                 if (companiesResult.success) {
-                    companies = companiesResult.data;
+                    companies = companiesResult.data || [];
+                    console.log(`✅ ${companies.length} sociétés chargées:`, companies);
                     populateCompanySelect();
                 } else {
+                    console.error('❌ Erreur chargement sociétés:', companiesResult.error);
                     companies = [];
-                    showError('Erreur lors du chargement des sociétés');
+                    showError('Erreur lors du chargement des sociétés: ' + (companiesResult.error || 'Erreur inconnue'));
                 }
                 
+                // Chargement des licences
+                console.log('📄 Chargement des licences...');
+                const licensesResult = await CRMService.getLicenses();
+                console.log('📄 Résultat licences:', licensesResult);
+                
                 if (licensesResult.success) {
-                    licenses = licensesResult.data;
+                    licenses = licensesResult.data || [];
+                    console.log(`✅ ${licenses.length} licences chargées`);
                 } else {
+                    console.error('❌ Erreur chargement licences:', licensesResult.error);
                     licenses = [];
                 }
                 
+                // Chargement des opportunités
+                console.log('🎯 Chargement des opportunités...');
+                const opportunitiesResult = await CRMService.getOpportunities();
+                console.log('🎯 Résultat opportunités:', opportunitiesResult);
+                
                 if (opportunitiesResult.success) {
-                    opportunities = opportunitiesResult.data.map(opp => ({
-                        ...opp,
-                        company_name: opp.companies?.name || 'Société inconnue'
-                    }));
+                    const rawOpportunities = opportunitiesResult.data || [];
+                    console.log('🎯 Opportunités brutes:', rawOpportunities);
+                    
+                    // Mapper les opportunités avec les noms de sociétés
+                    opportunities = rawOpportunities.map(opp => {
+                        console.log('🔍 Mapping opportunité:', opp);
+                        return {
+                            ...opp,
+                            company_name: opp.companies?.name || 'Société inconnue'
+                        };
+                    });
+                    
+                    console.log(`✅ ${opportunities.length} opportunités traitées:`, opportunities);
                 } else {
+                    console.error('❌ Erreur chargement opportunités:', opportunitiesResult.error);
                     opportunities = [];
-                    showError('Erreur lors du chargement des opportunités');
+                    showError('Erreur lors du chargement des opportunités: ' + (opportunitiesResult.error || 'Erreur inconnue'));
                 }
                 
+                // Mise à jour de l'interface
                 filteredOpportunities = [...opportunities];
                 currentPage = 1;
+                
+                console.log('🎨 Rendu de l\'interface...');
                 renderOpportunities();
                 updateOpportunityCounts();
+                updateDebugInfo();
                 
             } catch (error) {
-                console.error('Erreur:', error);
-                showError('Erreur lors du chargement des données');
+                console.error('❌ Erreur globale:', error);
+                showError('Erreur lors du chargement des données: ' + error.message);
                 companies = [];
                 licenses = [];
                 opportunities = [];
             } finally {
                 showLoading(false);
+                console.log('✅ Chargement terminé');
             }
         }
 
         function populateCompanySelect() {
             const select = document.getElementById('opportunityCompany');
-            if (!select) return;
+            if (!select) {
+                console.warn('⚠️ Select opportunityCompany non trouvé');
+                return;
+            }
             
             select.innerHTML = '<option value="">Sélectionner une société</option>';
+            
+            console.log('🏗️ Population du select avec', companies.length, 'sociétés');
             
             companies.forEach(company => {
                 const option = document.createElement('option');
                 option.value = company.id;
                 option.textContent = `${company.name} (${company.status})`;
                 select.appendChild(option);
+                console.log('➕ Option ajoutée:', option.textContent);
             });
+            
+            console.log('✅ Select peuplé avec', select.options.length - 1, 'options');
         }
 
         // Tri des opportunités
@@ -866,8 +884,8 @@
                         valueB = (b.company_name || '').toLowerCase();
                         break;
                     case 'value':
-                        valueA = a.value || 0;
-                        valueB = b.value || 0;
+                        valueA = parseFloat(a.value) || 0;
+                        valueB = parseFloat(b.value) || 0;
                         break;
                     case 'stage':
                         const stageOrder = { 'prospect': 1, 'qualification': 2, 'proposal': 3, 'negotiation': 4, 'closing': 5 };
@@ -875,8 +893,8 @@
                         valueB = stageOrder[b.stage] || 0;
                         break;
                     case 'probability':
-                        valueA = a.probability || 0;
-                        valueB = b.probability || 0;
+                        valueA = parseInt(a.probability) || 0;
+                        valueB = parseInt(b.probability) || 0;
                         break;
                     case 'expected_close_date':
                         valueA = new Date(a.expected_close_date || '1970-01-01');
@@ -1027,6 +1045,8 @@
         }
 
         function renderOpportunities() {
+            console.log('🎨 Rendu des opportunités, total:', filteredOpportunities.length);
+            
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             paginatedOpportunities = filteredOpportunities.slice(startIndex, endIndex);
@@ -1036,6 +1056,7 @@
             const emptyState = document.getElementById('emptyState');
             
             if (filteredOpportunities.length === 0) {
+                console.log('📭 Aucune opportunité à afficher');
                 tableView.style.display = 'none';
                 emptyState.style.display = 'block';
                 document.getElementById('paginationContainer').style.display = 'none';
@@ -1044,6 +1065,8 @@
             
             tableView.style.display = 'block';
             emptyState.style.display = 'none';
+            
+            console.log('📊 Affichage de', paginatedOpportunities.length, 'opportunités');
             
             tbody.innerHTML = paginatedOpportunities.map(opp => `
                 <tr onclick="openOpportunityDetails('${opp.id}')" style="cursor: pointer;">
@@ -1078,11 +1101,12 @@
             `).join('');
             
             renderPagination();
+            updateDebugInfo();
         }
 
         function calculateForecastMetrics() {
             const totalOpportunities = opportunities.length;
-            const projectedRevenue = opportunities.reduce((sum, opp) => sum + opp.value, 0);
+            const projectedRevenue = opportunities.reduce((sum, opp) => sum + (parseFloat(opp.value) || 0), 0);
             
             const totalCompanies = companies.length;
             const clientCompanies = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
@@ -1128,7 +1152,7 @@
             
             const currentMonthlyRevenue = licenses
                 .filter(l => l.status === 'active')
-                .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+                .reduce((sum, l) => sum + (parseFloat(l.monthly_cost) || 0), 0);
             
             for (let i = 0; i < 6; i++) {
                 const date = new Date();
@@ -1138,7 +1162,7 @@
                 const baseRevenue = currentMonthlyRevenue;
                 const growthFromOpportunities = opportunities
                     .filter(opp => new Date(opp.expected_close_date) <= date)
-                    .reduce((sum, opp) => sum + (opp.value * opp.probability / 100 / 12), 0);
+                    .reduce((sum, opp) => sum + ((parseFloat(opp.value) || 0) * (parseInt(opp.probability) || 0) / 100 / 12), 0);
                 
                 projectedData.push(baseRevenue + growthFromOpportunities);
                 actualData.push(i === 0 ? baseRevenue : null);
@@ -1257,7 +1281,7 @@
                     return closeDate >= quarterStart && closeDate <= quarterEnd;
                 });
                 
-                const estimatedRevenue = quarterOpportunities.reduce((sum, opp) => sum + opp.value, 0);
+                const estimatedRevenue = quarterOpportunities.reduce((sum, opp) => sum + (parseFloat(opp.value) || 0), 0);
                 
                 return {
                     name: quarter,
@@ -1348,7 +1372,7 @@
             return new Intl.NumberFormat('fr-FR', {
                 style: 'currency',
                 currency: 'EUR'
-            }).format(amount);
+            }).format(parseFloat(amount));
         }
 
         function escapeHtml(text) {
@@ -1383,7 +1407,7 @@
                         <div style="display: grid; gap: 0.75rem;">
                             <div><strong>Clôture prévue :</strong> ${formatDate(opportunity.expected_close_date)}</div>
                             <div><strong>Créée le :</strong> ${formatDate(opportunity.created_at)}</div>
-                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value * opportunity.probability / 100)}</span></div>
+                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency((parseFloat(opportunity.value) || 0) * (parseInt(opportunity.probability) || 0) / 100)}</span></div>
                         </div>
                     </div>
                 </div>
@@ -1392,7 +1416,7 @@
                     <div style="margin-bottom: 2rem;">
                         <h4 style="margin-bottom: 1rem; color: #1f2937;">Notes</h4>
                         <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; color: #374151;">
-                            ${opportunity.notes}
+                            ${escapeHtml(opportunity.notes)}
                         </div>
                     </div>
                 ` : ''}
@@ -1526,22 +1550,27 @@
                 notes: document.getElementById('opportunityNotes').value
             };
             
+            console.log('💾 Sauvegarde opportunité:', formData);
             showLoading(true);
             
             try {
                 let result;
                 
                 if (selectedOpportunity) {
+                    console.log('✏️ Modification opportunité:', selectedOpportunity.id);
                     result = await CRMService.updateOpportunity(selectedOpportunity.id, formData);
                     if (result.success) {
                         showSuccess('Opportunité modifiée avec succès !');
                     }
                 } else {
+                    console.log('➕ Création nouvelle opportunité');
                     result = await CRMService.createOpportunity(formData);
                     if (result.success) {
                         showSuccess('Opportunité créée avec succès !');
                     }
                 }
+                
+                console.log('💾 Résultat sauvegarde:', result);
                 
                 if (!result.success) {
                     showError(result.error || 'Erreur lors de la sauvegarde');
@@ -1586,9 +1615,73 @@
                         e.preventDefault();
                         openModal('add-opportunity');
                         break;
+                    case 'd':
+                        e.preventDefault();
+                        toggleDebug();
+                        break;
                 }
             }
         });
+
+        // Test direct de la base de données
+        window.testDB = async function() {
+            console.log('🧪 Test direct base de données...');
+            
+            try {
+                const client = await CRMService.getClient();
+                
+                // Test direct de la table opportunities
+                const { data: opportunities, error: oppError } = await client
+                    .from('opportunities')
+                    .select('*');
+                    
+                console.log('🎯 Opportunités brutes:', { data: opportunities, error: oppError });
+                
+                // Test avec jointure
+                const { data: opportunitiesWithCompanies, error: joinError } = await client
+                    .from('opportunities')
+                    .select(`
+                        *,
+                        companies (
+                            id,
+                            name,
+                            status
+                        )
+                    `);
+                    
+                console.log('🏢 Opportunités avec sociétés:', { data: opportunitiesWithCompanies, error: joinError });
+                
+                // Test des sociétés
+                const { data: companies, error: compError } = await client
+                    .from('companies')
+                    .select('*');
+                    
+                console.log('🏢 Sociétés:', { data: companies, error: compError });
+                
+                return {
+                    opportunities,
+                    opportunitiesWithCompanies,
+                    companies,
+                    errors: { oppError, joinError, compError }
+                };
+                
+            } catch (error) {
+                console.error('❌ Erreur test DB:', error);
+                return { error };
+            }
+        };
+
+        // Fonction de debug pour forcer le rechargement
+        window.forceReload = async function() {
+            console.log('🔄 Rechargement forcé...');
+            opportunities = [];
+            companies = [];
+            licenses = [];
+            await loadAllData();
+        };
+
+        console.log('✅ Script forecast initialisé');
+        console.log('🛠️ Fonctions debug disponibles: testDB(), forceReload(), toggleDebug()');
     </script>
 </body>
 </html>
