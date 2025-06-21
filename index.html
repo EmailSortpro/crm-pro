@@ -123,6 +123,12 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             border-left: 4px solid #667eea;
             text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-preview-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         .stat-preview-number {
@@ -130,6 +136,10 @@
             font-weight: bold;
             color: #1f2937;
             margin-bottom: 0.5rem;
+            min-height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .stat-preview-label {
@@ -142,11 +152,19 @@
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
             animation: loading 1.5s infinite;
+            border-radius: 0.25rem;
+            height: 2rem;
         }
 
         @keyframes loading {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
+        }
+
+        .error-state {
+            color: #dc2626;
+            font-size: 0.875rem;
+            text-align: center;
         }
 
         @media (max-width: 768px) {
@@ -161,11 +179,15 @@
             .quick-actions {
                 grid-template-columns: 1fr;
             }
+
+            .stats-preview {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation avec CSS unifié -->
+    <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
@@ -237,25 +259,25 @@
         <div class="stats-preview">
             <div class="stat-preview-card">
                 <div class="stat-preview-number" id="previewTotalCompanies">
-                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                    <div class="skeleton"></div>
                 </div>
                 <div class="stat-preview-label">Sociétés</div>
             </div>
             <div class="stat-preview-card">
                 <div class="stat-preview-number" id="previewTotalContacts">
-                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                    <div class="skeleton"></div>
                 </div>
                 <div class="stat-preview-label">Contacts</div>
             </div>
             <div class="stat-preview-card">
                 <div class="stat-preview-number" id="previewActiveLicenses">
-                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                    <div class="skeleton"></div>
                 </div>
                 <div class="stat-preview-label">Licences actives</div>
             </div>
             <div class="stat-preview-card">
                 <div class="stat-preview-number" id="previewRevenue">
-                    <div class="skeleton" style="height: 2rem; border-radius: 0.25rem;"></div>
+                    <div class="skeleton"></div>
                 </div>
                 <div class="stat-preview-label">Revenus mensuels</div>
             </div>
@@ -397,9 +419,9 @@
     <script src="config.js"></script>
     <script>
         // Variables globales
-        let loadingTimeout;
-        let retryCount = 0;
-        const maxRetries = 3;
+        let statsCache = null;
+        let lastStatsUpdate = 0;
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
         // Initialisation optimisée
         document.addEventListener('DOMContentLoaded', async () => {
@@ -417,7 +439,7 @@
                 // Charger les informations utilisateur
                 loadUserInfo();
                 
-                // Charger les statistiques avec retry
+                // Charger les statistiques avec retry et cache
                 await loadQuickStatsWithRetry();
                 
                 // Animation d'entrée des cartes
@@ -450,19 +472,46 @@
             }
         }
 
-        // Charger les statistiques avec retry
+        // Charger les statistiques avec retry et cache
         async function loadQuickStatsWithRetry() {
+            const now = Date.now();
+            
+            // Vérifier le cache
+            if (statsCache && (now - lastStatsUpdate) < CACHE_DURATION) {
+                console.log('📊 Utilisation du cache pour les statistiques');
+                updateStatsElements(statsCache);
+                return;
+            }
+            
+            const maxRetries = 3;
+            
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 try {
-                    await loadQuickStats();
+                    console.log(`📊 Tentative ${attempt + 1}/${maxRetries + 1} de chargement des statistiques`);
+                    
+                    const stats = await loadQuickStats();
+                    
+                    // Mettre en cache
+                    statsCache = stats;
+                    lastStatsUpdate = now;
+                    
+                    updateStatsElements(stats);
                     return; // Succès, sortir de la boucle
+                    
                 } catch (error) {
-                    console.warn(`Tentative ${attempt + 1}/${maxRetries + 1} échouée:`, error.message);
+                    console.warn(`⚠️ Tentative ${attempt + 1} échouée:`, error.message);
                     
                     if (attempt === maxRetries) {
                         // Dernière tentative échouée, afficher les valeurs par défaut
+                        console.log('📊 Affichage des statistiques par défaut');
                         setDefaultStats();
-                        showError('Impossible de charger les statistiques. Données par défaut affichées.', 3000);
+                        
+                        // Afficher un message d'erreur discret
+                        const errorMsg = error.message.includes('timeout') ? 
+                            'Chargement lent des données. Actualisation en cours...' :
+                            'Mode hors ligne activé. Données indicatives affichées.';
+                        
+                        showError(errorMsg, 3000);
                     } else {
                         // Attendre avant le prochain essai
                         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
@@ -474,43 +523,30 @@
         // Charger les statistiques rapides
         async function loadQuickStats() {
             try {
-                // Charger les données avec timeout
-                const [companiesResult, licensesResult] = await Promise.all([
-                    withTimeout(CRMService.getCompanies(), 8000),
-                    withTimeout(CRMService.getLicenses(), 8000)
-                ]);
-
-                if (companiesResult.success) {
-                    const companies = companiesResult.data || [];
-                    updateStatElement('previewTotalCompanies', companies.length);
-                    
-                    // Compter les contacts
-                    const totalContacts = companies.reduce((sum, company) => {
-                        return sum + (company.company_contacts ? company.company_contacts.length : 0);
-                    }, 0);
-                    updateStatElement('previewTotalContacts', totalContacts);
+                console.log('🔄 Chargement des statistiques en temps réel...');
+                
+                // Utiliser le service CRM pour obtenir les stats
+                const result = await withTimeout(CRMService.getStats(), 8000);
+                
+                if (result.success) {
+                    console.log('✅ Statistiques chargées:', result.data);
+                    return result.data;
                 } else {
-                    throw new Error('Erreur chargement sociétés');
+                    throw new Error(result.error || 'Erreur lors du calcul des statistiques');
                 }
-
-                if (licensesResult.success) {
-                    const licenses = licensesResult.data || [];
-                    const activeLicenses = licenses.filter(l => l.status === 'active').length;
-                    updateStatElement('previewActiveLicenses', activeLicenses);
-                    
-                    // Calculer les revenus mensuels
-                    const monthlyRevenue = licenses
-                        .filter(l => l.status === 'active')
-                        .reduce((sum, license) => sum + (license.monthly_cost || 0), 0);
-                    updateStatElement('previewRevenue', formatCurrency(monthlyRevenue));
-                } else {
-                    throw new Error('Erreur chargement licences');
-                }
-
+                
             } catch (error) {
-                console.error('Erreur chargement statistiques:', error);
+                console.error('❌ Erreur chargement statistiques:', error);
                 throw error; // Relancer l'erreur pour le retry
             }
+        }
+
+        // Mettre à jour les éléments de statistiques
+        function updateStatsElements(stats) {
+            updateStatElement('previewTotalCompanies', stats.totalCompanies || 0);
+            updateStatElement('previewTotalContacts', stats.totalContacts || 0);
+            updateStatElement('previewActiveLicenses', stats.activeLicenses || 0);
+            updateStatElement('previewRevenue', formatCurrency(stats.monthlyRevenue || 0));
         }
 
         // Mettre à jour un élément de statistique
@@ -522,32 +558,61 @@
                 if (skeleton) {
                     skeleton.remove();
                 }
-                element.textContent = value;
+                
+                // Animation de compteur pour les nombres
+                if (typeof value === 'number') {
+                    animateCounter(element, value);
+                } else {
+                    element.textContent = value;
+                }
             }
+        }
+
+        // Animation de compteur
+        function animateCounter(element, targetValue) {
+            const duration = 1000; // 1 seconde
+            const start = 0;
+            const increment = targetValue / (duration / 16); // 60 FPS
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= targetValue) {
+                    current = targetValue;
+                    clearInterval(timer);
+                }
+                element.textContent = Math.floor(current);
+            }, 16);
         }
 
         // Définir les statistiques par défaut
         function setDefaultStats() {
-            updateStatElement('previewTotalCompanies', '3');
-            updateStatElement('previewTotalContacts', '8');
-            updateStatElement('previewActiveLicenses', '2');
-            updateStatElement('previewRevenue', '1 299,85 €');
+            const defaultStats = {
+                totalCompanies: 3,
+                totalContacts: 8,
+                activeLicenses: 2,
+                monthlyRevenue: 1299.85
+            };
+            
+            updateStatsElements(defaultStats);
         }
 
         // Gérer les erreurs d'initialisation
         function handleInitError(error) {
-            console.error('Erreur critique:', error);
+            console.error('❌ Erreur critique:', error);
             
             // Afficher les valeurs par défaut
             setDefaultStats();
             
-            // Afficher un message d'erreur discret
-            if (error.message.includes('Auth')) {
+            // Gérer différents types d'erreurs
+            if (error.message.includes('Auth') || error.message.includes('timeout')) {
                 // Erreur d'authentification - rediriger vers login
-                window.location.href = 'login.html';
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
             } else {
                 // Autres erreurs - continuer en mode dégradé
-                showError('Mode hors ligne activé. Certaines données peuvent ne pas être à jour.', 5000);
+                console.log('🔄 Passage en mode dégradé');
             }
         }
 
@@ -563,7 +628,7 @@
                         card.style.transition = 'all 0.6s ease';
                         card.style.opacity = '1';
                         card.style.transform = 'translateY(0)';
-                    }, index * 100);
+                    }, index * 100 + 500); // Délai après le chargement des stats
                 });
             } catch (error) {
                 console.error('Erreur animation:', error);
@@ -584,14 +649,13 @@
         // Gestion de la visibilité de la page pour optimiser les performances
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                // Page redevenue visible, rafraîchir les stats si nécessaire
-                const lastUpdate = localStorage.getItem('lastStatsUpdate');
+                // Page redevenue visible, vérifier si les stats doivent être rafraîchies
                 const now = Date.now();
                 
-                if (!lastUpdate || (now - parseInt(lastUpdate)) > 300000) { // 5 minutes
-                    console.log('Rafraîchissement des statistiques...');
-                    loadQuickStatsWithRetry().then(() => {
-                        localStorage.setItem('lastStatsUpdate', now.toString());
+                if (!statsCache || (now - lastStatsUpdate) > CACHE_DURATION) {
+                    console.log('🔄 Rafraîchissement des statistiques après retour de focus');
+                    loadQuickStatsWithRetry().catch(error => {
+                        console.error('Erreur rafraîchissement:', error);
                     });
                 }
             }
@@ -611,8 +675,10 @@
                 link2.rel = 'prefetch';
                 link2.href = 'companies.html';
                 document.head.appendChild(link2);
+                
+                console.log('📦 Pré-chargement des pages lancé');
             } catch (error) {
-                console.log('Pré-chargement non critique échoué:', error);
+                console.log('⚠️ Pré-chargement non critique échoué:', error);
             }
         });
 
@@ -627,6 +693,17 @@
             // Empêcher l'affichage de l'erreur dans la console du navigateur
             e.preventDefault();
         });
+
+        // Fonction de debug pour tester les stats
+        window.debugStats = async () => {
+            console.log('🔧 Test des statistiques...');
+            try {
+                const stats = await CRMService.getStats();
+                console.log('📊 Résultat:', stats);
+            } catch (error) {
+                console.error('❌ Erreur:', error);
+            }
+        };
     </script>
 </body>
 </html>
