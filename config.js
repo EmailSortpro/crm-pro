@@ -1,214 +1,202 @@
 // ===================================
-// CONFIGURATION CRM PRO SÉCURISÉE v5.1
-// Compatible navigateur sans modules ES6
+// CONFIGURATION CRM PRO - VERSION NETLIFY
+// Récupération forcée des variables d'environnement
 // ===================================
 
-// FONCTION DE DÉTECTION DE L'ENVIRONNEMENT
-function detectEnvironment() {
-    const hostname = window.location.hostname;
-    const isNetlify = hostname.includes('netlify.app') ||
-                     hostname.includes('netlifyapp.com') ||
-                     hostname.includes('.netlify.com');
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    const isProd = !isLocalhost;
+console.log('🚀 CRM Config - Démarrage...');
 
-    console.log('[CRM CONFIG] Environment detection:', {
-        hostname,
-        isNetlify,
-        isLocalhost,
-        isProd,
-        origin: window.location.origin
-    });
+// Configuration par défaut
+const DEFAULT_CONFIG = {
+    SUPABASE_URL: 'https://oxyiamruvyliueecpaam.supabase.co',
+    SUPABASE_ANON_KEY: ''
+};
 
-    return {
-        type: isNetlify ? 'netlify' : isLocalhost ? 'localhost' : 'other',
-        isNetlify,
-        isLocalhost,
-        isProd,
-        hostname
-    };
-}
-
-// FONCTION DE RÉCUPÉRATION DES VARIABLES D'ENVIRONNEMENT
-function getEnvironmentConfig() {
-    const env = detectEnvironment();
+// FORCER LA RÉCUPÉRATION DES VARIABLES NETLIFY
+function getNetlifyConfig() {
+    const config = { ...DEFAULT_CONFIG };
     
-    let SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
-    let SUPABASE_ANON_KEY = '';
-
-    // 1. PRODUCTION / NETLIFY - Variables d'environnement
-    if (env.isProd && typeof process !== 'undefined' && process.env) {
-        // Variables Netlify injectées au build
-        SUPABASE_URL = process.env.VITE_SUPABASE_URL || SUPABASE_URL;
-        SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
-        console.log('[CRM CONFIG] Using Netlify process.env variables');
+    console.log('🔍 Recherche variables d\'environnement...');
+    
+    // 1. Via window.ENV (injection manuelle)
+    if (window.ENV && window.ENV.VITE_SUPABASE_ANON_KEY) {
+        config.SUPABASE_ANON_KEY = window.ENV.VITE_SUPABASE_ANON_KEY;
+        config.SUPABASE_URL = window.ENV.VITE_SUPABASE_URL || config.SUPABASE_URL;
+        console.log('✅ Variables trouvées via window.ENV');
+        return config;
     }
     
-    // 2. Fallback via window.ENV (injection manuelle)
-    if (!SUPABASE_ANON_KEY && window.ENV) {
-        SUPABASE_URL = window.ENV.VITE_SUPABASE_URL || SUPABASE_URL;
-        SUPABASE_ANON_KEY = window.ENV.VITE_SUPABASE_ANON_KEY || '';
-        console.log('[CRM CONFIG] Using window.ENV variables');
-    }
-
-    // 3. DÉVELOPPEMENT LOCAL - Variables depuis localStorage
-    if (env.isLocalhost && !SUPABASE_ANON_KEY) {
-        // Essayer de récupérer depuis localStorage pour le dev
-        const storedConfig = JSON.parse(localStorage.getItem('crmDevConfig') || '{}');
-        SUPABASE_ANON_KEY = storedConfig.SUPABASE_ANON_KEY || '';
-        
-        if (!SUPABASE_ANON_KEY) {
-            console.warn('[CRM CONFIG] Localhost: No Supabase key found. Use localStorage or window.ENV');
+    // 2. Via variables Netlify injectées (si build process disponible)
+    if (typeof process !== 'undefined' && process.env) {
+        if (process.env.VITE_SUPABASE_ANON_KEY) {
+            config.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+            config.SUPABASE_URL = process.env.VITE_SUPABASE_URL || config.SUPABASE_URL;
+            console.log('✅ Variables trouvées via process.env');
+            return config;
         }
     }
-
-    return {
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-        environment: env
-    };
-}
-
-// Configuration globale
-const CONFIG = getEnvironmentConfig();
-const SUPABASE_URL = CONFIG.SUPABASE_URL;
-const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
-const ENVIRONMENT = CONFIG.environment;
-
-// Validation et logs
-console.log('[CRM CONFIG] Configuration loaded:', {
-    url: SUPABASE_URL,
-    hasKey: !!SUPABASE_ANON_KEY,
-    keyLength: SUPABASE_ANON_KEY?.length || 0,
-    environment: ENVIRONMENT.type
-});
-
-// Avertissement si pas de clé
-if (!SUPABASE_ANON_KEY) {
-    console.group('🚨 CONFIGURATION REQUISE');
-    console.error('Variables d\'environnement manquantes : VITE_SUPABASE_ANON_KEY');
     
-    if (ENVIRONMENT.isNetlify) {
-        console.log('📋 NETLIFY - Étapes à suivre :');
-        console.log('1. Dashboard Netlify → Site Settings → Environment Variables');
-        console.log('2. Ajouter : VITE_SUPABASE_ANON_KEY=votre_cle_supabase');
-        console.log('3. Redéployer le site');
-    } else if (ENVIRONMENT.isLocalhost) {
-        console.log('📋 LOCALHOST - Options :');
-        console.log('1. Ajouter avant config.js: window.ENV = {VITE_SUPABASE_ANON_KEY: "votre_cle"}');
-        console.log('2. Ou localStorage: localStorage.setItem("crmDevConfig", JSON.stringify({SUPABASE_ANON_KEY: "votre_cle"}))');
+    // 3. Via localStorage (développement)
+    const localConfig = localStorage.getItem('crmConfig');
+    if (localConfig) {
+        try {
+            const parsed = JSON.parse(localConfig);
+            if (parsed.SUPABASE_ANON_KEY) {
+                config.SUPABASE_ANON_KEY = parsed.SUPABASE_ANON_KEY;
+                console.log('✅ Variables trouvées via localStorage');
+                return config;
+            }
+        } catch (e) {
+            console.warn('⚠️ Erreur lecture localStorage');
+        }
     }
     
-    console.log('🔑 Sur Supabase : Dashboard → Settings → API → Copier "anon/public" key');
+    // 4. Clé de développement en dur (TEMPORAIRE)
+    // ⚠️ REMPLACEZ PAR VOTRE VRAIE CLÉ SUPABASE
+    const DEV_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDQwNjcyMDAsImV4cCI6MjAxOTY0MzIwMH0.REMPLACEZ_PAR_VOTRE_VRAIE_CLE';
+    
+    if (DEV_KEY && !DEV_KEY.includes('REMPLACEZ')) {
+        config.SUPABASE_ANON_KEY = DEV_KEY;
+        console.log('⚠️ Utilisation clé de développement');
+        return config;
+    }
+    
+    console.error('❌ Aucune clé Supabase trouvée');
+    return config;
+}
+
+// Récupération de la configuration
+const APP_CONFIG = getNetlifyConfig();
+
+console.log('📊 Configuration chargée:', {
+    url: APP_CONFIG.SUPABASE_URL,
+    hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
+    keyLength: APP_CONFIG.SUPABASE_ANON_KEY?.length || 0
+});
+
+// Messages d'aide si pas de clé
+if (!APP_CONFIG.SUPABASE_ANON_KEY) {
+    console.group('🚨 CONFIGURATION REQUISE');
+    console.error('Aucune clé Supabase trouvée !');
+    console.log('');
+    console.log('🛠️ Solutions (choisissez une) :');
+    console.log('');
+    console.log('1️⃣ SOLUTION TEMPORAIRE - Ajoutez avant config.js :');
+    console.log('<script>');
+    console.log('window.ENV = {');
+    console.log('  VITE_SUPABASE_ANON_KEY: "votre_cle_supabase"');
+    console.log('};');
+    console.log('</script>');
+    console.log('');
+    console.log('2️⃣ SOLUTION DÉVELOPPEMENT - localStorage :');
+    console.log('localStorage.setItem("crmConfig", JSON.stringify({');
+    console.log('  SUPABASE_ANON_KEY: "votre_cle_supabase"');
+    console.log('}));');
+    console.log('');
+    console.log('3️⃣ SOLUTION PRODUCTION - Modifier ce fichier :');
+    console.log('Remplacez REMPLACEZ_PAR_VOTRE_VRAIE_CLE par votre clé dans config.js ligne ~60');
+    console.log('');
+    console.log('🔑 Récupérer votre clé : supabase.com → projet → Settings → API → clé "anon"');
     console.groupEnd();
 }
+
+// Variables globales
+let supabase = null;
+let isReady = false;
 
 // ===================================
 // INITIALISATION SUPABASE
 // ===================================
 
-let supabase = null;
-let initializationPromise = null;
-
-// Fonction d'initialisation Supabase (singleton)
-function initializeSupabase() {
-    // Si déjà en cours d'initialisation, retourner la promesse existante
-    if (initializationPromise) {
-        return initializationPromise;
-    }
-
-    initializationPromise = new Promise((resolve) => {
-        const attemptInit = () => {
-            try {
-                // Vérifier que Supabase est chargé et qu'on a une clé
-                if (!window.supabase) {
-                    throw new Error('Supabase library not loaded');
-                }
-                
-                if (!SUPABASE_ANON_KEY) {
-                    throw new Error('Supabase key not configured');
-                }
-
-                // Créer le client Supabase
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log('✅ Supabase client initialized');
-                
-                // Test de connexion
-                supabase.auth.getSession()
-                    .then(({ data, error }) => {
-                        if (error && error.message.includes('Invalid API key')) {
-                            console.error('🚨 Invalid Supabase API key');
-                            if (typeof showError === 'function') {
-                                showError('Configuration Supabase invalide. Vérifiez votre clé API.');
-                            }
-                        } else {
-                            console.log('✅ Supabase connection validated');
-                        }
-                        resolve(supabase);
-                    })
-                    .catch(err => {
-                        console.warn('⚠️ Supabase connection test failed:', err.message);
-                        resolve(supabase); // Résoudre quand même pour permettre l'utilisation
-                    });
-            } catch (error) {
-                console.error('❌ Supabase initialization failed:', error.message);
-                resolve(null);
-            }
-        };
-
-        // Si Supabase n'est pas encore chargé, attendre
+async function initializeSupabase() {
+    if (supabase) return supabase;
+    
+    console.log('🔧 Initialisation Supabase...');
+    
+    try {
+        // Attendre que Supabase soit chargé
         if (!window.supabase) {
+            console.log('⏳ Attente de la librairie Supabase...');
             let attempts = 0;
-            const checkSupabase = () => {
+            while (!window.supabase && attempts < 100) {
+                await new Promise(resolve => setTimeout(resolve, 50));
                 attempts++;
-                if (window.supabase) {
-                    attemptInit();
-                } else if (attempts < 50) { // 5 secondes max
-                    setTimeout(checkSupabase, 100);
-                } else {
-                    console.error('❌ Supabase library failed to load');
-                    resolve(null);
-                }
-            };
-            checkSupabase();
-        } else {
-            attemptInit();
+            }
+            
+            if (!window.supabase) {
+                throw new Error('Librairie Supabase non chargée');
+            }
         }
-    });
-
-    return initializationPromise;
+        
+        // Vérifier la clé
+        if (!APP_CONFIG.SUPABASE_ANON_KEY) {
+            throw new Error('Clé Supabase manquante');
+        }
+        
+        if (APP_CONFIG.SUPABASE_ANON_KEY.includes('REMPLACEZ')) {
+            throw new Error('Clé Supabase non configurée');
+        }
+        
+        // Créer le client Supabase
+        supabase = window.supabase.createClient(
+            APP_CONFIG.SUPABASE_URL,
+            APP_CONFIG.SUPABASE_ANON_KEY
+        );
+        
+        console.log('✅ Client Supabase créé');
+        
+        // Test de connexion
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+            if (error.message.includes('Invalid API key')) {
+                console.error('🚨 Clé API Supabase invalide');
+                throw new Error('Clé API invalide');
+            } else {
+                console.warn('⚠️ Avertissement auth:', error.message);
+            }
+        }
+        
+        console.log('✅ Connexion Supabase validée');
+        isReady = true;
+        return supabase;
+        
+    } catch (error) {
+        console.error('❌ Erreur initialisation Supabase:', error.message);
+        supabase = null;
+        return null;
+    }
 }
 
 // ===================================
-// SERVICE D'AUTHENTIFICATION
+// SERVICES CRM
 // ===================================
 
 class AuthService {
-    static async ensureSupabase() {
+    static async ensureReady() {
         if (!supabase) {
             supabase = await initializeSupabase();
-            if (!supabase) {
-                throw new Error('Supabase non disponible. Vérifiez votre configuration.');
-            }
+        }
+        if (!supabase) {
+            throw new Error('Service non disponible. Vérifiez votre configuration Supabase.');
         }
         return supabase;
     }
-
+    
     static async getCurrentUser() {
         try {
-            const client = await this.ensureSupabase();
+            const client = await this.ensureReady();
             const { data: { user }, error } = await client.auth.getUser();
             if (error) throw error;
             return user;
         } catch (error) {
-            console.error('Erreur récupération utilisateur:', error);
+            console.error('Erreur getCurrentUser:', error);
             return null;
         }
     }
     
     static async login(email, password) {
         try {
-            const client = await this.ensureSupabase();
+            const client = await this.ensureReady();
             
             const { data, error } = await client.auth.signInWithPassword({
                 email: email,
@@ -217,7 +205,7 @@ class AuthService {
             
             if (error) throw error;
             
-            // Sauvegarder les infos utilisateur (sans données sensibles)
+            // Sauvegarder les infos utilisateur
             if (data.user) {
                 const userInfo = {
                     id: data.user.id,
@@ -226,12 +214,17 @@ class AuthService {
                     created_at: data.user.created_at
                 };
                 sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+                console.log('✅ Connexion réussie:', data.user.email);
             }
             
             return { success: true, user: data.user };
+            
         } catch (error) {
-            console.error('Erreur connexion:', error);
-            return { success: false, error: error.message };
+            console.error('❌ Erreur de connexion:', error);
+            return { 
+                success: false, 
+                error: error.message || 'Erreur de connexion' 
+            };
         }
     }
     
@@ -242,16 +235,15 @@ class AuthService {
                 if (error) throw error;
             }
             
-            // Nettoyer le sessionStorage
             sessionStorage.removeItem('userInfo');
-            
-            // Rediriger vers la page de connexion
+            console.log('✅ Déconnexion réussie');
             window.location.href = 'index.html';
+            
         } catch (error) {
-            console.error('Erreur déconnexion:', error);
-            if (typeof showError === 'function') {
-                showError('Erreur lors de la déconnexion');
-            }
+            console.error('❌ Erreur déconnexion:', error);
+            // Forcer la déconnexion même en cas d'erreur
+            sessionStorage.removeItem('userInfo');
+            window.location.href = 'index.html';
         }
     }
     
@@ -268,6 +260,7 @@ class AuthService {
     static async requireAuth() {
         const user = await this.getCurrentUser();
         if (!user) {
+            console.log('⚠️ Accès non autorisé - redirection');
             window.location.href = 'index.html';
             return false;
         }
@@ -275,32 +268,20 @@ class AuthService {
     }
 }
 
-// ===================================
-// SERVICE CRM
-// ===================================
-
 class CRMService {
-    static log(action, data = null) {
-        console.log(`🔄 CRM Service - ${action}`, data ? data : '');
-    }
-
-    static async ensureSupabase() {
+    static async ensureReady() {
         if (!supabase) {
             supabase = await initializeSupabase();
-            if (!supabase) {
-                throw new Error('Base de données non disponible. Vérifiez votre configuration.');
-            }
+        }
+        if (!supabase) {
+            throw new Error('Base de données non disponible');
         }
         return supabase;
     }
-
-    // ========== SOCIÉTÉS ==========
     
     static async getCompanies() {
         try {
-            this.log('Récupération des sociétés');
-            const client = await this.ensureSupabase();
-            
+            const client = await this.ensureReady();
             const { data, error } = await client
                 .from('companies')
                 .select(`
@@ -320,24 +301,18 @@ class CRMService {
                 `)
                 .order('created_at', { ascending: false });
             
-            if (error) {
-                console.error('❌ Erreur Supabase getCompanies:', error);
-                throw error;
-            }
-            
-            this.log('Sociétés récupérées', `${data?.length || 0} entrées`);
+            if (error) throw error;
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ Erreur récupération sociétés:', error);
+            console.error('❌ Erreur getCompanies:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async createCompany(companyData) {
         try {
-            this.log('Création société', companyData);
-            const client = await this.ensureSupabase();
-
+            const client = await this.ensureReady();
+            
             if (!companyData.name) {
                 throw new Error('Le nom de la société est obligatoire');
             }
@@ -351,28 +326,17 @@ class CRMService {
                 }])
                 .select();
             
-            if (error) {
-                console.error('❌ Erreur création société:', error);
-                throw error;
-            }
-            
-            this.log('Société créée avec succès', data[0]);
+            if (error) throw error;
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('❌ Erreur création société:', error);
+            console.error('❌ Erreur createCompany:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async updateCompany(id, companyData) {
         try {
-            this.log('Mise à jour société', { id, data: companyData });
-            const client = await this.ensureSupabase();
-            
-            if (!id) {
-                throw new Error('ID de société manquant');
-            }
-            
+            const client = await this.ensureReady();
             const { data, error } = await client
                 .from('companies')
                 .update({
@@ -382,33 +346,19 @@ class CRMService {
                 .eq('id', id)
                 .select();
             
-            if (error) {
-                console.error('❌ Erreur mise à jour société:', error);
-                throw error;
-            }
-            
-            if (!data || data.length === 0) {
-                throw new Error('Société non trouvée');
-            }
-            
-            this.log('Société mise à jour avec succès', data[0]);
+            if (error) throw error;
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('❌ Erreur mise à jour société:', error);
+            console.error('❌ Erreur updateCompany:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async deleteCompany(id) {
         try {
-            this.log('Suppression société', { id });
-            const client = await this.ensureSupabase();
+            const client = await this.ensureReady();
             
-            if (!id) {
-                throw new Error('ID de société manquant');
-            }
-            
-            // Vérifier s'il y a des licences associées
+            // Vérifier les licences associées
             const { data: licenses } = await client
                 .from('company_licenses')
                 .select('id')
@@ -423,25 +373,17 @@ class CRMService {
                 .delete()
                 .eq('id', id);
             
-            if (error) {
-                console.error('❌ Erreur suppression société:', error);
-                throw error;
-            }
-            
-            this.log('Société supprimée avec succès');
+            if (error) throw error;
             return { success: true };
         } catch (error) {
-            console.error('❌ Erreur suppression société:', error);
+            console.error('❌ Erreur deleteCompany:', error);
             return { success: false, error: error.message };
         }
     }
     
-    // ========== CONTACTS ==========
-    
     static async getContacts(companyId = null) {
         try {
-            this.log('Récupération des contacts', { companyId });
-            const client = await this.ensureSupabase();
+            const client = await this.ensureReady();
             
             let query = client
                 .from('company_contacts')
@@ -460,25 +402,18 @@ class CRMService {
             }
             
             const { data, error } = await query;
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getContacts:', error);
-                throw error;
-            }
-            
-            this.log('Contacts récupérés', `${data?.length || 0} entrées`);
+            if (error) throw error;
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ Erreur récupération contacts:', error);
+            console.error('❌ Erreur getContacts:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async createContact(contactData) {
         try {
-            this.log('Création contact', contactData);
-            const client = await this.ensureSupabase();
-
+            const client = await this.ensureReady();
+            
             if (!contactData.company_id || !contactData.first_name || !contactData.last_name) {
                 throw new Error('Société, prénom et nom sont obligatoires');
             }
@@ -492,24 +427,17 @@ class CRMService {
                 }])
                 .select();
             
-            if (error) {
-                console.error('❌ Erreur création contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact créé avec succès', data[0]);
+            if (error) throw error;
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('❌ Erreur création contact:', error);
+            console.error('❌ Erreur createContact:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async updateContact(id, contactData) {
         try {
-            this.log('Mise à jour contact', { id, data: contactData });
-            const client = await this.ensureSupabase();
-            
+            const client = await this.ensureReady();
             const { data, error } = await client
                 .from('company_contacts')
                 .update({
@@ -519,49 +447,33 @@ class CRMService {
                 .eq('id', id)
                 .select();
             
-            if (error) {
-                console.error('❌ Erreur mise à jour contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact mis à jour avec succès', data[0]);
+            if (error) throw error;
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('❌ Erreur mise à jour contact:', error);
+            console.error('❌ Erreur updateContact:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async deleteContact(id) {
         try {
-            this.log('Suppression contact', { id });
-            const client = await this.ensureSupabase();
-            
+            const client = await this.ensureReady();
             const { error } = await client
                 .from('company_contacts')
                 .delete()
                 .eq('id', id);
             
-            if (error) {
-                console.error('❌ Erreur suppression contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact supprimé avec succès');
+            if (error) throw error;
             return { success: true };
         } catch (error) {
-            console.error('❌ Erreur suppression contact:', error);
+            console.error('❌ Erreur deleteContact:', error);
             return { success: false, error: error.message };
         }
     }
-
-    // ========== LICENCES ==========
     
     static async getLicenses() {
         try {
-            this.log('Récupération des licences');
-            const client = await this.ensureSupabase();
-            
+            const client = await this.ensureReady();
             const { data, error } = await client
                 .from('company_licenses')
                 .select(`
@@ -580,24 +492,18 @@ class CRMService {
                 `)
                 .order('created_at', { ascending: false });
             
-            if (error) {
-                console.error('❌ Erreur Supabase getLicenses:', error);
-                throw error;
-            }
-            
-            this.log('Licences récupérées', `${data?.length || 0} entrées`);
+            if (error) throw error;
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ Erreur récupération licences:', error);
+            console.error('❌ Erreur getLicenses:', error);
             return { success: false, error: error.message };
         }
     }
-
+    
     static async createLicense(licenseData) {
         try {
-            this.log('Création licence', licenseData);
-            const client = await this.ensureSupabase();
-
+            const client = await this.ensureReady();
+            
             if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
                 throw new Error('Société, plan et nombre de licences sont obligatoires');
             }
@@ -624,24 +530,17 @@ class CRMService {
                     )
                 `);
             
-            if (error) {
-                console.error('❌ Erreur création licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence créée avec succès', data[0]);
+            if (error) throw error;
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('❌ Erreur création licence:', error);
+            console.error('❌ Erreur createLicense:', error);
             return { success: false, error: error.message };
         }
     }
-
+    
     static async updateLicense(id, licenseData) {
         try {
-            this.log('Mise à jour licence', { id, data: licenseData });
-            const client = await this.ensureSupabase();
-            
+            const client = await this.ensureReady();
             const { data, error } = await client
                 .from('company_licenses')
                 .update({
@@ -664,23 +563,17 @@ class CRMService {
                     )
                 `);
             
-            if (error) {
-                console.error('❌ Erreur mise à jour licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence mise à jour avec succès', data[0]);
+            if (error) throw error;
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('❌ Erreur mise à jour licence:', error);
+            console.error('❌ Erreur updateLicense:', error);
             return { success: false, error: error.message };
         }
     }
-
+    
     static async deleteLicense(id) {
         try {
-            this.log('Suppression licence', { id });
-            const client = await this.ensureSupabase();
+            const client = await this.ensureReady();
             
             // Supprimer d'abord les utilisateurs associés
             await client
@@ -693,49 +586,33 @@ class CRMService {
                 .delete()
                 .eq('id', id);
             
-            if (error) {
-                console.error('❌ Erreur suppression licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence supprimée avec succès');
+            if (error) throw error;
             return { success: true };
         } catch (error) {
-            console.error('❌ Erreur suppression licence:', error);
+            console.error('❌ Erreur deleteLicense:', error);
             return { success: false, error: error.message };
         }
     }
-
+    
     static async getLicensePlans() {
         try {
-            this.log('Récupération des plans de licence');
-            const client = await this.ensureSupabase();
-            
+            const client = await this.ensureReady();
             const { data, error } = await client
                 .from('license_plans')
                 .select('*')
                 .eq('is_active', true)
                 .order('price_per_user', { ascending: true });
             
-            if (error) {
-                console.error('❌ Erreur Supabase getLicensePlans:', error);
-                throw error;
-            }
-            
-            this.log('Plans de licence récupérés', `${data?.length || 0} entrées`);
+            if (error) throw error;
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ Erreur récupération plans de licence:', error);
+            console.error('❌ Erreur getLicensePlans:', error);
             return { success: false, error: error.message };
         }
     }
-
-    // ========== STATISTIQUES ==========
     
     static async getStats() {
         try {
-            this.log('Calcul des statistiques');
-            
             const [companiesResult, licensesResult, contactsResult] = await Promise.all([
                 this.getCompanies(),
                 this.getLicenses(),
@@ -743,7 +620,7 @@ class CRMService {
             ]);
             
             if (!companiesResult.success || !licensesResult.success || !contactsResult.success) {
-                throw new Error('Erreur récupération données pour statistiques');
+                throw new Error('Erreur récupération données');
             }
             
             const companies = companiesResult.data;
@@ -764,10 +641,9 @@ class CRMService {
                     .reduce((sum, l) => sum + (l.monthly_cost || 0), 0)
             };
             
-            this.log('Statistiques calculées', stats);
             return { success: true, data: stats };
         } catch (error) {
-            console.error('❌ Erreur calcul statistiques:', error);
+            console.error('❌ Erreur getStats:', error);
             return { success: false, error: error.message };
         }
     }
@@ -817,25 +693,23 @@ function getInitials(firstName, lastName) {
 }
 
 function showError(message, duration = 5000) {
-    console.error('Erreur:', message);
+    console.error('🔴 Erreur:', message);
     
-    let errorContainer = document.getElementById('error-container');
-    if (!errorContainer) {
-        errorContainer = document.createElement('div');
-        errorContainer.id = 'error-container';
-        errorContainer.style.cssText = `
+    let container = document.getElementById('error-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'error-container';
+        container.style.cssText = `
             position: fixed;
             top: 1rem;
             right: 1rem;
             z-index: 9999;
             max-width: 400px;
-            pointer-events: none;
         `;
-        document.body.appendChild(errorContainer);
+        document.body.appendChild(container);
     }
     
     const errorDiv = document.createElement('div');
-    errorDiv.className = 'notification error';
     errorDiv.style.cssText = `
         background: #fee2e2;
         color: #dc2626;
@@ -847,21 +721,7 @@ function showError(message, duration = 5000) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        pointer-events: auto;
-        animation: slideIn 0.3s ease;
     `;
-    
-    if (!document.getElementById('notification-styles')) {
-        const style = document.createElement('style');
-        style.id = 'notification-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
     
     errorDiv.textContent = message;
     
@@ -874,48 +734,35 @@ function showError(message, duration = 5000) {
         cursor: pointer;
         margin-left: 0.5rem;
         color: inherit;
-        opacity: 0.8;
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
     `;
     closeBtn.onclick = () => errorDiv.remove();
     
     errorDiv.appendChild(closeBtn);
-    errorContainer.appendChild(errorDiv);
+    container.appendChild(errorDiv);
     
     if (duration > 0) {
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.remove();
-            }
-        }, duration);
+        setTimeout(() => errorDiv.remove(), duration);
     }
 }
 
 function showSuccess(message, duration = 3000) {
-    console.log('Succès:', message);
+    console.log('🟢 Succès:', message);
     
-    let successContainer = document.getElementById('success-container');
-    if (!successContainer) {
-        successContainer = document.createElement('div');
-        successContainer.id = 'success-container';
-        successContainer.style.cssText = `
+    let container = document.getElementById('success-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'success-container';
+        container.style.cssText = `
             position: fixed;
             top: 1rem;
             right: 1rem;
             z-index: 9999;
             max-width: 400px;
-            pointer-events: none;
         `;
-        document.body.appendChild(successContainer);
+        document.body.appendChild(container);
     }
     
     const successDiv = document.createElement('div');
-    successDiv.className = 'notification success';
     successDiv.style.cssText = `
         background: #d1fae5;
         color: #065f46;
@@ -927,9 +774,8 @@ function showSuccess(message, duration = 3000) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        pointer-events: auto;
-        animation: slideIn 0.3s ease;
     `;
+    
     successDiv.textContent = message;
     
     const closeBtn = document.createElement('button');
@@ -941,25 +787,14 @@ function showSuccess(message, duration = 3000) {
         cursor: pointer;
         margin-left: 0.5rem;
         color: inherit;
-        opacity: 0.8;
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
     `;
     closeBtn.onclick = () => successDiv.remove();
     
     successDiv.appendChild(closeBtn);
-    successContainer.appendChild(successDiv);
+    container.appendChild(successDiv);
     
     if (duration > 0) {
-        setTimeout(() => {
-            if (successDiv.parentNode) {
-                successDiv.remove();
-            }
-        }, duration);
+        setTimeout(() => successDiv.remove(), duration);
     }
 }
 
@@ -981,7 +816,6 @@ function showLoading(show = true) {
                 align-items: center;
                 justify-content: center;
                 z-index: 10000;
-                backdrop-filter: blur(3px);
             `;
             
             const spinner = document.createElement('div');
@@ -999,12 +833,7 @@ function showLoading(show = true) {
             if (!document.getElementById('spinner-styles')) {
                 const style = document.createElement('style');
                 style.id = 'spinner-styles';
-                style.textContent = `
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `;
+                style.textContent = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
                 document.head.appendChild(style);
             }
             
@@ -1018,48 +847,17 @@ function showLoading(show = true) {
     }
 }
 
-// Fonction de diagnostic
-function diagnoseCRMConfig() {
-    console.group('🔍 CRM Config Diagnostic');
-    console.log('Environment:', ENVIRONMENT.type);
-    console.log('Supabase URL:', SUPABASE_URL);
-    console.log('Has Supabase Key:', !!SUPABASE_ANON_KEY);
-    console.log('Key Length:', SUPABASE_ANON_KEY?.length || 0);
-    console.log('Supabase Client:', !!supabase);
-    console.log('Window Supabase Library:', !!window.supabase);
-    
-    if (!SUPABASE_ANON_KEY) {
-        console.warn('💡 Pour configurer temporairement:');
-        console.warn('window.ENV = {VITE_SUPABASE_ANON_KEY: "votre_cle"}');
-    }
-    
-    console.groupEnd();
-}
-
 // ===================================
-// INITIALISATION GLOBALE
+// INITIALISATION ET EXPOSITION GLOBALE
 // ===================================
 
-// Fonction d'initialisation qui attend le DOM et Supabase
-async function initializeCRMConfig() {
-    console.log('🚀 CRM Pro Config v5.1 - Initializing...');
-    
-    // Attendre que Supabase soit disponible
-    let attempts = 0;
-    while (!window.supabase && attempts < 50) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-    }
-    
-    if (!window.supabase) {
-        console.error('❌ Supabase library not loaded');
-        return;
-    }
+async function initCRM() {
+    console.log('🔧 Initialisation CRM...');
     
     // Initialiser Supabase
     await initializeSupabase();
     
-    // Exposer les services et utilitaires globalement
+    // Exposer les services globalement
     window.AuthService = AuthService;
     window.CRMService = CRMService;
     window.formatDate = formatDate;
@@ -1069,41 +867,56 @@ async function initializeCRMConfig() {
     window.showError = showError;
     window.showSuccess = showSuccess;
     window.showLoading = showLoading;
-    window.diagnoseCRMConfig = diagnoseCRMConfig;
     
-    // Signaler que la configuration est prête
+    // Diagnostic
+    window.testConfig = function() {
+        console.group('🔍 Test Configuration CRM');
+        console.log('Supabase URL:', APP_CONFIG.SUPABASE_URL);
+        console.log('Has Key:', !!APP_CONFIG.SUPABASE_ANON_KEY);
+        console.log('Key Length:', APP_CONFIG.SUPABASE_ANON_KEY?.length || 0);
+        console.log('Supabase Library:', !!window.supabase);
+        console.log('Supabase Client:', !!supabase);
+        console.log('AuthService:', !!window.AuthService);
+        console.log('CRMService:', !!window.CRMService);
+        console.log('Is Ready:', isReady);
+        console.groupEnd();
+        
+        if (!APP_CONFIG.SUPABASE_ANON_KEY) {
+            console.warn('❌ Pas de clé Supabase - configurez window.ENV ou modifiez config.js');
+        } else if (!supabase) {
+            console.warn('❌ Client Supabase non initialisé');
+        } else {
+            console.log('✅ Configuration OK !');
+        }
+    };
+    
+    // Signaler que tout est prêt
     window.dispatchEvent(new CustomEvent('crmConfigReady', {
         detail: {
             supabase: !!supabase,
-            environment: ENVIRONMENT.type,
-            hasKey: !!SUPABASE_ANON_KEY
+            hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
+            ready: isReady
         }
     }));
     
-    console.log('✅ CRM Pro Config ready!');
-    
-    // Diagnostic automatique en dev
-    if (ENVIRONMENT.isLocalhost) {
-        setTimeout(diagnoseCRMConfig, 1000);
-    }
+    console.log('✅ CRM initialisé - Utilisez testConfig() pour vérifier');
 }
 
-// Attendre le chargement du DOM
+// Initialisation
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeCRMConfig);
+    document.addEventListener('DOMContentLoaded', initCRM);
 } else {
-    // DOM déjà chargé
-    initializeCRMConfig();
+    initCRM();
 }
 
-// Gestion des erreurs globales
+// Gestion des erreurs
 window.addEventListener('error', (e) => {
-    console.error('Erreur globale:', e.error);
+    console.error('❌ Erreur globale:', e.error);
 });
 
 window.addEventListener('unhandledrejection', (e) => {
-    console.error('Promise rejetée:', e.reason);
+    console.error('❌ Promise rejetée:', e.reason);
     e.preventDefault();
 });
 
-console.log('📝 CRM Pro Config v5.1 loaded - Use diagnoseCRMConfig() for troubleshooting');
+console.log('📋 CRM Config chargé - Suivez les instructions ci-dessus pour configurer');
