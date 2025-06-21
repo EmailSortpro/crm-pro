@@ -66,6 +66,20 @@
             border-color: var(--primary-color);
         }
 
+        .filter-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
         /* Modal styles */
         .modal {
             display: none;
@@ -89,8 +103,8 @@
             background: var(--white);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-xl);
-            max-width: 600px;
-            width: 90%;
+            max-width: 700px;
+            width: 95%;
             max-height: 90vh;
             overflow-y: auto;
             animation: slideInUp 0.3s ease;
@@ -201,6 +215,75 @@
             display: none;
         }
 
+        .license-assignment {
+            background: var(--blue-50);
+            border: 1px solid var(--blue-200);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .contact-assignment-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            margin-top: 0.5rem;
+        }
+
+        .contact-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--gray-200);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .contact-item:hover {
+            background: var(--gray-50);
+        }
+
+        .contact-item:last-child {
+            border-bottom: none;
+        }
+
+        .contact-item.assigned {
+            background: var(--blue-50);
+        }
+
+        .contact-info {
+            flex: 1;
+        }
+
+        .contact-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .contact-email {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .assignment-status {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .assignment-status.assigned {
+            background: var(--green-100);
+            color: var(--green-800);
+        }
+
+        .assignment-status.available {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .form-grid,
@@ -210,6 +293,15 @@
 
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
+            }
+
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-wrap: wrap;
             }
         }
 
@@ -329,9 +421,9 @@
         <!-- Filtres et recherche -->
         <div class="card" style="margin-bottom: 2rem;">
             <div class="card-body">
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <div class="filter-controls">
                     <!-- Filtres par statut -->
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div class="filter-group">
                         <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
                         <button class="filter-btn active" data-filter="all" onclick="filterLicenses('all')">
                             Toutes (<span id="count-all">0</span>)
@@ -347,11 +439,19 @@
                         </button>
                     </div>
                     
+                    <!-- Filtre par société -->
+                    <div class="filter-group">
+                        <span style="font-weight: 600; color: var(--gray-700);">Société :</span>
+                        <select id="companyFilter" onchange="applyFilters()" style="padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                            <option value="">Toutes les sociétés</option>
+                        </select>
+                    </div>
+                    
                     <!-- Barre de recherche -->
                     <div style="flex: 1; min-width: 200px;">
-                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une licence..." 
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une licence ou un utilisateur..." 
                                style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius);"
-                               oninput="searchLicenses()">
+                               oninput="applyFilters()">
                     </div>
                 </div>
             </div>
@@ -479,6 +579,17 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Assignation des contacts -->
+                    <div id="contactAssignment" class="license-assignment" style="display: none;">
+                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">👥 Assignation des contacts</h4>
+                        <p style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.875rem;">
+                            Assignez cette licence aux contacts de la société sélectionnée
+                        </p>
+                        <div id="contactsList" class="contact-assignment-list">
+                            <!-- Chargé dynamiquement -->
+                        </div>
+                    </div>
                     
                     <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                         <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">
@@ -514,11 +625,13 @@
         // Variables globales
         let licenses = [];
         let companies = [];
+        let contacts = [];
         let licensePlans = [];
         let filteredLicenses = [];
         let currentFilter = 'all';
         let editingLicense = null;
         let currentLicenseForUsers = null;
+        let selectedContacts = new Set();
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
@@ -553,6 +666,7 @@
         async function initializePage() {
             await loadData();
             populateSelects();
+            populateFilters();
             updateStats();
             updateCounts();
             renderLicenses();
@@ -564,77 +678,68 @@
                 console.log('🔄 Chargement des données...');
                 
                 // Charger toutes les données en parallèle
-                const [licensesResult, companiesResult, plansResult] = await Promise.all([
+                const [licensesResult, companiesResult, contactsResult, plansResult] = await Promise.all([
                     CRMService.getLicenses(),
                     CRMService.getCompanies(),
+                    CRMService.getContacts(),
                     CRMService.getLicensePlans()
                 ]);
 
                 console.log('📊 Résultats bruts:', {
                     licenses: licensesResult,
                     companies: companiesResult,
+                    contacts: contactsResult,
                     plans: plansResult
                 });
 
                 // Traiter les licences
                 if (licensesResult.success && licensesResult.data) {
-                    licenses = licensesResult.data.map(license => {
-                        console.log('📝 Traitement licence:', license);
-                        
-                        return {
-                            id: license.id,
-                            company_id: license.company_id,
-                            company_name: license.companies?.name || 'Société inconnue',
-                            plan_id: license.plan_id,
-                            plan_name: license.license_plans?.name || 'Plan inconnu',
-                            plan_price: license.license_plans?.price_per_user || 0,
-                            license_count: license.license_count || 0,
-                            start_date: license.start_date,
-                            end_date: license.end_date,
-                            renewal_date: license.renewal_date,
-                            status: license.status || 'active',
-                            payment_method: license.payment_method,
-                            monthly_cost: license.monthly_cost || 0,
-                            users: license.license_users || []
-                        };
-                    });
+                    licenses = licensesResult.data.map(license => ({
+                        id: license.id,
+                        company_id: license.company_id,
+                        company_name: license.companies?.name || 'Société inconnue',
+                        plan_id: license.plan_id,
+                        plan_name: license.license_plans?.name || 'Plan inconnu',
+                        plan_price: license.license_plans?.price_per_user || 0,
+                        license_count: license.license_count || 0,
+                        start_date: license.start_date,
+                        end_date: license.end_date,
+                        renewal_date: license.renewal_date,
+                        status: license.status || 'active',
+                        payment_method: license.payment_method,
+                        monthly_cost: license.monthly_cost || 0,
+                        users: license.license_users || [],
+                        assigned_contacts: license.assigned_contacts || []
+                    }));
                 } else {
-                    console.log('❌ Pas de licences trouvées ou erreur');
                     licenses = [];
                 }
 
                 // Traiter les sociétés
-                if (companiesResult.success && companiesResult.data) {
-                    companies = companiesResult.data;
-                } else {
-                    console.log('❌ Pas de sociétés trouvées ou erreur');
-                    companies = [];
-                }
+                companies = companiesResult.success ? companiesResult.data : [];
+
+                // Traiter les contacts
+                contacts = contactsResult.success ? contactsResult.data : [];
 
                 // Traiter les plans
-                if (plansResult.success && plansResult.data) {
-                    licensePlans = plansResult.data;
-                } else {
-                    console.log('❌ Pas de plans trouvés ou erreur');
-                    licensePlans = [];
-                }
+                licensePlans = plansResult.success ? plansResult.data : [];
 
                 console.log('✅ Données finales:', {
                     licenses: licenses.length,
                     companies: companies.length,
+                    contacts: contacts.length,
                     plans: licensePlans.length
                 });
 
-                // Initialiser les licences filtrées
                 filteredLicenses = [...licenses];
 
             } catch (error) {
                 console.error('❌ Erreur chargement données:', error);
                 showError('Erreur lors du chargement des données: ' + error.message);
                 
-                // En cas d'erreur, initialiser des tableaux vides
                 licenses = [];
                 companies = [];
+                contacts = [];
                 licensePlans = [];
                 filteredLicenses = [];
             }
@@ -643,6 +748,18 @@
         function populateSelects() {
             populateCompanySelect();
             populatePlanSelect();
+        }
+
+        function populateFilters() {
+            const companyFilter = document.getElementById('companyFilter');
+            companyFilter.innerHTML = '<option value="">Toutes les sociétés</option>';
+            
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = company.name;
+                companyFilter.appendChild(option);
+            });
         }
 
         function populateCompanySelect() {
@@ -762,21 +879,27 @@
             });
             document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
             
+            applyFilters();
+        }
+
+        function applyFilters() {
             const now = new Date();
             const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const companyFilter = document.getElementById('companyFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
-            switch (filter) {
-                case 'all':
-                    filteredLicenses = [...licenses];
-                    break;
+            // Filtrer par statut
+            let filtered = [...licenses];
+            
+            switch (currentFilter) {
                 case 'active':
-                    filteredLicenses = licenses.filter(l => l.status === 'active');
+                    filtered = filtered.filter(l => l.status === 'active');
                     break;
                 case 'expired':
-                    filteredLicenses = licenses.filter(l => l.status === 'expired');
+                    filtered = filtered.filter(l => l.status === 'expired');
                     break;
                 case 'expiring':
-                    filteredLicenses = licenses.filter(l => {
+                    filtered = filtered.filter(l => {
                         if (l.status !== 'active' || !l.renewal_date) return false;
                         const renewalDate = new Date(l.renewal_date);
                         return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
@@ -784,35 +907,34 @@
                     break;
             }
             
-            const searchTerm = document.getElementById('searchInput').value;
+            // Filtrer par société
+            if (companyFilter) {
+                filtered = filtered.filter(l => l.company_id === companyFilter);
+            }
+            
+            // Filtrer par recherche
             if (searchTerm) {
-                searchLicenses();
-            } else {
-                renderLicenses();
+                filtered = filtered.filter(license => {
+                    const matchesLicense = license.company_name.toLowerCase().includes(searchTerm) ||
+                                         license.plan_name.toLowerCase().includes(searchTerm);
+                    
+                    const matchesUsers = license.users?.some(user => 
+                        user.first_name?.toLowerCase().includes(searchTerm) ||
+                        user.last_name?.toLowerCase().includes(searchTerm) ||
+                        user.email?.toLowerCase().includes(searchTerm)
+                    );
+                    
+                    return matchesLicense || matchesUsers;
+                });
             }
-        }
-
-        function searchLicenses() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             
-            if (!searchTerm) {
-                renderLicenses();
-                return;
-            }
-            
-            const searchResults = filteredLicenses.filter(license => {
-                return license.company_name.toLowerCase().includes(searchTerm) ||
-                       license.plan_name.toLowerCase().includes(searchTerm);
-            });
-            
-            renderLicenses(searchResults);
+            filteredLicenses = filtered;
+            renderLicenses();
         }
 
         function renderLicenses(licensesToRender = filteredLicenses) {
             const tableBody = document.getElementById('licensesTableBody');
             const emptyState = document.getElementById('emptyState');
-            
-            console.log('🎨 Rendu des licences:', licensesToRender);
             
             if (licensesToRender.length === 0) {
                 tableBody.innerHTML = '';
@@ -829,7 +951,7 @@
                 const activeUsers = license.users?.filter(u => u.status === 'active').length || 0;
                 
                 return `
-                    <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;">
+                    <tr onclick="editLicense('${license.id}')" style="cursor: pointer;" title="Cliquer pour modifier">
                         <td>
                             <div style="font-weight: 600;">${escapeHtml(license.company_name)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
@@ -921,13 +1043,6 @@
             return statusMap[status] || status;
         }
 
-        function openLicenseDetails(licenseId) {
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            alert(`Détails de la licence ${license.company_name} - ${license.plan_name}\n\nCette fonctionnalité sera développée prochainement.`);
-        }
-
         // Gestion des modals
         function openAddLicenseModal() {
             resetLicenseForm();
@@ -954,6 +1069,8 @@
         function resetLicenseForm() {
             document.getElementById('licenseForm').reset();
             document.getElementById('pricingPreview').style.display = 'none';
+            document.getElementById('contactAssignment').style.display = 'none';
+            selectedContacts.clear();
             editingLicense = null;
             
             const today = new Date();
@@ -981,8 +1098,72 @@
             
             updatePricing();
             
+            // Charger les contacts de la société pour l'assignation
+            if (license.company_id) {
+                loadCompanyContacts(license.company_id);
+                selectedContacts = new Set(license.assigned_contacts || []);
+            }
+            
             document.getElementById('licenseModal').classList.add('show');
         }
+
+        async function loadCompanyContacts(companyId) {
+            try {
+                const companyContacts = contacts.filter(c => c.company_id === companyId);
+                
+                if (companyContacts.length === 0) {
+                    document.getElementById('contactAssignment').style.display = 'none';
+                    return;
+                }
+                
+                document.getElementById('contactAssignment').style.display = 'block';
+                
+                const contactsList = document.getElementById('contactsList');
+                contactsList.innerHTML = companyContacts.map(contact => {
+                    const isAssigned = selectedContacts.has(contact.id);
+                    return `
+                        <div class="contact-item ${isAssigned ? 'assigned' : ''}" onclick="toggleContactAssignment('${contact.id}')">
+                            <div class="contact-info">
+                                <div class="contact-name">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}</div>
+                                <div class="contact-email">${escapeHtml(contact.email)}</div>
+                            </div>
+                            <div class="assignment-status ${isAssigned ? 'assigned' : 'available'}">
+                                ${isAssigned ? '✅ Assigné' : '⭕ Disponible'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Erreur chargement contacts société:', error);
+                document.getElementById('contactAssignment').style.display = 'none';
+            }
+        }
+
+        function toggleContactAssignment(contactId) {
+            if (selectedContacts.has(contactId)) {
+                selectedContacts.delete(contactId);
+            } else {
+                selectedContacts.add(contactId);
+            }
+            
+            // Actualiser l'affichage
+            const companyId = document.getElementById('licenseCompany').value;
+            if (companyId) {
+                loadCompanyContacts(companyId);
+            }
+        }
+
+        // Event listener pour le changement de société
+        document.getElementById('licenseCompany').addEventListener('change', function() {
+            const companyId = this.value;
+            selectedContacts.clear();
+            
+            if (companyId) {
+                loadCompanyContacts(companyId);
+            } else {
+                document.getElementById('contactAssignment').style.display = 'none';
+            }
+        });
 
         async function deleteLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
@@ -1111,22 +1292,6 @@
                     </form>
                 </div>
 
-                <!-- Formulaire d'import CSV -->
-                <div id="importUserForm" class="add-user-form">
-                    <h4 style="margin-bottom: 1rem;">📄 Import CSV</h4>
-                    <p style="margin-bottom: 1rem; color: var(--gray-600);">
-                        Format: prénom,nom,email,rôle
-                    </p>
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                        <button class="btn btn-primary" onclick="importUsers('${license.id}')">Importer</button>
-                        <button class="btn btn-secondary" onclick="hideImportUserForm()">Annuler</button>
-                        <button class="btn btn-info" onclick="downloadTemplate()">📥 Télécharger modèle</button>
-                    </div>
-                </div>
-
                 <!-- Liste des utilisateurs -->
                 <div style="margin-top: 1.5rem;">
                     <h4 style="margin-bottom: 1rem;">Utilisateurs existants</h4>
@@ -1160,9 +1325,6 @@
                     <button class="btn btn-secondary" onclick="closeUsersModal()">
                         Fermer
                     </button>
-                    <button class="btn btn-primary" onclick="saveUsersChanges('${license.id}')">
-                        💾 Sauvegarder
-                    </button>
                 </div>
             `;
         }
@@ -1170,7 +1332,6 @@
         // Gestion des utilisateurs - Fonctions
         function showAddUserForm() {
             document.getElementById('addUserForm').style.display = 'block';
-            document.getElementById('importUserForm').style.display = 'none';
         }
 
         function hideAddUserForm() {
@@ -1179,13 +1340,8 @@
         }
 
         function showImportUserForm() {
-            document.getElementById('importUserForm').style.display = 'block';
-            document.getElementById('addUserForm').style.display = 'none';
-        }
-
-        function hideImportUserForm() {
-            document.getElementById('importUserForm').style.display = 'none';
-            document.getElementById('csvFile').value = '';
+            // Fonctionnalité à implémenter
+            showError('Fonctionnalité en cours de développement');
         }
 
         async function addUser(event, licenseId) {
@@ -1246,135 +1402,7 @@
             }
         }
 
-        function downloadTemplate() {
-            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'modele_utilisateurs.csv');
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-
-        async function importUsers(licenseId) {
-            const fileInput = document.getElementById('csvFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                showError('Veuillez sélectionner un fichier CSV');
-                return;
-            }
-            
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            showLoading(true);
-            
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const csv = e.target.result;
-                    const lines = csv.split('\n');
-                    
-                    if (lines.length < 2) {
-                        showError('Le fichier CSV doit contenir au moins une ligne de données');
-                        return;
-                    }
-                    
-                    // Ignorer la première ligne (en-têtes)
-                    const dataLines = lines.slice(1).filter(line => line.trim());
-                    
-                    const currentUsers = license.users?.filter(u => u.status === 'active') || [];
-                    const availableSlots = license.license_count - currentUsers.length;
-                    
-                    if (dataLines.length > availableSlots) {
-                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
-                        return;
-                    }
-                    
-                    let importedCount = 0;
-                    const errors = [];
-                    
-                    for (let index = 0; index < dataLines.length; index++) {
-                        const line = dataLines[index];
-                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
-                        
-                        if (columns.length < 3) {
-                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
-                            continue;
-                        }
-                        
-                        const [firstName, lastName, email, role = 'user'] = columns;
-                        
-                        if (!firstName || !lastName || !email) {
-                            errors.push(`Ligne ${index + 2}: Données manquantes`);
-                            continue;
-                        }
-                        
-                        // Vérifier si l'email existe déjà
-                        const existingUser = license.users?.find(u => u.email === email);
-                        if (existingUser) {
-                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
-                            continue;
-                        }
-                        
-                        try {
-                            const userData = {
-                                license_id: licenseId,
-                                first_name: firstName,
-                                last_name: lastName,
-                                email: email,
-                                role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
-                                status: 'active'
-                            };
-                            
-                            const result = await CRMService.createLicenseUser(userData);
-                            
-                            if (result.success) {
-                                importedCount++;
-                            } else {
-                                errors.push(`Ligne ${index + 2}: ${result.error || 'Erreur création'}`);
-                            }
-                        } catch (error) {
-                            errors.push(`Ligne ${index + 2}: ${error.message}`);
-                        }
-                    }
-                    
-                    if (errors.length > 0) {
-                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
-                    } else {
-                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
-                    }
-                    
-                    hideImportUserForm();
-                    
-                    // Recharger les données
-                    await loadData();
-                    updateStats();
-                    renderLicenses();
-                    openUsersModal(licenseId);
-                    
-                } catch (error) {
-                    console.error('Erreur import CSV:', error);
-                    showError('Erreur lors de l\'import du fichier CSV: ' + error.message);
-                } finally {
-                    showLoading(false);
-                }
-            };
-            
-            reader.readAsText(file);
-        }
-
         async function toggleUserStatus(userId) {
-            // Cette fonction devrait appeler l'API pour changer le statut
-            // Pour l'instant, on simule avec les données locales
             showError('Fonctionnalité en cours de développement');
         }
 
@@ -1383,14 +1411,7 @@
                 return;
             }
             
-            // Cette fonction devrait appeler l'API pour supprimer l'utilisateur
-            // Pour l'instant, on simule
             showError('Fonctionnalité en cours de développement');
-        }
-
-        function saveUsersChanges(licenseId) {
-            showSuccess('Modifications sauvegardées');
-            closeUsersModal();
         }
 
         // Gestion du formulaire
@@ -1424,7 +1445,8 @@
                     renewal_date: document.getElementById('renewalDate').value || endDate,
                     status: document.getElementById('licenseStatus').value || 'active',
                     payment_method: document.getElementById('paymentMethod').value || null,
-                    monthly_cost: pricePerUser * licenseCount
+                    monthly_cost: pricePerUser * licenseCount,
+                    assigned_contacts: Array.from(selectedContacts)
                 };
                 
                 let result;
