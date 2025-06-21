@@ -1157,6 +1157,47 @@
             return statusMap[status] || status;
         }
 
+        // Gestion des onglets de la modal (définie AVANT editLicense)
+        function switchLicenseTab(tabName) {
+            console.log('🔄 switchLicenseTab appelé avec:', tabName);
+            
+            try {
+                // Masquer tous les contenus d'onglet
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.style.display = 'none';
+                });
+                
+                // Désactiver tous les boutons d'onglet
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Activer l'onglet sélectionné
+                const targetTab = tabName === 'license-form' ? 'licenseFormTab' : 'companyLicensesTab';
+                const tabContent = document.getElementById(targetTab);
+                const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
+                
+                if (tabContent && tabButton) {
+                    tabContent.classList.add('active');
+                    tabContent.style.display = 'block';
+                    tabButton.classList.add('active');
+                    
+                    console.log('✅ Onglet activé:', targetTab);
+                    
+                    // Si on affiche l'onglet des licences de la société, charger les données
+                    if (tabName === 'company-licenses' && editingLicense) {
+                        console.log('📊 Chargement des licences de la société:', editingLicense.company_id);
+                        loadCompanyLicenses(editingLicense.company_id);
+                    }
+                } else {
+                    console.error('❌ Éléments d\'onglet non trouvés:', { targetTab, tabButton });
+                }
+            } catch (error) {
+                console.error('❌ Erreur switchLicenseTab:', error);
+            }
+        }
+
         // Gestion des modals
         function openAddLicenseModal() {
             resetLicenseForm();
