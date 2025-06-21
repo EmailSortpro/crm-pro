@@ -793,6 +793,8 @@
             plans: [],
             currentView: 'companies',
             currentCompany: null,
+            currentLicense: null,
+            isEditing: false,
             filteredData: [],
             isLoading: false
         };
@@ -1019,21 +1021,23 @@
         function renderLicenseItem(license) {
             const plan = appData.plans.find(p => p.id === license.plan_id);
             const status = getStatus(license);
+            const activeUsers = license.users?.filter(u => u.is_active).length || 0;
             
             return `
-                <div class="license-item">
+                <div class="license-item" onclick="viewLicense('${license.id}')" style="cursor: pointer;">
                     <div class="license-header">
                         <div class="license-title">${escapeHtml(plan?.name || 'Plan inconnu')}</div>
                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                             <span class="status ${status.class}">${status.text}</span>
-                            <button class="btn btn-warning btn-xs" onclick="editLicense('${license.id}')">✏️</button>
-                            <button class="btn btn-danger btn-xs" onclick="deleteLicense('${license.id}')">🗑️</button>
+                            <button class="btn btn-primary btn-xs" onclick="event.stopPropagation(); viewLicense('${license.id}')">👁️</button>
+                            <button class="btn btn-warning btn-xs" onclick="event.stopPropagation(); editLicense('${license.id}')">✏️</button>
+                            <button class="btn btn-danger btn-xs" onclick="event.stopPropagation(); deleteLicense('${license.id}')">🗑️</button>
                         </div>
                     </div>
                     <div class="license-details">
                         <div class="detail-item">
-                            <div class="detail-label">Utilisateurs</div>
-                            <div class="detail-value">${license.license_count || 0}</div>
+                            <div class="detail-label">Utilisateurs actifs</div>
+                            <div class="detail-value">${activeUsers}/${license.license_count || 0}</div>
                         </div>
                         <div class="detail-item">
                             <div class="detail-label">Prix mensuel</div>
@@ -1056,16 +1060,18 @@
             const company = appData.companies.find(c => c.id === license.company_id);
             const plan = appData.plans.find(p => p.id === license.plan_id);
             const status = getStatus(license);
+            const activeUsers = license.users?.filter(u => u.is_active).length || 0;
 
             return `
-                <tr>
+                <tr onclick="viewLicense('${license.id}')" style="cursor: pointer;">
                     <td><strong>${escapeHtml(company?.name || 'Société inconnue')}</strong></td>
                     <td>${escapeHtml(plan?.name || 'Plan inconnu')}</td>
-                    <td>${license.license_count || 0}</td>
+                    <td>${activeUsers}/${license.license_count || 0}</td>
                     <td><strong>${formatCurrency(license.monthly_cost || 0)}</strong></td>
                     <td>${formatDateShort(license.renewal_date)}</td>
                     <td><span class="status ${status.class}">${status.text}</span></td>
-                    <td>
+                    <td onclick="event.stopPropagation()">
+                        <button class="btn btn-primary btn-xs" onclick="viewLicense('${license.id}')">👁️</button>
                         <button class="btn btn-warning btn-xs" onclick="editLicense('${license.id}')">✏️</button>
                         <button class="btn btn-danger btn-xs" onclick="deleteLicense('${license.id}')">🗑️</button>
                     </td>
@@ -1201,18 +1207,63 @@
                 }).join('')}
             `;
 
-            // Tab Users
-            const allUsers = companyLicenses.flatMap(l => l.users || []);
+            // Tab Users - Amélioration avec TOUS les utilisateurs de TOUTES les licences de la société
+            const allUsersFromLicenses = companyLicenses.flatMap(license => 
+                (license.users || []).map(user => ({
+                    ...user,
+                    licenseName: appData.plans.find(p => p.id === license.plan_id)?.name || 'Plan inconnu',
+                    licenseId: license.id
+                }))
+            );
+            
+            // Récupérer aussi tous les contacts de cette société (pour ajouter de nouveaux utilisateurs)
+            const companyContacts = appData.contacts.filter(c => c.company_id === appData.currentCompany.id);
+            const usedContactIds = allUsersFromLicenses.map(u => u.contact_id);
+            const availableContacts = companyContacts.filter(c => !usedContactIds.includes(c.id));
+            
             document.getElementById('usersContent').innerHTML = `
                 <div style="margin-bottom: 1rem;">
-                    <h5>👥 Utilisateurs actifs (${allUsers.filter(u => u.is_active).length})</h5>
-                    <button class="btn btn-success btn-sm" onclick="addUserToCompany('${appData.currentCompany.id}')">➕ Ajouter utilisateur</button>
+                    <h5>👥 Utilisateurs de ${appData.currentCompany.name} (${allUsersFromLicenses.filter(u => u.is_active).length} actifs)</h5>
+                    ${availableContacts.length > 0 ? `
+                        <div style="margin-top: 1rem; padding: 1rem; background: var(--gray-50); border-radius: var(--radius);">
+                            <h6>➕ Ajouter un utilisateur à une licence</h6>
+                            <div style="display: flex; gap: 1rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                                <select id="newUserContact" style="flex: 1; min-width: 200px;">
+                                    <option value="">Sélectionner un contact...</option>
+                                    ${availableContacts.map(contact => 
+                                        `<option value="${contact.id}">${contact.first_name} ${contact.last_name}</option>`
+                                    ).join('')}
+                                </select>
+                                <select id="newUserLicense" style="flex: 1; min-width: 200px;">
+                                    <option value="">Sélectionner une licence...</option>
+                                    ${companyLicenses.map(license => {
+                                        const plan = appData.plans.find(p => p.id === license.plan_id);
+                                        const activeUsers = license.users?.filter(u => u.is_active).length || 0;
+                                        const availableSlots = license.license_count - activeUsers;
+                                        return `<option value="${license.id}" ${availableSlots <= 0 ? 'disabled' : ''}>${plan?.name || 'Plan inconnu'} (${availableSlots} place(s) libre(s))</option>`;
+                                    }).join('')}
+                                </select>
+                                <button class="btn btn-success btn-sm" onclick="addUserToLicense()">Ajouter</button>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${companyContacts.length > availableContacts.length ? '' : `
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-primary btn-sm" onclick="createNewContact('${appData.currentCompany.id}')">👤 Créer nouveau contact</button>
+                        </div>
+                    `}
                 </div>
-                ${allUsers.map(user => `
+                ${allUsersFromLicenses.length > 0 ? allUsersFromLicenses.map(user => `
                     <div class="license-item">
                         <div class="license-header">
-                            <div class="license-title">${user.first_name} ${user.last_name}</div>
-                            <span class="status ${user.is_active ? 'status-active' : 'status-expired'}">${user.is_active ? 'Actif' : 'Inactif'}</span>
+                            <div class="license-title">
+                                ${user.first_name} ${user.last_name}
+                                <span style="font-size: 0.75rem; color: var(--gray-500); margin-left: 0.5rem;">• ${user.licenseName}</span>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <span class="status ${user.is_active ? 'status-active' : 'status-expired'}">${user.is_active ? 'Actif' : 'Inactif'}</span>
+                                <button class="btn btn-danger btn-xs" onclick="removeUserFromLicense('${user.id}')">🗑️</button>
+                            </div>
                         </div>
                         <div class="license-details">
                             <div class="detail-item">
@@ -1223,9 +1274,17 @@
                                 <div class="detail-label">Poste</div>
                                 <div class="detail-value">${user.position || 'Non défini'}</div>
                             </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Téléphone</div>
+                                <div class="detail-value">${user.phone || 'Non défini'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Licence</div>
+                                <div class="detail-value">${user.licenseName}</div>
+                            </div>
                         </div>
                     </div>
-                `).join('')}
+                `).join('') : '<p style="text-align: center; color: var(--gray-500); padding: 2rem;">Aucun utilisateur trouvé</p>'}
             `;
         }
 
@@ -1328,14 +1387,19 @@
                     status: 'active'
                 };
 
-                const result = await CRMService.createLicense(formData);
+                let result;
+                if (appData.isEditing && appData.currentLicense) {
+                    result = await CRMService.updateLicense(appData.currentLicense.id, formData);
+                } else {
+                    result = await CRMService.createLicense(formData);
+                }
                 
                 if (result.success) {
-                    showSuccess('Licence créée avec succès');
+                    showSuccess(appData.isEditing ? 'Licence modifiée avec succès' : 'Licence créée avec succès');
                     closeModal();
                     await loadAllData();
                 } else {
-                    throw new Error(result.error || 'Erreur lors de la création');
+                    throw new Error(result.error || 'Erreur lors de la sauvegarde');
                 }
 
             } catch (error) {
@@ -1367,8 +1431,218 @@
         }
 
         function editLicense(licenseId) {
-            // Implémentation simplifiée
-            showSuccess('Fonction en cours de développement');
+            const license = appData.licenses.find(l => l.id === licenseId);
+            if (!license) {
+                showError('Licence non trouvée');
+                return;
+            }
+
+            appData.currentLicense = license;
+            appData.isEditing = true;
+            
+            document.getElementById('modalTitle').textContent = 'Modifier la licence';
+            document.getElementById('saveBtn').textContent = 'Modifier';
+            
+            // Pré-remplir le formulaire
+            document.getElementById('companySelect').value = license.company_id;
+            document.getElementById('planSelect').value = license.plan_id;
+            document.getElementById('userCount').value = license.license_count;
+            document.getElementById('monthlyPrice').value = license.monthly_cost;
+            document.getElementById('startDate').value = license.start_date;
+            document.getElementById('endDate').value = license.end_date;
+            document.getElementById('renewalDate').value = license.renewal_date || '';
+            document.getElementById('notes').value = license.notes || '';
+            
+            document.getElementById('licenseModal').classList.add('show');
+        }
+
+        function viewLicense(licenseId) {
+            const license = appData.licenses.find(l => l.id === licenseId);
+            if (!license) {
+                showError('Licence non trouvée');
+                return;
+            }
+
+            const company = appData.companies.find(c => c.id === license.company_id);
+            const plan = appData.plans.find(p => p.id === license.plan_id);
+            const status = getStatus(license);
+            const activeUsers = license.users?.filter(u => u.is_active).length || 0;
+
+            // Créer un modal de visualisation
+            const modalContent = `
+                <div class="modal" id="viewLicenseModal" style="display: flex;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title">📄 Détails de la licence</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="closeViewModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="license-card">
+                                <div class="license-card-header">
+                                    <h4>${escapeHtml(company?.name || 'Société inconnue')} - ${escapeHtml(plan?.name || 'Plan inconnu')}</h4>
+                                    <span class="status ${status.class}">${status.text}</span>
+                                </div>
+                                
+                                <div class="form-grid" style="margin: 1rem 0;">
+                                    <div class="detail-item">
+                                        <div class="detail-label">Société</div>
+                                        <div class="detail-value">${escapeHtml(company?.name || 'Société inconnue')}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Plan</div>
+                                        <div class="detail-value">${escapeHtml(plan?.name || 'Plan inconnu')}</div>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid" style="margin: 1rem 0;">
+                                    <div class="detail-item">
+                                        <div class="detail-label">Utilisateurs actifs</div>
+                                        <div class="detail-value">${activeUsers} / ${license.license_count}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Prix mensuel</div>
+                                        <div class="detail-value">${formatCurrency(license.monthly_cost || 0)}</div>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid" style="margin: 1rem 0;">
+                                    <div class="detail-item">
+                                        <div class="detail-label">Date de début</div>
+                                        <div class="detail-value">${formatDateShort(license.start_date)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Date de fin</div>
+                                        <div class="detail-value">${formatDateShort(license.end_date)}</div>
+                                    </div>
+                                </div>
+
+                                <div class="form-grid" style="margin: 1rem 0;">
+                                    <div class="detail-item">
+                                        <div class="detail-label">Renouvellement</div>
+                                        <div class="detail-value">${formatDateShort(license.renewal_date)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">Statut</div>
+                                        <div class="detail-value"><span class="status ${status.class}">${status.text}</span></div>
+                                    </div>
+                                </div>
+
+                                ${license.notes ? `
+                                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                        <div class="detail-label">Notes</div>
+                                        <div class="detail-value">${escapeHtml(license.notes)}</div>
+                                    </div>
+                                ` : ''}
+
+                                ${license.users && license.users.length > 0 ? `
+                                    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                        <h5>👥 Utilisateurs (${license.users.length})</h5>
+                                        <div style="margin-top: 1rem;">
+                                            ${license.users.map(user => `
+                                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--gray-50); border-radius: var(--radius); margin-bottom: 0.5rem;">
+                                                    <div>
+                                                        <div style="font-weight: 600;">${user.first_name} ${user.last_name}</div>
+                                                        <div style="font-size: 0.875rem; color: var(--gray-600);">${user.email}</div>
+                                                    </div>
+                                                    <span class="status ${user.is_active ? 'status-active' : 'status-expired'}">${user.is_active ? 'Actif' : 'Inactif'}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-warning" onclick="closeViewModal(); editLicense('${license.id}')">✏️ Modifier</button>
+                            <button type="button" class="btn btn-secondary" onclick="closeViewModal()">Fermer</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Ajouter le modal au DOM
+            const existingModal = document.getElementById('viewLicenseModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+        }
+
+        function closeViewModal() {
+            const modal = document.getElementById('viewLicenseModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function addUserToLicense() {
+            const contactId = document.getElementById('newUserContact').value;
+            const licenseId = document.getElementById('newUserLicense').value;
+
+            if (!contactId || !licenseId) {
+                showError('Veuillez sélectionner un contact et une licence');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const result = await CRMService.createLicenseUser(licenseId, contactId);
+                
+                if (result.success) {
+                    showSuccess('Utilisateur ajouté à la licence');
+                    
+                    // Recharger les données et rafraîchir l'affichage
+                    await loadAllData();
+                    
+                    // Rafraîchir le modal de gestion de société s'il est ouvert
+                    if (appData.currentCompany) {
+                        renderCompanyTabs();
+                    }
+                } else {
+                    throw new Error(result.error || 'Erreur lors de l\'ajout');
+                }
+            } catch (error) {
+                console.error('❌ Erreur ajout utilisateur:', error);
+                showError('Erreur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function removeUserFromLicense(userId) {
+            if (!confirm('Retirer cet utilisateur de la licence ?')) return;
+
+            showLoading(true);
+
+            try {
+                const result = await CRMService.deleteLicenseUser(userId);
+                
+                if (result.success) {
+                    showSuccess('Utilisateur retiré de la licence');
+                    
+                    // Recharger les données et rafraîchir l'affichage
+                    await loadAllData();
+                    
+                    // Rafraîchir le modal de gestion de société s'il est ouvert
+                    if (appData.currentCompany) {
+                        renderCompanyTabs();
+                    }
+                } else {
+                    throw new Error(result.error || 'Erreur lors de la suppression');
+                }
+            } catch (error) {
+                console.error('❌ Erreur suppression utilisateur:', error);
+                showError('Erreur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function createNewContact(companyId) {
+            // Pour l'instant, rediriger vers la page contacts avec le paramètre société
+            window.location.href = `contacts.html?company=${companyId}&action=add`;
         }
 
         async function deleteLicense(licenseId) {
