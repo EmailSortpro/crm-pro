@@ -1,9 +1,9 @@
 // ===================================
-// CONFIGURATION CRM PRO - VERSION NETLIFY
-// Récupération forcée des variables d'environnement
+// CONFIGURATION CRM PRO - VERSION UNIFIÉE
+// Gestion automatique des variables Netlify + fallbacks
 // ===================================
 
-console.log('🚀 CRM Config - Démarrage...');
+console.log('🚀 CRM Config - Démarrage unifié...');
 
 // Configuration par défaut
 const DEFAULT_CONFIG = {
@@ -11,169 +11,223 @@ const DEFAULT_CONFIG = {
     SUPABASE_ANON_KEY: ''
 };
 
-// FORCER LA RÉCUPÉRATION DES VARIABLES NETLIFY
-function getNetlifyConfig() {
+// DÉTECTION AUTOMATIQUE DE L'ENVIRONNEMENT ET RÉCUPÉRATION DES VARIABLES
+function getUnifiedConfig() {
     const config = { ...DEFAULT_CONFIG };
+    const hostname = window.location.hostname;
+    const isNetlify = hostname.includes('netlify.app') || hostname.includes('netlify.com');
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
     
-    console.log('🔍 Recherche variables d\'environnement...');
+    console.log('🔍 Détection environnement:', {
+        hostname,
+        isNetlify,
+        isLocalhost,
+        type: isNetlify ? 'netlify' : isLocalhost ? 'localhost' : 'autre'
+    });
     
-    // 1. Via window.ENV (injection manuelle)
-    if (window.ENV && window.ENV.VITE_SUPABASE_ANON_KEY) {
-        config.SUPABASE_ANON_KEY = window.ENV.VITE_SUPABASE_ANON_KEY;
-        config.SUPABASE_URL = window.ENV.VITE_SUPABASE_URL || config.SUPABASE_URL;
-        console.log('✅ Variables trouvées via window.ENV');
-        return config;
-    }
-    
-    // 2. Via variables Netlify injectées (si build process disponible)
-    if (typeof process !== 'undefined' && process.env) {
-        if (process.env.VITE_SUPABASE_ANON_KEY) {
-            config.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-            config.SUPABASE_URL = process.env.VITE_SUPABASE_URL || config.SUPABASE_URL;
-            console.log('✅ Variables trouvées via process.env');
-            return config;
+    // 1. NETLIFY - Tentative de récupération via fetch des variables build
+    if (isNetlify) {
+        console.log('📡 Mode Netlify détecté - recherche variables...');
+        
+        // Vérifier si les variables ont été injectées via un script de build
+        if (window.NETLIFY_ENV && window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY) {
+            config.SUPABASE_ANON_KEY = window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY;
+            config.SUPABASE_URL = window.NETLIFY_ENV.VITE_SUPABASE_URL || config.SUPABASE_URL;
+            console.log('✅ Variables Netlify trouvées via NETLIFY_ENV');
+            return { config, source: 'netlify-build' };
+        }
+        
+        // Fallback: essayer de récupérer depuis un fichier env-vars.js
+        try {
+            if (window.ENV_VARS && window.ENV_VARS.VITE_SUPABASE_ANON_KEY) {
+                config.SUPABASE_ANON_KEY = window.ENV_VARS.VITE_SUPABASE_ANON_KEY;
+                config.SUPABASE_URL = window.ENV_VARS.VITE_SUPABASE_URL || config.SUPABASE_URL;
+                console.log('✅ Variables Netlify trouvées via ENV_VARS');
+                return { config, source: 'netlify-vars' };
+            }
+        } catch (e) {
+            console.log('⚠️ Pas de fichier env-vars.js trouvé');
         }
     }
     
-    // 3. Via localStorage (développement)
+    // 2. DÉVELOPPEMENT - Variables manuelles via window.ENV
+    if (window.ENV && window.ENV.VITE_SUPABASE_ANON_KEY) {
+        config.SUPABASE_ANON_KEY = window.ENV.VITE_SUPABASE_ANON_KEY;
+        config.SUPABASE_URL = window.ENV.VITE_SUPABASE_URL || config.SUPABASE_URL;
+        console.log('✅ Variables trouvées via window.ENV (manuel)');
+        return { config, source: 'manual-env' };
+    }
+    
+    // 3. PROCESS.ENV - Si disponible (build time)
+    if (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) {
+        config.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+        config.SUPABASE_URL = process.env.VITE_SUPABASE_URL || config.SUPABASE_URL;
+        console.log('✅ Variables trouvées via process.env');
+        return { config, source: 'process-env' };
+    }
+    
+    // 4. LOCALSTORAGE - Développement local
     const localConfig = localStorage.getItem('crmConfig');
     if (localConfig) {
         try {
             const parsed = JSON.parse(localConfig);
             if (parsed.SUPABASE_ANON_KEY) {
                 config.SUPABASE_ANON_KEY = parsed.SUPABASE_ANON_KEY;
+                config.SUPABASE_URL = parsed.SUPABASE_URL || config.SUPABASE_URL;
                 console.log('✅ Variables trouvées via localStorage');
-                return config;
+                return { config, source: 'localStorage' };
             }
         } catch (e) {
             console.warn('⚠️ Erreur lecture localStorage');
         }
     }
     
-    // 4. Clé de développement en dur (TEMPORAIRE)
-    // ⚠️ REMPLACEZ PAR VOTRE VRAIE CLÉ SUPABASE
-    const DEV_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDQwNjcyMDAsImV4cCI6MjAxOTY0MzIwMH0.REMPLACEZ_PAR_VOTRE_VRAIE_CLE';
-    
-    if (DEV_KEY && !DEV_KEY.includes('REMPLACEZ')) {
-        config.SUPABASE_ANON_KEY = DEV_KEY;
-        console.log('⚠️ Utilisation clé de développement');
-        return config;
+    // 5. FALLBACK - Tentative de récupération via l'API Supabase elle-même
+    // (méthode avancée pour récupérer la clé publique si disponible)
+    if (isNetlify) {
+        console.log('🔄 Tentative de récupération automatique...');
+        // Cette méthode peut être implémentée si nécessaire
     }
     
-    console.error('❌ Aucune clé Supabase trouvée');
-    return config;
+    console.error('❌ Aucune configuration trouvée');
+    return { config, source: 'none' };
 }
 
-// Récupération de la configuration
-const APP_CONFIG = getNetlifyConfig();
+// Récupération de la configuration unifiée
+const { config: APP_CONFIG, source: CONFIG_SOURCE } = getUnifiedConfig();
 
 console.log('📊 Configuration chargée:', {
+    source: CONFIG_SOURCE,
     url: APP_CONFIG.SUPABASE_URL,
     hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
     keyLength: APP_CONFIG.SUPABASE_ANON_KEY?.length || 0
 });
 
-// Messages d'aide si pas de clé
+// INSTRUCTIONS DYNAMIQUES SELON LE CONTEXTE
 if (!APP_CONFIG.SUPABASE_ANON_KEY) {
+    const hostname = window.location.hostname;
+    const isNetlify = hostname.includes('netlify.app') || hostname.includes('netlify.com');
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    
     console.group('🚨 CONFIGURATION REQUISE');
-    console.error('Aucune clé Supabase trouvée !');
+    console.error('Clé Supabase manquante !');
     console.log('');
-    console.log('🛠️ Solutions (choisissez une) :');
+    
+    if (isNetlify) {
+        console.log('🌐 SOLUTION NETLIFY (recommandée) :');
+        console.log('1. Dashboard Netlify → Site Settings → Environment Variables');
+        console.log('2. Ajouter : VITE_SUPABASE_ANON_KEY = votre_cle_supabase');
+        console.log('3. Créer _redirects avec :');
+        console.log('   /env-vars.js  /.netlify/functions/env-vars  200');
+        console.log('4. Ou ajouter avant config.js :');
+        console.log('   <script>window.NETLIFY_ENV = {VITE_SUPABASE_ANON_KEY: "cle"};</script>');
+        console.log('5. Redéployer le site');
+    } else if (isLocalhost) {
+        console.log('💻 SOLUTION DÉVELOPPEMENT LOCAL :');
+        console.log('Option 1 - localStorage (recommandé) :');
+        console.log('localStorage.setItem("crmConfig", JSON.stringify({');
+        console.log('  SUPABASE_ANON_KEY: "votre_cle_supabase"');
+        console.log('}));');
+        console.log('');
+        console.log('Option 2 - Script manuel :');
+        console.log('<script>window.ENV = {VITE_SUPABASE_ANON_KEY: "cle"};</script>');
+    } else {
+        console.log('🌍 SOLUTION GÉNÉRALE :');
+        console.log('Ajouter avant config.js :');
+        console.log('<script>window.ENV = {VITE_SUPABASE_ANON_KEY: "votre_cle"};</script>');
+    }
+    
     console.log('');
-    console.log('1️⃣ SOLUTION TEMPORAIRE - Ajoutez avant config.js :');
-    console.log('<script>');
-    console.log('window.ENV = {');
-    console.log('  VITE_SUPABASE_ANON_KEY: "votre_cle_supabase"');
-    console.log('};');
-    console.log('</script>');
-    console.log('');
-    console.log('2️⃣ SOLUTION DÉVELOPPEMENT - localStorage :');
-    console.log('localStorage.setItem("crmConfig", JSON.stringify({');
-    console.log('  SUPABASE_ANON_KEY: "votre_cle_supabase"');
-    console.log('}));');
-    console.log('');
-    console.log('3️⃣ SOLUTION PRODUCTION - Modifier ce fichier :');
-    console.log('Remplacez REMPLACEZ_PAR_VOTRE_VRAIE_CLE par votre clé dans config.js ligne ~60');
-    console.log('');
-    console.log('🔑 Récupérer votre clé : supabase.com → projet → Settings → API → clé "anon"');
+    console.log('🔑 Récupérer votre clé :');
+    console.log('supabase.com → votre projet → Settings → API → clé "anon" (pas service_role)');
     console.groupEnd();
+} else {
+    console.log(`✅ Configuration OK via ${CONFIG_SOURCE}`);
 }
 
 // Variables globales
 let supabase = null;
 let isReady = false;
+let initPromise = null;
 
 // ===================================
-// INITIALISATION SUPABASE
+// INITIALISATION SUPABASE UNIFIÉE
 // ===================================
 
 async function initializeSupabase() {
+    // Éviter les initialisations multiples
+    if (initPromise) return initPromise;
     if (supabase) return supabase;
     
-    console.log('🔧 Initialisation Supabase...');
-    
-    try {
-        // Attendre que Supabase soit chargé
-        if (!window.supabase) {
-            console.log('⏳ Attente de la librairie Supabase...');
-            let attempts = 0;
-            while (!window.supabase && attempts < 100) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-                attempts++;
+    initPromise = new Promise(async (resolve) => {
+        try {
+            console.log('🔧 Initialisation Supabase...');
+            
+            // Attendre que Supabase soit chargé
+            if (!window.supabase) {
+                console.log('⏳ Attente librairie Supabase...');
+                let attempts = 0;
+                while (!window.supabase && attempts < 100) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    attempts++;
+                }
+                
+                if (!window.supabase) {
+                    throw new Error('Librairie Supabase non chargée après 5s');
+                }
             }
             
-            if (!window.supabase) {
-                throw new Error('Librairie Supabase non chargée');
+            // Vérifier la configuration
+            if (!APP_CONFIG.SUPABASE_ANON_KEY) {
+                throw new Error('Clé Supabase manquante');
             }
-        }
-        
-        // Vérifier la clé
-        if (!APP_CONFIG.SUPABASE_ANON_KEY) {
-            throw new Error('Clé Supabase manquante');
-        }
-        
-        if (APP_CONFIG.SUPABASE_ANON_KEY.includes('REMPLACEZ')) {
-            throw new Error('Clé Supabase non configurée');
-        }
-        
-        // Créer le client Supabase
-        supabase = window.supabase.createClient(
-            APP_CONFIG.SUPABASE_URL,
-            APP_CONFIG.SUPABASE_ANON_KEY
-        );
-        
-        console.log('✅ Client Supabase créé');
-        
-        // Test de connexion
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-            if (error.message.includes('Invalid API key')) {
-                console.error('🚨 Clé API Supabase invalide');
-                throw new Error('Clé API invalide');
-            } else {
-                console.warn('⚠️ Avertissement auth:', error.message);
+            
+            if (APP_CONFIG.SUPABASE_ANON_KEY.length < 100) {
+                throw new Error('Clé Supabase semble invalide (trop courte)');
             }
+            
+            // Créer le client
+            supabase = window.supabase.createClient(
+                APP_CONFIG.SUPABASE_URL,
+                APP_CONFIG.SUPABASE_ANON_KEY
+            );
+            
+            console.log('✅ Client Supabase créé');
+            
+            // Test de connexion
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+                if (error.message.includes('Invalid API key')) {
+                    console.error('🚨 Clé API invalide');
+                    throw new Error('Clé API invalide - vérifiez votre clé Supabase');
+                } else {
+                    console.warn('⚠️ Avertissement session:', error.message);
+                }
+            }
+            
+            console.log('✅ Connexion Supabase validée');
+            isReady = true;
+            resolve(supabase);
+            
+        } catch (error) {
+            console.error('❌ Erreur initialisation Supabase:', error.message);
+            supabase = null;
+            isReady = false;
+            resolve(null);
         }
-        
-        console.log('✅ Connexion Supabase validée');
-        isReady = true;
-        return supabase;
-        
-    } catch (error) {
-        console.error('❌ Erreur initialisation Supabase:', error.message);
-        supabase = null;
-        return null;
-    }
+    });
+    
+    return initPromise;
 }
 
 // ===================================
-// SERVICES CRM
+// SERVICES CRM UNIFIÉS
 // ===================================
 
 class AuthService {
     static async ensureReady() {
-        if (!supabase) {
+        if (!supabase || !isReady) {
             supabase = await initializeSupabase();
         }
         if (!supabase) {
@@ -189,7 +243,7 @@ class AuthService {
             if (error) throw error;
             return user;
         } catch (error) {
-            console.error('Erreur getCurrentUser:', error);
+            console.error('❌ Erreur getCurrentUser:', error);
             return null;
         }
     }
@@ -197,6 +251,8 @@ class AuthService {
     static async login(email, password) {
         try {
             const client = await this.ensureReady();
+            
+            console.log('🔐 Tentative de connexion pour:', email);
             
             const { data, error } = await client.auth.signInWithPassword({
                 email: email,
@@ -270,7 +326,7 @@ class AuthService {
 
 class CRMService {
     static async ensureReady() {
-        if (!supabase) {
+        if (!supabase || !isReady) {
             supabase = await initializeSupabase();
         }
         if (!supabase) {
@@ -851,8 +907,8 @@ function showLoading(show = true) {
 // INITIALISATION ET EXPOSITION GLOBALE
 // ===================================
 
-async function initCRM() {
-    console.log('🔧 Initialisation CRM...');
+async function initCRMUnified() {
+    console.log('🔧 Initialisation CRM unifiée...');
     
     // Initialiser Supabase
     await initializeSupabase();
@@ -868,9 +924,10 @@ async function initCRM() {
     window.showSuccess = showSuccess;
     window.showLoading = showLoading;
     
-    // Diagnostic
+    // Diagnostic unifié
     window.testConfig = function() {
-        console.group('🔍 Test Configuration CRM');
+        console.group('🔍 Diagnostic CRM Unifié');
+        console.log('Source config:', CONFIG_SOURCE);
         console.log('Supabase URL:', APP_CONFIG.SUPABASE_URL);
         console.log('Has Key:', !!APP_CONFIG.SUPABASE_ANON_KEY);
         console.log('Key Length:', APP_CONFIG.SUPABASE_ANON_KEY?.length || 0);
@@ -882,31 +939,39 @@ async function initCRM() {
         console.groupEnd();
         
         if (!APP_CONFIG.SUPABASE_ANON_KEY) {
-            console.warn('❌ Pas de clé Supabase - configurez window.ENV ou modifiez config.js');
+            console.warn('❌ Pas de clé Supabase - suivez les instructions ci-dessus');
         } else if (!supabase) {
             console.warn('❌ Client Supabase non initialisé');
         } else {
-            console.log('✅ Configuration OK !');
+            console.log('✅ Configuration complète OK !');
         }
+        
+        return {
+            configSource: CONFIG_SOURCE,
+            hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
+            isReady: isReady,
+            servicesAvailable: !!window.AuthService && !!window.CRMService
+        };
     };
     
     // Signaler que tout est prêt
     window.dispatchEvent(new CustomEvent('crmConfigReady', {
         detail: {
+            source: CONFIG_SOURCE,
             supabase: !!supabase,
             hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
             ready: isReady
         }
     }));
     
-    console.log('✅ CRM initialisé - Utilisez testConfig() pour vérifier');
+    console.log('✅ CRM unifié prêt - Utilisez testConfig() pour diagnostiquer');
 }
 
 // Initialisation
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCRM);
+    document.addEventListener('DOMContentLoaded', initCRMUnified);
 } else {
-    initCRM();
+    initCRMUnified();
 }
 
 // Gestion des erreurs
@@ -919,4 +984,4 @@ window.addEventListener('unhandledrejection', (e) => {
     e.preventDefault();
 });
 
-console.log('📋 CRM Config chargé - Suivez les instructions ci-dessus pour configurer');
+console.log('📋 CRM Config Unifié chargé - Instructions adaptées à votre environnement ci-dessus');
