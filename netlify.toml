@@ -1,4 +1,4 @@
-toml[build]
+[build]
 publish = "."
 command = "echo 'Build CRM Pro terminé'"
 
@@ -12,12 +12,17 @@ pretty_urls = true
 [build.environment]
 NODE_ENV = "production"
 
-# Redirection SPA CORRIGÉE
+# Redirection SPA (CORRIGÉE - sans conditions de rôle)
 [[redirects]]
 from = "/*"
 to = "/index.html"
 status = 200
-# ❌ SUPPRIMÉ : conditions = {Role = ["admin", "user"]}
+
+# Redirection pour la fonction env-vars
+[[redirects]]
+from = "/api/env"
+to = "/.netlify/functions/env-vars"
+status = 200
 
 # Headers de sécurité
 [[headers]]
@@ -27,7 +32,7 @@ X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
 X-Content-Type-Options = "nosniff"
 Referrer-Policy = "strict-origin-when-cross-origin"
-Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co;"
+Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.netlify.app;"
 
 # Cache pour fichiers statiques
 [[headers]]
@@ -44,3 +49,11 @@ Cache-Control = "public, max-age=31536000"
 for = "*.js"
 [headers.values]
 Cache-Control = "public, max-age=31536000"
+
+# Headers spéciaux pour les fonctions
+[[headers]]
+for = "/.netlify/functions/*"
+[headers.values]
+Access-Control-Allow-Origin = "*"
+Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+Access-Control-Allow-Headers = "Content-Type"
