@@ -4,18 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Tableau de bord</title>
-    
-    <!-- Injection variables Netlify -->
-    <script>
-      if (window.location.hostname.includes('netlify')) {
-        window.NETLIFY_ENV = {
-          VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
-          VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
-        };
-        console.log('🌐 Variables Netlify injectées');
-      }
-    </script>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
@@ -36,7 +24,7 @@
                 </a>
                 <a href="dashboard.html" class="nav-link active">
                     <span class="nav-icon">📊</span>
-                    Tableau de bord
+                    <span style="line-height: 1.2;">Tableau<br>de bord</span>
                 </a>
                 <a href="companies.html" class="nav-link">
                     <span class="nav-icon">🏢</span>
@@ -65,7 +53,7 @@
                     <span class="user-name" id="userName">Utilisateur</span>
                     <span class="user-role" id="userRole">user</span>
                 </div>
-                <button onclick="AuthService.logout()" class="logout-btn">
+                <button onclick="handleLogout()" class="logout-btn">
                     <span>🚪</span>
                     Déconnexion
                 </button>
@@ -210,16 +198,12 @@
             showLoading(true);
             
             try {
-                // Vérifier l'authentification
+                await waitForAuthService();
+                
                 if (!await AuthService.requireAuth()) return;
                 
-                // Charger les informations utilisateur
                 loadUserInfo();
-                
-                // Charger toutes les données
                 await loadDashboardData();
-                
-                // Mettre à jour l'interface
                 updateDashboard();
                 
             } catch (error) {
@@ -230,6 +214,17 @@
                 showLoading(false);
             }
         });
+
+        async function waitForAuthService() {
+            let attempts = 0;
+            while (!window.AuthService && attempts < 100) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                attempts++;
+            }
+            if (!window.AuthService) {
+                throw new Error('AuthService non disponible');
+            }
+        }
 
         function loadUserInfo() {
             try {
@@ -247,7 +242,6 @@
             console.log('🔄 Chargement des données du dashboard...');
             
             try {
-                // Charger avec timeout de 5 secondes
                 const timeout = (ms) => new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Timeout')), ms)
                 );
@@ -258,7 +252,6 @@
                     Promise.race([CRMService.getLicenses(), timeout(5000)])
                 ]);
 
-                // Traiter les résultats
                 dashboardData.companies = getSuccessData(companiesResult);
                 dashboardData.contacts = getSuccessData(contactsResult);
                 dashboardData.licenses = getSuccessData(licensesResult);
@@ -271,7 +264,6 @@
 
             } catch (error) {
                 console.error('❌ Erreur chargement données dashboard:', error);
-                // Utiliser des données par défaut
                 setDefaultData();
             }
         }
@@ -315,23 +307,19 @@
             const contacts = dashboardData.contacts;
             const licenses = dashboardData.licenses;
 
-            // Sociétés
             const prospects = companies.filter(c => c.status === 'prospect').length;
             const clients = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
             
             document.getElementById('totalCompanies').textContent = companies.length;
             document.getElementById('companiesBreakdown').textContent = `${prospects} prospects • ${clients} clients`;
 
-            // Contacts
             document.getElementById('totalContacts').textContent = contacts.length;
             document.getElementById('contactsBreakdown').textContent = `Répartis dans ${companies.length} sociétés`;
 
-            // Licences
             const activeLicenses = licenses.filter(l => l.status === 'active').length;
             document.getElementById('activeLicenses').textContent = activeLicenses;
             document.getElementById('licensesBreakdown').textContent = `${activeLicenses} licences actives`;
 
-            // Revenus
             const monthlyRevenue = licenses
                 .filter(l => l.status === 'active')
                 .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
@@ -345,20 +333,16 @@
             const companies = dashboardData.companies;
             const activeLicenses = licenses.filter(l => l.status === 'active');
             
-            // Utilisateurs total
             const totalUsers = activeLicenses.reduce((sum, l) => sum + (l.license_count || 0), 0);
             document.getElementById('totalUsers').textContent = totalUsers;
 
-            // Licences à renouveler (simulé)
             document.getElementById('expiringLicenses').textContent = Math.floor(activeLicenses.length * 0.2);
 
-            // Taux de conversion
             const prospects = companies.filter(c => c.status === 'prospect').length;
             const clients = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
             const conversionRate = prospects > 0 ? Math.round((clients / (prospects + clients)) * 100) : 0;
             document.getElementById('conversionRate').textContent = `${conversionRate}%`;
 
-            // Panier moyen
             const monthlyRevenue = activeLicenses.reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
             const avgDealSize = activeLicenses.length > 0 ? monthlyRevenue / activeLicenses.length : 0;
             document.getElementById('avgDealSize').textContent = formatCurrency(avgDealSize);
@@ -426,7 +410,6 @@
             if (!canvas) return;
 
             try {
-                // Générer des données de revenus sur 6 mois
                 const months = [];
                 const revenueData = [];
                 
@@ -439,8 +422,7 @@
                     date.setMonth(date.getMonth() - i);
                     months.push(date.toLocaleDateString('fr-FR', { month: 'short' }));
                     
-                    // Simuler une progression
-                    const variation = 0.8 + (Math.random() * 0.4); // ±20% de variation
+                    const variation = 0.8 + (Math.random() * 0.4);
                     revenueData.push(Math.round(currentRevenue * variation));
                 }
 
@@ -491,7 +473,6 @@
             const container = document.getElementById('recentActivity');
             
             try {
-                // Générer des activités récentes basées sur les données
                 const activities = [
                     {
                         type: 'company',
@@ -592,7 +573,6 @@
         }
 
         function showErrorState() {
-            // Afficher un état d'erreur pour tous les composants
             document.getElementById('totalCompanies').textContent = '-';
             document.getElementById('companiesBreakdown').textContent = 'Erreur de chargement';
             
@@ -612,6 +592,21 @@
                 style: 'currency',
                 currency: 'EUR'
             }).format(amount);
+        }
+
+        async function handleLogout() {
+            try {
+                if (window.AuthService) {
+                    await AuthService.logout();
+                } else {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Erreur déconnexion:', error);
+                localStorage.clear();
+                window.location.href = 'login.html';
+            }
         }
 
         // Actualisation automatique toutes les 5 minutes
