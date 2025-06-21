@@ -126,10 +126,17 @@ class AuthService {
 // ===================================
 
 class CRMService {
+    // Méthode utilitaire pour les logs
+    static log(action, data = null) {
+        console.log(`🔄 CRM Service - ${action}`, data ? data : '');
+    }
+
     // ========== SOCIÉTÉS ==========
     
     static async getCompanies() {
         try {
+            this.log('Récupération des sociétés');
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
@@ -144,25 +151,39 @@ class CRMService {
                         last_name,
                         email,
                         position,
+                        phone,
                         contact_type,
                         is_admin_contact,
-                        is_payment_contact
+                        is_payment_contact,
+                        created_at
                     )
                 `)
                 .order('created_at', { ascending: false });
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur Supabase getCompanies:', error);
+                throw error;
+            }
+            
+            this.log('Sociétés récupérées', `${data?.length || 0} entrées`);
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('Erreur récupération sociétés:', error);
+            console.error('❌ Erreur récupération sociétés:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async createCompany(companyData) {
         try {
+            this.log('Création société', companyData);
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
+            }
+
+            // Valider les données
+            if (!companyData.name) {
+                throw new Error('Le nom de la société est obligatoire');
             }
             
             const { data, error } = await supabase
@@ -174,18 +195,29 @@ class CRMService {
                 }])
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur création société:', error);
+                throw error;
+            }
+            
+            this.log('Société créée avec succès', data[0]);
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('Erreur création société:', error);
+            console.error('❌ Erreur création société:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async updateCompany(id, companyData) {
         try {
+            this.log('Mise à jour société', { id, data: companyData });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
+            }
+            
+            if (!id) {
+                throw new Error('ID de société manquant');
             }
             
             const { data, error } = await supabase
@@ -197,18 +229,43 @@ class CRMService {
                 .eq('id', id)
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur mise à jour société:', error);
+                throw error;
+            }
+            
+            if (!data || data.length === 0) {
+                throw new Error('Société non trouvée');
+            }
+            
+            this.log('Société mise à jour avec succès', data[0]);
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('Erreur mise à jour société:', error);
+            console.error('❌ Erreur mise à jour société:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async deleteCompany(id) {
         try {
+            this.log('Suppression société', { id });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
+            }
+            
+            if (!id) {
+                throw new Error('ID de société manquant');
+            }
+            
+            // Vérifier s'il y a des licences associées
+            const { data: licenses } = await supabase
+                .from('company_licenses')
+                .select('id')
+                .eq('company_id', id);
+                
+            if (licenses && licenses.length > 0) {
+                throw new Error('Impossible de supprimer une société qui a des licences actives');
             }
             
             const { error } = await supabase
@@ -216,10 +273,15 @@ class CRMService {
                 .delete()
                 .eq('id', id);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur suppression société:', error);
+                throw error;
+            }
+            
+            this.log('Société supprimée avec succès');
             return { success: true };
         } catch (error) {
-            console.error('Erreur suppression société:', error);
+            console.error('❌ Erreur suppression société:', error);
             return { success: false, error: error.message };
         }
     }
@@ -228,13 +290,22 @@ class CRMService {
     
     static async getContacts(companyId = null) {
         try {
+            this.log('Récupération des contacts', { companyId });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
             
             let query = supabase
                 .from('company_contacts')
-                .select('*')
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    )
+                `)
                 .order('created_at', { ascending: false });
             
             if (companyId) {
@@ -242,18 +313,31 @@ class CRMService {
             }
             
             const { data, error } = await query;
-            if (error) throw error;
+            
+            if (error) {
+                console.error('❌ Erreur Supabase getContacts:', error);
+                throw error;
+            }
+            
+            this.log('Contacts récupérés', `${data?.length || 0} entrées`);
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('Erreur récupération contacts:', error);
+            console.error('❌ Erreur récupération contacts:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async createContact(contactData) {
         try {
+            this.log('Création contact', contactData);
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
+            }
+
+            // Valider les données
+            if (!contactData.company_id || !contactData.first_name || !contactData.last_name) {
+                throw new Error('Société, prénom et nom sont obligatoires');
             }
             
             const { data, error } = await supabase
@@ -265,16 +349,23 @@ class CRMService {
                 }])
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur création contact:', error);
+                throw error;
+            }
+            
+            this.log('Contact créé avec succès', data[0]);
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('Erreur création contact:', error);
+            console.error('❌ Erreur création contact:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async updateContact(id, contactData) {
         try {
+            this.log('Mise à jour contact', { id, data: contactData });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
@@ -288,16 +379,23 @@ class CRMService {
                 .eq('id', id)
                 .select();
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur mise à jour contact:', error);
+                throw error;
+            }
+            
+            this.log('Contact mis à jour avec succès', data[0]);
             return { success: true, data: data[0] };
         } catch (error) {
-            console.error('Erreur mise à jour contact:', error);
+            console.error('❌ Erreur mise à jour contact:', error);
             return { success: false, error: error.message };
         }
     }
     
     static async deleteContact(id) {
         try {
+            this.log('Suppression contact', { id });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
@@ -307,10 +405,15 @@ class CRMService {
                 .delete()
                 .eq('id', id);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Erreur suppression contact:', error);
+                throw error;
+            }
+            
+            this.log('Contact supprimé avec succès');
             return { success: true };
         } catch (error) {
-            console.error('Erreur suppression contact:', error);
+            console.error('❌ Erreur suppression contact:', error);
             return { success: false, error: error.message };
         }
     }
@@ -319,36 +422,45 @@ class CRMService {
     
     static async getLicenses() {
         try {
+            this.log('Récupération des licences');
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
-            
-            console.log('🔍 Requête Supabase pour les licences...');
             
             const { data, error } = await supabase
                 .from('company_licenses')
                 .select(`
                     *,
-                    companies!company_licenses_company_id_fkey (
+                    companies (
                         id,
                         name,
                         status
                     ),
-                    license_plans!company_licenses_plan_id_fkey (
+                    license_plans (
                         id,
                         name,
-                        price_per_user
+                        price_per_user,
+                        features
+                    ),
+                    license_users (
+                        id,
+                        first_name,
+                        last_name,
+                        email,
+                        role,
+                        status,
+                        last_activity
                     )
                 `)
                 .order('created_at', { ascending: false });
             
-            console.log('📊 Réponse Supabase licences:', { data, error });
-            
             if (error) {
-                console.error('❌ Erreur Supabase:', error);
+                console.error('❌ Erreur Supabase getLicenses:', error);
                 throw error;
             }
             
+            this.log('Licences récupérées', `${data?.length || 0} entrées`);
             return { success: true, data: data || [] };
         } catch (error) {
             console.error('❌ Erreur récupération licences:', error);
@@ -358,11 +470,16 @@ class CRMService {
     
     static async createLicense(licenseData) {
         try {
+            this.log('Création licence', licenseData);
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
-            
-            console.log('📝 Création licence:', licenseData);
+
+            // Valider les données
+            if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
+                throw new Error('Société, plan et nombre de licences sont obligatoires');
+            }
             
             const { data, error } = await supabase
                 .from('company_licenses')
@@ -373,15 +490,16 @@ class CRMService {
                 }])
                 .select(`
                     *,
-                    companies!company_licenses_company_id_fkey (
+                    companies (
                         id,
                         name,
                         status
                     ),
-                    license_plans!company_licenses_plan_id_fkey (
+                    license_plans (
                         id,
                         name,
-                        price_per_user
+                        price_per_user,
+                        features
                     )
                 `);
             
@@ -390,7 +508,7 @@ class CRMService {
                 throw error;
             }
             
-            console.log('✅ Licence créée:', data);
+            this.log('Licence créée avec succès', data[0]);
             return { success: true, data: data[0] };
         } catch (error) {
             console.error('❌ Erreur création licence:', error);
@@ -400,11 +518,11 @@ class CRMService {
     
     static async updateLicense(id, licenseData) {
         try {
+            this.log('Mise à jour licence', { id, data: licenseData });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
-            
-            console.log('📝 Mise à jour licence:', id, licenseData);
             
             const { data, error } = await supabase
                 .from('company_licenses')
@@ -415,15 +533,16 @@ class CRMService {
                 .eq('id', id)
                 .select(`
                     *,
-                    companies!company_licenses_company_id_fkey (
+                    companies (
                         id,
                         name,
                         status
                     ),
-                    license_plans!company_licenses_plan_id_fkey (
+                    license_plans (
                         id,
                         name,
-                        price_per_user
+                        price_per_user,
+                        features
                     )
                 `);
             
@@ -432,7 +551,7 @@ class CRMService {
                 throw error;
             }
             
-            console.log('✅ Licence mise à jour:', data);
+            this.log('Licence mise à jour avec succès', data[0]);
             return { success: true, data: data[0] };
         } catch (error) {
             console.error('❌ Erreur mise à jour licence:', error);
@@ -442,11 +561,17 @@ class CRMService {
     
     static async deleteLicense(id) {
         try {
+            this.log('Suppression licence', { id });
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
             
-            console.log('🗑️ Suppression licence:', id);
+            // Supprimer d'abord les utilisateurs associés
+            await supabase
+                .from('license_users')
+                .delete()
+                .eq('license_id', id);
             
             const { error } = await supabase
                 .from('company_licenses')
@@ -458,7 +583,7 @@ class CRMService {
                 throw error;
             }
             
-            console.log('✅ Licence supprimée');
+            this.log('Licence supprimée avec succès');
             return { success: true };
         } catch (error) {
             console.error('❌ Erreur suppression licence:', error);
@@ -468,11 +593,11 @@ class CRMService {
     
     static async getLicensePlans() {
         try {
+            this.log('Récupération des plans de licence');
+            
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
-            
-            console.log('🔍 Requête Supabase pour les plans de licence...');
             
             const { data, error } = await supabase
                 .from('license_plans')
@@ -480,16 +605,74 @@ class CRMService {
                 .eq('is_active', true)
                 .order('price_per_user', { ascending: true });
             
-            console.log('📊 Réponse Supabase plans:', { data, error });
-            
             if (error) {
-                console.error('❌ Erreur Supabase plans:', error);
+                console.error('❌ Erreur Supabase getLicensePlans:', error);
                 throw error;
             }
             
+            this.log('Plans de licence récupérés', `${data?.length || 0} entrées`);
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ Erreur récupération plans:', error);
+            console.error('❌ Erreur récupération plans de licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ========== UTILISATEURS DE LICENCE ==========
+    
+    static async getLicenseUsers(licenseId) {
+        try {
+            this.log('Récupération utilisateurs licence', { licenseId });
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+            
+            const { data, error } = await supabase
+                .from('license_users')
+                .select('*')
+                .eq('license_id', licenseId)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('❌ Erreur récupération utilisateurs licence:', error);
+                throw error;
+            }
+            
+            this.log('Utilisateurs licence récupérés', `${data?.length || 0} entrées`);
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('❌ Erreur récupération utilisateurs licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async createLicenseUser(userData) {
+        try {
+            this.log('Création utilisateur licence', userData);
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+            
+            const { data, error } = await supabase
+                .from('license_users')
+                .insert([{
+                    ...userData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select();
+            
+            if (error) {
+                console.error('❌ Erreur création utilisateur licence:', error);
+                throw error;
+            }
+            
+            this.log('Utilisateur licence créé avec succès', data[0]);
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('❌ Erreur création utilisateur licence:', error);
             return { success: false, error: error.message };
         }
     }
@@ -498,44 +681,72 @@ class CRMService {
     
     static async getStats() {
         try {
-            const [companiesResult, licensesResult] = await Promise.all([
+            this.log('Calcul des statistiques');
+            
+            const [companiesResult, licensesResult, contactsResult] = await Promise.all([
                 this.getCompanies(),
-                this.getLicenses()
+                this.getLicenses(),
+                this.getContacts()
             ]);
             
-            if (!companiesResult.success || !licensesResult.success) {
-                throw new Error('Erreur récupération données');
+            if (!companiesResult.success || !licensesResult.success || !contactsResult.success) {
+                throw new Error('Erreur récupération données pour statistiques');
             }
             
             const companies = companiesResult.data;
             const licenses = licensesResult.data;
+            const contacts = contactsResult.data;
+            
+            // Calculs des statistiques
+            const now = new Date();
+            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             
             const stats = {
+                // Sociétés
                 totalCompanies: companies.length,
                 prospects: companies.filter(c => c.status === 'prospect').length,
                 sponsors: companies.filter(c => c.status === 'sponsor').length,
                 clients: companies.filter(c => c.status === 'client').length,
                 onboarded: companies.filter(c => c.status === 'onboarded').length,
+                
+                // Contacts
+                totalContacts: contacts.length,
+                
+                // Licences
+                totalLicenses: licenses.length,
                 activeLicenses: licenses.filter(l => l.status === 'active').length,
                 totalLicenseCount: licenses
                     .filter(l => l.status === 'active')
                     .reduce((sum, l) => sum + (l.license_count || 0), 0),
+                
+                // Utilisateurs
+                totalUsers: licenses
+                    .filter(l => l.status === 'active')
+                    .reduce((sum, l) => sum + (l.license_users?.filter(u => u.status === 'active').length || 0), 0),
+                
+                // Revenus
                 monthlyRevenue: licenses
                     .filter(l => l.status === 'active')
                     .reduce((sum, l) => sum + (l.monthly_cost || 0), 0),
+                
+                yearlyRevenue: licenses
+                    .filter(l => l.status === 'active')
+                    .reduce((sum, l) => sum + ((l.monthly_cost || 0) * 12), 0),
+                
+                // Expirations
                 expiringLicenses: licenses.filter(l => {
-                    if (l.status !== 'active') return false;
+                    if (l.status !== 'active' || !l.renewal_date) return false;
                     const renewalDate = new Date(l.renewal_date);
-                    const now = new Date();
-                    const diffTime = renewalDate - now;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    return diffDays <= 30 && diffDays >= 0;
-                }).length
+                    return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
+                }).length,
+                
+                expiredLicenses: licenses.filter(l => l.status === 'expired').length
             };
             
+            this.log('Statistiques calculées', stats);
             return { success: true, data: stats };
         } catch (error) {
-            console.error('Erreur calcul statistiques:', error);
+            console.error('❌ Erreur calcul statistiques:', error);
             return { success: false, error: error.message };
         }
     }
@@ -626,7 +837,22 @@ function showError(message, duration = 5000) {
         justify-content: space-between;
         align-items: center;
         pointer-events: auto;
+        animation: slideIn 0.3s ease;
     `;
+    
+    // Ajouter les keyframes d'animation
+    if (!document.getElementById('notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
     errorDiv.textContent = message;
     
     // Ajouter le bouton de fermeture
@@ -695,6 +921,7 @@ function showSuccess(message, duration = 3000) {
         justify-content: space-between;
         align-items: center;
         pointer-events: auto;
+        animation: slideIn 0.3s ease;
     `;
     successDiv.textContent = message;
     
