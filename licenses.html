@@ -97,29 +97,42 @@
             margin-top: 0.5rem;
         }
 
-        /* Contrôles de vue optimisés */
+        /* Contrôles de vue condensés sur une ligne */
         .view-controls {
             background: white;
             padding: 1.5rem;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             margin-bottom: 2rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
         }
 
         .controls-row {
             display: flex;
-            justify-content: space-between;
             align-items: center;
             gap: 1rem;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .controls-row::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .controls-row::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 2px;
+        }
+
+        .controls-row::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
         }
 
         .view-toggle {
             display: flex;
             gap: 0.5rem;
+            flex-shrink: 0;
         }
 
         .toggle-btn {
@@ -131,6 +144,7 @@
             font-size: 0.875rem;
             transition: all 0.2s;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .toggle-btn.active {
@@ -145,27 +159,33 @@
         }
 
         .search-input {
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 1rem;
             border: 1px solid var(--gray-200);
             border-radius: var(--radius);
-            min-width: 300px;
-            flex: 1;
-            max-width: 400px;
+            width: 250px;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .sort-buttons {
             display: flex;
             gap: 0.5rem;
-            flex-wrap: wrap;
+            flex-shrink: 0;
         }
 
         .sort-btn {
-            padding: 0.5rem 1rem;
+            padding: 0.4rem 0.8rem;
             border: 1px solid var(--gray-200);
             background: white;
             border-radius: var(--radius);
             cursor: pointer;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             transition: all 0.2s;
             font-weight: 500;
             white-space: nowrap;
@@ -180,15 +200,14 @@
         .sort-btn:hover:not(.active) {
             background: var(--gray-50);
             border-color: var(--gray-300);
-            transform: translateY(-1px);
         }
 
-        /* Vue par société */
+        /* Vue par société condensée */
         .company-card {
             background: white;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             overflow: hidden;
             border: 1px solid var(--gray-200);
             transition: all 0.3s ease;
@@ -200,7 +219,7 @@
 
         .company-header {
             background: var(--gray-50);
-            padding: 1.5rem;
+            padding: 1rem 1.5rem;
             border-bottom: 1px solid var(--gray-200);
             cursor: pointer;
             transition: all 0.2s;
@@ -214,17 +233,20 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 1rem;
         }
 
         .company-main {
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex: 1;
+            min-width: 0;
         }
 
         .company-avatar {
-            width: 60px;
-            height: 60px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
             background: var(--primary);
             color: white;
@@ -232,47 +254,63 @@
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 1.25rem;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .company-details {
+            min-width: 0;
+            flex: 1;
         }
 
         .company-details h3 {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             font-weight: 700;
             color: var(--gray-800);
             margin: 0 0 0.25rem 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .company-meta {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             color: var(--gray-600);
+            white-space: nowrap;
         }
 
         .company-stats {
             display: flex;
-            gap: 2rem;
+            gap: 1.5rem;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .stat-item {
             text-align: center;
+            min-width: 60px;
         }
 
         .stat-number {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: 700;
             color: var(--primary);
+            line-height: 1;
         }
 
         .stat-text {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--gray-600);
             text-transform: uppercase;
+            margin-top: 0.2rem;
         }
 
         .expand-icon {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             color: var(--gray-400);
             transition: transform 0.3s ease;
+            margin-left: 1rem;
+            flex-shrink: 0;
         }
 
         .company-card.expanded .expand-icon {
@@ -586,6 +624,33 @@
         }
 
         /* Responsive */
+        @media (max-width: 1200px) {
+            .controls-row {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .sort-buttons {
+                order: 1;
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+            
+            .view-toggle {
+                order: 2;
+            }
+            
+            .search-input {
+                order: 3;
+                width: 200px;
+            }
+            
+            .controls-row > .btn {
+                order: 4;
+            }
+        }
+
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -609,18 +674,23 @@
             }
 
             .sort-btn {
-                padding: 0.4rem 0.8rem;
-                font-size: 0.8rem;
+                padding: 0.4rem 0.6rem;
+                font-size: 0.75rem;
             }
 
             .search-input {
-                min-width: auto;
-                max-width: none;
+                width: 100%;
             }
 
             .company-stats {
                 flex-direction: column;
                 gap: 0.5rem;
+            }
+
+            .company-info {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
             }
 
             .form-grid {
@@ -629,6 +699,16 @@
 
             .license-details {
                 grid-template-columns: 1fr;
+            }
+
+            .company-main {
+                min-width: 0;
+            }
+
+            .company-details h3 {
+                white-space: normal;
+                overflow: visible;
+                text-overflow: unset;
             }
         }
     </style>
@@ -713,9 +793,10 @@
             </div>
         </div>
 
-        <!-- Contrôles de vue optimisés -->
+        <!-- Contrôles de vue sur une ligne -->
         <div class="view-controls">
             <div class="controls-row">
+                <!-- Toggle vue -->
                 <div class="view-toggle">
                     <button class="toggle-btn active" onclick="setView('companies')" id="viewCompanies">
                         🏢 Par société
@@ -725,14 +806,10 @@
                     </button>
                 </div>
                 
-                <button class="btn btn-primary" onclick="openCreateModal()">
-                    ➕ Nouvelle licence
-                </button>
-            </div>
-            
-            <div class="controls-row">
-                <input type="text" class="search-input" placeholder="🔍 Rechercher par nom, email ou société..." oninput="searchLicenses()" id="searchInput">
+                <!-- Barre de recherche -->
+                <input type="text" class="search-input" placeholder="🔍 Rechercher..." oninput="searchLicenses()" id="searchInput">
                 
+                <!-- Boutons de tri -->
                 <div class="sort-buttons">
                     <button class="sort-btn active" onclick="applySortFilter('created_desc')" data-sort="created_desc">📅 Récentes</button>
                     <button class="sort-btn" onclick="applySortFilter('expiring_only')" data-sort="expiring_only">🔄 À renouveler</button>
@@ -741,6 +818,11 @@
                     <button class="sort-btn" onclick="applySortFilter('company_asc')" data-sort="company_asc">🏢 A-Z</button>
                     <button class="sort-btn" onclick="applySortFilter('status_active')" data-sort="status_active">✅ Actives</button>
                 </div>
+                
+                <!-- Bouton nouvelle licence -->
+                <button class="btn btn-primary" onclick="openCreateModal()">
+                    ➕ Nouvelle licence
+                </button>
             </div>
         </div>
 
@@ -2068,6 +2150,11 @@
             }
         }
 
+        function getClientName(license) {
+            const company = appData.companies.find(c => c.id === license.company_id);
+            return company?.name || 'Société inconnue';
+        }
+
         function getStatusPriority(license) {
             if (license.status === 'active') return 1;
             if (license.status === 'expired') return 3;
@@ -2075,21 +2162,10 @@
             return 2; // autres statuts
         }
 
-        function getExpiringPriority(license) {
-            if (license.status !== 'active' || !license.renewal_date) return 99;
-            
-            const now = new Date();
-            const renewal = new Date(license.renewal_date);
-            const daysUntil = Math.ceil((renewal - now) / (1000 * 60 * 60 * 24));
-            
-            if (daysUntil <= 0) return 1; // Expirées
-            if (daysUntil <= 7) return 2; // Dans la semaine
-            if (daysUntil <= 30) return 3; // Dans le mois
-            return 4; // Plus tard
-        }
-
         function closeModal() {
             document.getElementById('licenseModal').classList.remove('show');
+            appData.isEditing = false;
+            appData.currentLicense = null;
         }
 
         function closeCompanyModal() {
