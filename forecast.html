@@ -382,19 +382,19 @@
                 gap: 0.75rem;
             }
             
-            .status-filters {
-                order: 1;
-                width: 100%;
-            }
-            
             .per-page-selector {
-                order: 2;
+                order: 1;
             }
             
             .search-input {
-                order: 3;
+                order: 2;
                 flex: 1;
                 width: auto;
+            }
+            
+            .status-filters {
+                order: 3;
+                width: 100%;
             }
             
             .controls-row > div:last-child {
@@ -506,6 +506,22 @@
         <!-- Contrôles et filtres pour le tableau - UNE SEULE LIGNE -->
         <div class="table-controls">
             <div class="controls-row">
+                <!-- Sélecteur nombre par page -->
+                <div class="per-page-selector">
+                    <span style="font-weight: 600; color: #374151;">Afficher :</span>
+                    <select id="perPageSelect" onchange="changePerPage()">
+                        <option value="10">10 lignes</option>
+                        <option value="25" selected>25 lignes</option>
+                        <option value="50">50 lignes</option>
+                        <option value="100">100 lignes</option>
+                        <option value="all">Tout afficher</option>
+                    </select>
+                </div>
+                
+                <!-- Barre de recherche -->
+                <input type="text" id="opportunitySearch" class="search-input" placeholder="🔍 Rechercher une opportunité..." 
+                       oninput="searchOpportunities()">
+
                 <!-- Filtres par statut -->
                 <div class="status-filters">
                     <button class="filter-btn active" data-filter="all" onclick="filterOpportunities('all')">
@@ -527,28 +543,9 @@
                         Finalisation (<span id="count-closing">0</span>)
                     </button>
                 </div>
-
-                <!-- Sélecteur nombre par page -->
-                <div class="per-page-selector">
-                    <span style="font-weight: 600; color: #374151;">Afficher :</span>
-                    <select id="perPageSelect" onchange="changePerPage()">
-                        <option value="10">10 lignes</option>
-                        <option value="25" selected>25 lignes</option>
-                        <option value="50">50 lignes</option>
-                        <option value="100">100 lignes</option>
-                        <option value="all">Tout afficher</option>
-                    </select>
-                </div>
-                
-                <!-- Barre de recherche -->
-                <input type="text" id="opportunitySearch" class="search-input" placeholder="🔍 Rechercher une opportunité..." 
-                       oninput="searchOpportunities()">
                 
                 <!-- Actions -->
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-secondary btn-sm" onclick="clearAllOpportunities()" title="Vider toutes les opportunités">
-                        🗑️ Vider tout
-                    </button>
                     <button class="btn btn-primary" onclick="openModal('add-opportunity')">
                         ➕ Nouvelle Opportunité
                     </button>
