@@ -339,7 +339,7 @@
             showLoading(true);
             
             try {
-                // Vérifier l'authentification
+                // Vérifier l'authentification avec le même système que les autres pages
                 if (!await AuthService.requireAuth()) return;
                 
                 // Charger les informations utilisateur
@@ -372,25 +372,22 @@
             console.log('🔄 Chargement des données du dashboard...');
             
             try {
-                // Charger toutes les données en parallèle
-                const [companiesResult, contactsResult, licensesResult, statsResult] = await Promise.all([
+                // Utiliser le même service CRM que les autres pages
+                const [companiesResult, contactsResult, licensesResult] = await Promise.all([
                     CRMService.getCompanies(),
                     CRMService.getContacts(),
-                    CRMService.getLicenses(),
-                    CRMService.getStats()
+                    CRMService.getLicenses()
                 ]);
 
                 // Traiter les résultats
                 dashboardData.companies = companiesResult.success ? companiesResult.data : [];
                 dashboardData.contacts = contactsResult.success ? contactsResult.data : [];
                 dashboardData.licenses = licensesResult.success ? licensesResult.data : [];
-                dashboardData.stats = statsResult.success ? statsResult.data : null;
 
                 console.log('✅ Données dashboard chargées:', {
                     companies: dashboardData.companies.length,
                     contacts: dashboardData.contacts.length,
-                    licenses: dashboardData.licenses.length,
-                    statsAvailable: !!dashboardData.stats
+                    licenses: dashboardData.licenses.length
                 });
 
             } catch (error) {
@@ -408,37 +405,7 @@
         }
 
         function updateMainStats() {
-            const stats = dashboardData.stats;
-            
-            if (!stats) {
-                console.warn('⚠️ Statistiques non disponibles, calcul manuel');
-                calculateManualStats();
-                return;
-            }
-
-            // Sociétés
-            document.getElementById('totalCompanies').textContent = stats.totalCompanies || 0;
-            document.getElementById('companiesBreakdown').textContent = 
-                `${stats.prospects || 0} prospects • ${stats.clients || 0} clients`;
-
-            // Contacts
-            document.getElementById('totalContacts').textContent = stats.totalContacts || 0;
-            document.getElementById('contactsBreakdown').textContent = 
-                `Répartis dans ${stats.totalCompanies || 0} sociétés`;
-
-            // Licences
-            document.getElementById('activeLicenses').textContent = stats.activeLicenses || 0;
-            document.getElementById('licensesBreakdown').textContent = 
-                `${stats.totalLicenseCount || 0} utilisateurs total`;
-
-            // Revenus
-            document.getElementById('monthlyRevenue').textContent = formatCurrency(stats.monthlyRevenue || 0);
-            document.getElementById('revenueBreakdown').textContent = 
-                `${formatCurrency((stats.monthlyRevenue || 0) * 12)} annuel`;
-        }
-
-        function calculateManualStats() {
-            // Calcul manuel si les stats ne sont pas disponibles
+            // Calcul manuel des statistiques à partir des données réelles
             const companies = dashboardData.companies;
             const contacts = dashboardData.contacts;
             const licenses = dashboardData.licenses;
@@ -471,33 +438,6 @@
             document.getElementById('monthlyRevenue').textContent = formatCurrency(monthlyRevenue);
             document.getElementById('revenueBreakdown').textContent = `${formatCurrency(monthlyRevenue * 12)} annuel`;
         }
-
-        function updateQuickStats() {
-            const licenses = dashboardData.licenses;
-            const activeLicenses = licenses.filter(l => l.status === 'active');
-            
-            // Utilisateurs total
-            const totalUsers = activeLicenses.reduce((sum, l) => {
-                return sum + (l.license_users?.filter(u => u.status === 'active').length || 0);
-            }, 0);
-            document.getElementById('totalUsers').textContent = totalUsers;
-
-            // Licences à renouveler (30 jours)
-            const now = new Date();
-            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-            const expiringCount = activeLicenses.filter(l => {
-                if (!l.renewal_date) return false;
-                const renewalDate = new Date(l.renewal_date);
-                return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
-            }).length;
-            document.getElementById('expiringLicenses').textContent = expiringCount;
-
-            // Taux de conversion (prospects vers clients)
-            const companies = dashboardData.companies;
-            const prospects = companies.filter(c => c.status === 'prospect').length;
-            const clients = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
-            const conversionRate = prospects > 0 ? Math.round((clients / (prospects + clients)) * 100) : 0;
-            document.getElementById('conversionRate').textContent = `${conversionRate}%`;
 
         function updateQuickStats() {
             const licenses = dashboardData.licenses;
@@ -626,7 +566,7 @@
                     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
                     months.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
                     
-                    // Simuler une progression des revenus
+                    // Simuler une progression des revenus basée sur les données réelles
                     const baseRevenue = dashboardData.licenses
                         .filter(l => l.status === 'active')
                         .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
