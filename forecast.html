@@ -100,13 +100,13 @@
             background: #f9fafb;
         }
 
-        .opportunity-title {
+        .opportunity-company {
             font-weight: 600;
             color: #1f2937;
             cursor: pointer;
         }
 
-        .opportunity-title:hover {
+        .opportunity-company:hover {
             color: #667eea;
         }
 
@@ -558,9 +558,6 @@
             <table>
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="title" onclick="sortOpportunities('title')">
-                            Opportunité <span class="sort-arrow">↕️</span>
-                        </th>
                         <th class="sortable" data-sort="company_name" onclick="sortOpportunities('company_name')">
                             Société <span class="sort-arrow">↕️</span>
                         </th>
@@ -671,7 +668,7 @@
             </div>
             
             <form id="addOpportunityForm">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="opportunityCompany">Société *</label>
                         <select id="opportunityCompany" required>
@@ -679,13 +676,6 @@
                             <!-- Options chargées dynamiquement -->
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="opportunityTitle">Titre de l'opportunité *</label>
-                        <input type="text" id="opportunityTitle" required placeholder="Ex: Licence pour 50 utilisateurs">
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="opportunityValue">Valeur estimée (€) *</label>
                         <input type="number" id="opportunityValue" required min="0" step="0.01" placeholder="5000">
@@ -700,13 +690,13 @@
                             <option value="closing">Finalisation</option>
                         </select>
                     </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="opportunityProbability">Probabilité (%)</label>
                         <input type="number" id="opportunityProbability" min="0" max="100" value="25">
                     </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="expectedCloseDate">Date de clôture prévue</label>
                         <input type="date" id="expectedCloseDate">
@@ -772,9 +762,6 @@
         let currentPage = 1;
         let itemsPerPage = 25;
 
-        // Stockage local des opportunités
-        const OPPORTUNITIES_STORAGE_KEY = 'crm_opportunities';
-
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
             const isAuthenticated = await AuthService.requireAuth();
@@ -799,9 +786,10 @@
             showLoading(true);
             
             try {
-                const [companiesResult, licensesResult] = await Promise.all([
+                const [companiesResult, licensesResult, opportunitiesResult] = await Promise.all([
                     CRMService.getCompanies(),
-                    CRMService.getLicenses()
+                    CRMService.getLicenses(),
+                    CRMService.getOpportunities()
                 ]);
                 
                 if (companiesResult.success) {
@@ -809,6 +797,7 @@
                     populateCompanySelect();
                 } else {
                     companies = [];
+                    showError('Erreur lors du chargement des sociétés');
                 }
                 
                 if (licensesResult.success) {
@@ -817,7 +806,20 @@
                     licenses = [];
                 }
                 
-                loadOpportunities();
+                if (opportunitiesResult.success) {
+                    opportunities = opportunitiesResult.data.map(opp => ({
+                        ...opp,
+                        company_name: opp.companies?.name || 'Société inconnue'
+                    }));
+                } else {
+                    opportunities = [];
+                    showError('Erreur lors du chargement des opportunités');
+                }
+                
+                filteredOpportunities = [...opportunities];
+                currentPage = 1;
+                renderOpportunities();
+                updateOpportunityCounts();
                 
             } catch (error) {
                 console.error('Erreur:', error);
@@ -828,21 +830,6 @@
             } finally {
                 showLoading(false);
             }
-        }
-
-        function loadOpportunities() {
-            const stored = localStorage.getItem(OPPORTUNITIES_STORAGE_KEY);
-            let localOpportunities = stored ? JSON.parse(stored) : [];
-            
-            opportunities = localOpportunities.map(opp => ({
-                ...opp,
-                company_name: companies.find(c => c.id === opp.company_id)?.name || 'Société inconnue'
-            }));
-            
-            filteredOpportunities = [...opportunities];
-            currentPage = 1;
-            renderOpportunities();
-            updateOpportunityCounts();
         }
 
         function populateCompanySelect() {
@@ -874,10 +861,6 @@
                 let valueA, valueB;
                 
                 switch (field) {
-                    case 'title':
-                        valueA = (a.title || '').toLowerCase();
-                        valueB = (b.title || '').toLowerCase();
-                        break;
                     case 'company_name':
                         valueA = (a.company_name || '').toLowerCase();
                         valueB = (b.company_name || '').toLowerCase();
@@ -1033,8 +1016,7 @@
                     return false;
                 }
                 
-                return opp.title.toLowerCase().includes(searchTerm) ||
-                       opp.company_name.toLowerCase().includes(searchTerm) ||
+                return opp.company_name.toLowerCase().includes(searchTerm) ||
                        (opp.notes && opp.notes.toLowerCase().includes(searchTerm)) ||
                        (opp.source && opp.source.toLowerCase().includes(searchTerm));
             });
@@ -1066,9 +1048,8 @@
             tbody.innerHTML = paginatedOpportunities.map(opp => `
                 <tr onclick="openOpportunityDetails('${opp.id}')" style="cursor: pointer;">
                     <td>
-                        <div class="opportunity-title">${escapeHtml(opp.title)}</div>
+                        <div class="opportunity-company">${escapeHtml(opp.company_name)}</div>
                     </td>
-                    <td>${escapeHtml(opp.company_name)}</td>
                     <td><span class="value-amount">${formatCurrency(opp.value)}</span></td>
                     <td>
                         <span class="stage-badge stage-${opp.stage}">${getStageLabel(opp.stage)}</span>
@@ -1311,7 +1292,7 @@
                             </div>
                         </td>
                         <td style="font-weight: 600; color: #667eea;">${formatCurrency(weightedRevenue)}</td>
-                        <td style="font-size: 1.25rem;" title="${period.realOpportunities.map(o => o.title).join(', ') || 'Aucune opportunité'}">${trend}</td>
+                        <td style="font-size: 1.25rem;" title="${period.realOpportunities.map(o => o.company_name + ' - ' + formatCurrency(o.value)).join(', ') || 'Aucune opportunité'}">${trend}</td>
                     </tr>
                 `;
             }).join('');
@@ -1377,13 +1358,13 @@
             return div.innerHTML;
         }
 
-        // Fonctions de gestion des opportunités (continuent comme dans l'original...)
+        // Fonctions de gestion des opportunités
         function openOpportunityDetails(opportunityId) {
             const opportunity = opportunities.find(opp => opp.id === opportunityId);
             if (!opportunity) return;
             
             selectedOpportunity = opportunity;
-            document.getElementById('opportunityDetailsTitle').textContent = opportunity.title;
+            document.getElementById('opportunityDetailsTitle').textContent = `${opportunity.company_name} - ${formatCurrency(opportunity.value)}`;
             
             document.getElementById('opportunityDetailsContent').innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
@@ -1402,7 +1383,7 @@
                         <div style="display: grid; gap: 0.75rem;">
                             <div><strong>Clôture prévue :</strong> ${formatDate(opportunity.expected_close_date)}</div>
                             <div><strong>Créée le :</strong> ${formatDate(opportunity.created_at)}</div>
-                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value)}</span></div>
+                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value * opportunity.probability / 100)}</span></div>
                         </div>
                     </div>
                 </div>
@@ -1436,7 +1417,6 @@
             selectedOpportunity = opportunity;
             
             document.getElementById('opportunityCompany').value = opportunity.company_id;
-            document.getElementById('opportunityTitle').value = opportunity.title;
             document.getElementById('opportunityValue').value = opportunity.value;
             document.getElementById('opportunityStage').value = opportunity.stage;
             document.getElementById('opportunityProbability').value = opportunity.probability;
@@ -1451,38 +1431,34 @@
             openModal('add-opportunity');
         }
 
-        function deleteOpportunity(opportunityId) {
+        async function deleteOpportunity(opportunityId) {
             const opportunity = opportunities.find(opp => opp.id === opportunityId);
             if (!opportunity) return;
             
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'opportunité "${opportunity.title}" ?\n\nCette action est irréversible.`)) {
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'opportunité pour "${opportunity.company_name}" d'une valeur de ${formatCurrency(opportunity.value)} ?\n\nCette action est irréversible.`)) {
                 return;
             }
             
-            const stored = JSON.parse(localStorage.getItem(OPPORTUNITIES_STORAGE_KEY) || '[]');
-            const updatedStored = stored.filter(opp => opp.id !== opportunityId);
-            localStorage.setItem(OPPORTUNITIES_STORAGE_KEY, JSON.stringify(updatedStored));
+            showLoading(true);
             
-            loadOpportunities();
-            calculateForecastMetrics();
-            initializePipelineChart();
-            updateForecastTable();
-            
-            showSuccess('Opportunité supprimée avec succès');
-        }
-
-        function clearAllOpportunities() {
-            if (!confirm('Êtes-vous sûr de vouloir supprimer TOUTES les opportunités ?\n\nCette action est irréversible et videra complètement votre pipeline.')) {
-                return;
+            try {
+                const result = await CRMService.deleteOpportunity(opportunityId);
+                
+                if (result.success) {
+                    showSuccess('Opportunité supprimée avec succès');
+                    await loadAllData();
+                    calculateForecastMetrics();
+                    initializePipelineChart();
+                    updateForecastTable();
+                } else {
+                    showError(result.error || 'Erreur lors de la suppression');
+                }
+            } catch (error) {
+                console.error('Erreur suppression:', error);
+                showError('Erreur lors de la suppression de l\'opportunité');
+            } finally {
+                showLoading(false);
             }
-            
-            localStorage.removeItem(OPPORTUNITIES_STORAGE_KEY);
-            loadOpportunities();
-            calculateForecastMetrics();
-            initializePipelineChart();
-            updateForecastTable();
-            
-            showSuccess('Toutes les opportunités ont été supprimées');
         }
 
         function updateStageDefaults() {
@@ -1542,7 +1518,6 @@
             
             const formData = {
                 company_id: document.getElementById('opportunityCompany').value,
-                title: document.getElementById('opportunityTitle').value,
                 value: parseFloat(document.getElementById('opportunityValue').value),
                 stage: document.getElementById('opportunityStage').value,
                 probability: parseInt(document.getElementById('opportunityProbability').value),
@@ -1551,33 +1526,42 @@
                 notes: document.getElementById('opportunityNotes').value
             };
             
-            const stored = JSON.parse(localStorage.getItem(OPPORTUNITIES_STORAGE_KEY) || '[]');
+            showLoading(true);
             
-            if (selectedOpportunity) {
-                const index = stored.findIndex(opp => opp.id === selectedOpportunity.id);
-                if (index !== -1) {
-                    stored[index] = { ...stored[index], ...formData };
+            try {
+                let result;
+                
+                if (selectedOpportunity) {
+                    result = await CRMService.updateOpportunity(selectedOpportunity.id, formData);
+                    if (result.success) {
+                        showSuccess('Opportunité modifiée avec succès !');
+                    }
+                } else {
+                    result = await CRMService.createOpportunity(formData);
+                    if (result.success) {
+                        showSuccess('Opportunité créée avec succès !');
+                    }
                 }
-                showSuccess('Opportunité modifiée avec succès !');
-            } else {
-                const newOpportunity = {
-                    id: Date.now().toString(),
-                    ...formData,
-                    created_at: new Date().toISOString()
-                };
-                stored.push(newOpportunity);
-                showSuccess('Opportunité créée avec succès !');
+                
+                if (!result.success) {
+                    showError(result.error || 'Erreur lors de la sauvegarde');
+                    return;
+                }
+                
+                await loadAllData();
+                calculateForecastMetrics();
+                initializePipelineChart();
+                updateForecastTable();
+                
+                closeModal('add-opportunity');
+                selectedOpportunity = null;
+                
+            } catch (error) {
+                console.error('Erreur sauvegarde:', error);
+                showError('Erreur lors de la sauvegarde de l\'opportunité');
+            } finally {
+                showLoading(false);
             }
-            
-            localStorage.setItem(OPPORTUNITIES_STORAGE_KEY, JSON.stringify(stored));
-            
-            loadOpportunities();
-            calculateForecastMetrics();
-            initializePipelineChart();
-            updateForecastTable();
-            
-            closeModal('add-opportunity');
-            selectedOpportunity = null;
         });
 
         // Event listeners
