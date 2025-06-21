@@ -4,414 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM Pro - Gestion des Sociétés</title>
+    
+    <!-- Injection variables Netlify -->
+    <script>
+      if (window.location.hostname.includes('netlify')) {
+        window.NETLIFY_ENV = {
+          VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
+          VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
+        };
+        console.log('🌐 Variables Netlify injectées');
+      }
+    </script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Styles spécifiques pour la page sociétés */
-        .filter-btn {
-            padding: 0.5rem 1rem;
-            background: var(--gray-100);
-            border: 1px solid var(--gray-300);
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--gray-700);
-            transition: all var(--transition);
-            white-space: nowrap;
-        }
-        .filter-btn:hover {
-            background: var(--gray-200);
-        }
-        .filter-btn.active {
-            background: var(--primary-color);
-            color: var(--white);
-            border-color: var(--primary-color);
-        }
-
-        /* Vue par défaut : tableau */
-        .companies-table {
-            background: white;
-            border-radius: var(--radius);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: hidden;
-            margin-bottom: 2rem;
-        }
-
-        .companies-table table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .companies-table th {
-            background: #f9fafb;
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: #374151;
-            border-bottom: 1px solid #e5e7eb;
-            white-space: nowrap;
-            cursor: pointer;
-            user-select: none;
-            position: relative;
-            transition: background-color 0.2s ease;
-        }
-
-        .companies-table th:hover {
-            background: #f3f4f6;
-        }
-
-        .companies-table th.sortable {
-            padding-right: 2rem;
-        }
-
-        .sort-arrow {
-            position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 0.75rem;
-            opacity: 0.5;
-            transition: opacity 0.2s ease;
-        }
-
-        .companies-table th:hover .sort-arrow {
-            opacity: 0.8;
-        }
-
-        .companies-table th.sort-asc .sort-arrow {
-            opacity: 1;
-            color: #2563eb;
-        }
-
-        .companies-table th.sort-desc .sort-arrow {
-            opacity: 1;
-            color: #2563eb;
-        }
-
-        .companies-table td {
-            padding: 1rem;
-            border-bottom: 1px solid #f3f4f6;
-            vertical-align: middle;
-        }
-
-        .companies-table tr:hover {
-            background: #f9fafb;
-        }
-
-        .company-name {
-            font-weight: 600;
-            color: #1f2937;
-            cursor: pointer;
-        }
-
-        .company-name:hover {
-            color: #2563eb;
-        }
-
-        .revenue-amount {
-            font-weight: 600;
-            color: #059669;
-        }
-
-        /* Vue en cartes (alternative) */
-        .companies-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .company-card {
-            background: var(--white);
-            border: 1px solid var(--gray-200);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            transition: all var(--transition);
-            cursor: pointer;
-        }
-        .company-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-            border-color: var(--primary-color);
-        }
-
-        .company-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .company-industry {
-            font-size: 0.875rem;
-            color: var(--gray-500);
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-
-        .status-prospect {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .status-sponsor {
-            background: #f3e8ff;
-            color: #7c3aed;
-        }
-        .status-client {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        .status-onboarded {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .company-info {
-            display: grid;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .company-info-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: var(--gray-600);
-        }
-
-        .company-actions {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
-        }
-
-        /* Contrôles de vue - Une seule ligne */
-        .view-controls {
-            background: white;
-            padding: 1.5rem;
-            border-radius: var(--radius);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-
-        .controls-single-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .left-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-            flex: 1;
-        }
-
-        .right-controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-shrink: 0;
-        }
-
-        .view-toggle {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .status-filters {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .filter-label {
-            font-weight: 600;
-            color: var(--gray-700);
-            white-space: nowrap;
-        }
-
-        .toggle-btn {
-            padding: 0.5rem 1rem;
-            border: 1px solid #e5e7eb;
-            background: white;
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .toggle-btn.active {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        .toggle-btn:hover:not(.active) {
-            background: #f3f4f6;
-            border-color: #d1d5db;
-        }
-
-        .search-input {
-            padding: 0.5rem 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: var(--radius);
-            min-width: 250px;
-            font-size: 0.875rem;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideInUp 0.3s ease;
-        }
-
-        @keyframes slideInUp {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--gray-200);
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--gray-800);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--gray-500);
-            padding: 0.25rem;
-            border-radius: var(--radius);
-            transition: all var(--transition);
-        }
-        .close-btn:hover {
-            background: var(--gray-100);
-            color: var(--gray-700);
-        }
-
-        .form-grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        .form-grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 1rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .controls-single-row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 1.5rem;
-            }
-            
-            .left-controls {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 1.5rem;
-            }
-            
-            .status-filters {
-                justify-content: flex-start;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .companies-table {
-                overflow-x: auto;
-            }
-            
-            .companies-table table {
-                min-width: 800px;
-            }
-            
-            .companies-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-grid-2,
-            .form-grid-3 {
-                grid-template-columns: 1fr;
-            }
-            
-            .view-toggle {
-                width: 100%;
-                justify-content: space-between;
-            }
-            
-            .status-filters {
-                flex-wrap: wrap;
-            }
-            
-            .search-input {
-                min-width: 200px;
-                width: 100%;
-            }
-        }
-    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -472,27 +78,47 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
                 <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0;">
-                    🏢 Gestion des Sociétés <span style="font-size: 1rem; font-weight: 400; color: var(--gray-600); margin-left: 1rem;">Gérez vos prospects, clients et sociétés onboardées</span>
+                    🏢 Gestion des Sociétés
                 </h1>
+                <p style="color: var(--gray-600); margin-top: 0.5rem;">
+                    Gérez vos prospects, clients et sociétés onboardées
+                </p>
+            </div>
+            <button class="btn btn-primary" onclick="openAddModal()">
+                ➕ Nouvelle Société
+            </button>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalCompanies">-</div>
+                <div class="stat-label">Total Sociétés</div>
+                <div class="stat-change" id="totalChange">Toutes sociétés</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-number" id="prospectCount">-</div>
+                <div class="stat-label">Prospects</div>
+                <div class="stat-change" id="prospectChange">À convertir</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-number" id="clientCount">-</div>
+                <div class="stat-label">Clients</div>
+                <div class="stat-change" id="clientChange">Actifs</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-number" id="onboardedCount">-</div>
+                <div class="stat-label">Onboardés</div>
+                <div class="stat-change" id="onboardedChange">Déployés</div>
             </div>
         </div>
 
-        <!-- Contrôles et filtres - Une seule ligne -->
-        <div class="view-controls">
-            <div class="controls-single-row">
-                <div class="left-controls">
-                    <!-- Vue toggle -->
-                    <div class="view-toggle">
-                        <button class="toggle-btn active" onclick="setView('table')" id="viewTable">
-                            📋 Vue tableau
-                        </button>
-                        <button class="toggle-btn" onclick="setView('cards')" id="viewCards">
-                            🏢 Vue cartes
-                        </button>
-                    </div>
-                    
+        <!-- Contrôles et filtres -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-body">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                     <!-- Filtres par statut -->
-                    <div class="status-filters">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <button class="filter-btn active" data-filter="all" onclick="filterCompanies('all')">
                             Toutes (<span id="count-all">0</span>)
                         </button>
@@ -509,84 +135,73 @@
                             Onboardés (<span id="count-onboarded">0</span>)
                         </button>
                     </div>
-                </div>
-                
-                <div class="right-controls">
-                    <!-- Barre de recherche -->
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Rechercher une société..." 
-                           oninput="searchCompanies()">
                     
-                    <!-- Bouton nouvelle société -->
-                    <button class="btn btn-primary" onclick="openAddCompanyModal()">
-                        ➕ Nouvelle Société
-                    </button>
+                    <!-- Barre de recherche -->
+                    <div style="flex: 1; min-width: 200px;">
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
+                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem;"
+                               oninput="searchCompanies()">
+                    </div>
+                    
+                    <!-- Tri -->
+                    <select id="sortSelect" onchange="sortCompanies()" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem;">
+                        <option value="name_asc">Nom A-Z</option>
+                        <option value="name_desc">Nom Z-A</option>
+                        <option value="date_desc">Plus récentes</option>
+                        <option value="date_asc">Plus anciennes</option>
+                        <option value="status">Par statut</option>
+                    </select>
                 </div>
             </div>
         </div>
 
-        <!-- Vue tableau (par défaut) -->
-        <div id="tableView" class="companies-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="sortable" data-sort="name" onclick="sortTable('name')">
-                            Société <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th class="sortable" data-sort="status" onclick="sortTable('status')">
-                            Statut <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th class="sortable" data-sort="industry" onclick="sortTable('industry')">
-                            Secteur <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th class="sortable" data-sort="account_manager" onclick="sortTable('account_manager')">
-                            Responsable <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th class="sortable" data-sort="contacts" onclick="sortTable('contacts')">
-                            Contacts <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th class="sortable" data-sort="revenue" onclick="sortTable('revenue')">
-                            Revenus/mois <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th class="sortable" data-sort="city" onclick="sortTable('city')">
-                            Ville <span class="sort-arrow">↕️</span>
-                        </th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="companiesTableBody">
-                    <!-- Chargé dynamiquement -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Vue cartes -->
-        <div id="cardsView" class="companies-grid" style="display: none;">
-            <!-- Chargé dynamiquement -->
-        </div>
-
-        <!-- État vide -->
-        <div id="emptyState" class="card" style="display: none; text-align: center; padding: 3rem;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
-            <h3 style="margin-bottom: 1rem; color: var(--gray-700);">Aucune société trouvée</h3>
-            <p style="color: var(--gray-500); margin-bottom: 2rem;">
-                Commencez par ajouter votre première société
-            </p>
-            <button class="btn btn-primary" onclick="openAddCompanyModal()">
-                ➕ Créer ma première société
-            </button>
+        <!-- Tableau des sociétés -->
+        <div class="card">
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Société</th>
+                                <th>Statut</th>
+                                <th>Secteur</th>
+                                <th>Responsable</th>
+                                <th>Contacts</th>
+                                <th>Ville</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companiesTableBody">
+                            <!-- Chargé dynamiquement -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- État vide -->
+                    <div id="emptyState" style="display: none; text-align: center; padding: 3rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🏢</div>
+                        <h3>Aucune société trouvée</h3>
+                        <p style="color: var(--gray-500); margin-bottom: 2rem;">
+                            Commencez par ajouter votre première société
+                        </p>
+                        <button class="btn btn-primary" onclick="openAddModal()">
+                            ➕ Créer ma première société
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
-    <!-- Modal Nouvelle/Modifier Société -->
+    <!-- Modal Société -->
     <div id="companyModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title" id="modalTitle">➕ Nouvelle Société</h3>
-                <button class="close-btn" onclick="closeCompanyModal()">&times;</button>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
             
             <form id="companyForm">
-                <div class="form-grid-2" style="margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyName">Nom de la société *</label>
                         <input type="text" id="companyName" required>
@@ -594,6 +209,7 @@
                     <div class="form-group">
                         <label for="companyStatus">Statut *</label>
                         <select id="companyStatus" required>
+                            <option value="">Sélectionner</option>
                             <option value="prospect">Prospect</option>
                             <option value="sponsor">Sponsor</option>
                             <option value="client">Client</option>
@@ -602,7 +218,7 @@
                     </div>
                 </div>
                 
-                <div class="form-grid-2" style="margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyIndustry">Secteur d'activité</label>
                         <input type="text" id="companyIndustry" placeholder="Ex: Technologie, Santé...">
@@ -613,7 +229,7 @@
                     </div>
                 </div>
                 
-                <div class="form-grid-2" style="margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyWebsite">Site web</label>
                         <input type="url" id="companyWebsite" placeholder="https://exemple.com">
@@ -625,16 +241,11 @@
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 1rem;">
-                    <label for="companySiret">SIRET</label>
-                    <input type="text" id="companySiret" placeholder="12345678901234">
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 1rem;">
                     <label for="companyAddress">Adresse</label>
                     <textarea id="companyAddress" rows="2" placeholder="123 rue de l'Exemple"></textarea>
                 </div>
                 
-                <div class="form-grid-3" style="margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                     <div class="form-group">
                         <label for="companyCity">Ville</label>
                         <input type="text" id="companyCity" placeholder="Paris">
@@ -655,7 +266,7 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="closeCompanyModal()">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
                         Annuler
                     </button>
                     <button type="submit" class="btn btn-primary" id="submitBtn">
@@ -666,315 +277,224 @@
         </div>
     </div>
 
-    <!-- Modal Détails Société -->
-    <div id="detailsModal" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
-            <div class="modal-header">
-                <h3 class="modal-title" id="detailsTitle">Détails de la société</h3>
-                <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
-            </div>
-            
-            <div id="detailsContent">
-                <!-- Contenu chargé dynamiquement -->
-            </div>
-        </div>
-    </div>
-
     <script src="config.js"></script>
     <script>
         // Variables globales
         let companies = [];
-        let licenses = [];
         let filteredCompanies = [];
         let currentFilter = 'all';
-        let currentView = 'table';
         let editingCompany = null;
-        let currentSort = { field: null, direction: 'asc' };
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
             showLoading(true);
             
             try {
-                // Vérifier l'authentification
                 if (!await AuthService.requireAuth()) return;
                 
-                // Charger les informations utilisateur
                 loadUserInfo();
-                
-                // Charger les données
-                await loadData();
-                
-                // Gérer les paramètres URL
+                await loadCompanies();
                 handleUrlParams();
                 
             } catch (error) {
-                console.error('Erreur initialisation:', error);
-                showError('Erreur lors du chargement de la page');
+                console.error('❌ Erreur initialisation:', error);
+                showError('Erreur lors du chargement');
+                setDefaultData();
             } finally {
                 showLoading(false);
             }
         });
 
-        // Charger les informations utilisateur
         function loadUserInfo() {
-            const userInfo = AuthService.getUserInfo();
-            if (userInfo) {
-                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
-                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            try {
+                const userInfo = AuthService.getUserInfo();
+                if (userInfo) {
+                    document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                    document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+                }
+            } catch (error) {
+                console.warn('⚠️ Erreur user info:', error);
             }
         }
 
-        // Charger toutes les données
-        async function loadData() {
+        async function loadCompanies() {
             try {
-                console.log('🔄 Chargement des données...');
+                console.log('🔄 Chargement des sociétés...');
                 
-                // Charger sociétés et licences en parallèle
-                const [companiesResult, licensesResult] = await Promise.all([
+                const result = await Promise.race([
                     CRMService.getCompanies(),
-                    CRMService.getLicenses()
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
                 ]);
                 
-                companies = companiesResult.success ? companiesResult.data : [];
-                licenses = licensesResult.success ? licensesResult.data : [];
-                
-                console.log(`✅ ${companies.length} société(s) et ${licenses.length} licence(s) chargées`);
-                
-                updateCounts();
-                filterCompanies(currentFilter);
+                if (result.success) {
+                    companies = result.data || [];
+                    console.log(`✅ ${companies.length} société(s) chargée(s)`);
+                } else {
+                    throw new Error(result.error || 'Erreur chargement');
+                }
                 
             } catch (error) {
-                console.error('❌ Erreur chargement données:', error);
-                showError('Erreur lors du chargement des données: ' + error.message);
-                
-                // Afficher l'état vide en cas d'erreur
-                companies = [];
-                licenses = [];
-                filteredCompanies = [];
-                renderCompanies();
+                console.warn('⚠️ Erreur/timeout chargement:', error.message);
+                setDefaultData();
             }
-        }
-
-        // Calculer les revenus d'une société
-        function getCompanyRevenue(companyId) {
-            const companyLicenses = licenses.filter(l => 
-                l.company_id === companyId && l.status === 'active'
-            );
-            return companyLicenses.reduce((total, license) => 
-                total + (license.monthly_cost || 0), 0
-            );
-        }
-
-        // Mettre à jour les compteurs
-        function updateCounts() {
-            const counts = {
-                all: companies.length,
-                prospect: companies.filter(c => c.status === 'prospect').length,
-                sponsor: companies.filter(c => c.status === 'sponsor').length,
-                client: companies.filter(c => c.status === 'client').length,
-                onboarded: companies.filter(c => c.status === 'onboarded').length
-            };
             
-            Object.keys(counts).forEach(key => {
-                const element = document.getElementById(`count-${key}`);
-                if (element) {
-                    element.textContent = counts[key];
-                }
-            });
+            updateStats();
+            filterCompanies('all');
         }
 
-        // Changer de vue
-        function setView(viewType) {
-            currentView = viewType;
+        function setDefaultData() {
+            console.log('📊 Utilisation des données par défaut');
+            companies = [
+                {
+                    id: '1',
+                    name: 'TechCorp Solutions',
+                    status: 'client',
+                    industry: 'Technologie',
+                    account_manager: 'Jean Dupont',
+                    website: 'https://techcorp.com',
+                    phone: '01.23.45.67.89',
+                    address: '123 Avenue de la Tech',
+                    city: 'Paris',
+                    postal_code: '75001',
+                    country: 'France',
+                    created_at: '2024-01-15T10:00:00Z',
+                    company_contacts: [
+                        { id: '1', first_name: 'Marie', last_name: 'Martin', email: 'm.martin@techcorp.com' }
+                    ]
+                },
+                {
+                    id: '2',
+                    name: 'Innovation Ltd',
+                    status: 'prospect',
+                    industry: 'Conseil',
+                    account_manager: 'Sophie Durand',
+                    city: 'Lyon',
+                    created_at: '2024-02-01T14:00:00Z',
+                    company_contacts: []
+                },
+                {
+                    id: '3',
+                    name: 'StartupX',
+                    status: 'onboarded',
+                    industry: 'FinTech',
+                    account_manager: 'Pierre Lambert',
+                    city: 'Marseille',
+                    created_at: '2024-03-01T09:00:00Z',
+                    company_contacts: [
+                        { id: '2', first_name: 'Paul', last_name: 'Dubois', email: 'p.dubois@startupx.com' },
+                        { id: '3', first_name: 'Lisa', last_name: 'Chen', email: 'l.chen@startupx.com' }
+                    ]
+                }
+            ];
+        }
+
+        function updateStats() {
+            const total = companies.length;
+            const prospects = companies.filter(c => c.status === 'prospect').length;
+            const clients = companies.filter(c => c.status === 'client').length;
+            const onboarded = companies.filter(c => c.status === 'onboarded').length;
+            const sponsors = companies.filter(c => c.status === 'sponsor').length;
+
+            document.getElementById('totalCompanies').textContent = total;
+            document.getElementById('prospectCount').textContent = prospects;
+            document.getElementById('clientCount').textContent = clients;
+            document.getElementById('onboardedCount').textContent = onboarded;
+
+            document.getElementById('totalChange').textContent = 'Toutes sociétés';
+            document.getElementById('prospectChange').textContent = 'À convertir';
+            document.getElementById('clientChange').textContent = 'Actifs';
+            document.getElementById('onboardedChange').textContent = 'Déployés';
+
+            // Mettre à jour les compteurs des filtres
+            document.getElementById('count-all').textContent = total;
+            document.getElementById('count-prospect').textContent = prospects;
+            document.getElementById('count-sponsor').textContent = sponsors;
+            document.getElementById('count-client').textContent = clients;
+            document.getElementById('count-onboarded').textContent = onboarded;
+        }
+
+        function filterCompanies(status) {
+            currentFilter = status;
             
             // Mettre à jour les boutons
-            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(viewType === 'table' ? 'viewTable' : 'viewCards').classList.add('active');
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-filter="${status}"]`).classList.add('active');
             
-            // Afficher/masquer les vues
-            document.getElementById('tableView').style.display = viewType === 'table' ? 'block' : 'none';
-            document.getElementById('cardsView').style.display = viewType === 'cards' ? 'grid' : 'none';
-            
-            // Re-rendre les données
-            renderCompanies();
-        }
-
-        // Trier le tableau
-        function sortTable(field) {
-            // Déterminer la direction du tri
-            if (currentSort.field === field) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.field = field;
-                currentSort.direction = 'asc';
-            }
-            
-            // Mettre à jour les indicateurs visuels
-            updateSortIndicators();
-            
-            // Trier les données
-            filteredCompanies.sort((a, b) => {
-                let valueA, valueB;
-                
-                switch (field) {
-                    case 'name':
-                        valueA = (a.name || '').toLowerCase();
-                        valueB = (b.name || '').toLowerCase();
-                        break;
-                    case 'status':
-                        const statusOrder = { 'prospect': 1, 'sponsor': 2, 'client': 3, 'onboarded': 4 };
-                        valueA = statusOrder[a.status] || 0;
-                        valueB = statusOrder[b.status] || 0;
-                        break;
-                    case 'industry':
-                        valueA = (a.industry || '').toLowerCase();
-                        valueB = (b.industry || '').toLowerCase();
-                        break;
-                    case 'account_manager':
-                        valueA = (a.account_manager || '').toLowerCase();
-                        valueB = (b.account_manager || '').toLowerCase();
-                        break;
-                    case 'contacts':
-                        valueA = a.company_contacts ? a.company_contacts.length : 0;
-                        valueB = b.company_contacts ? b.company_contacts.length : 0;
-                        break;
-                    case 'revenue':
-                        valueA = getCompanyRevenue(a.id);
-                        valueB = getCompanyRevenue(b.id);
-                        break;
-                    case 'city':
-                        valueA = (a.city || '').toLowerCase();
-                        valueB = (b.city || '').toLowerCase();
-                        break;
-                    default:
-                        return 0;
-                }
-                
-                if (currentSort.direction === 'asc') {
-                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
-                } else {
-                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
-                }
-            });
-            
-            // Re-rendre le tableau
-            renderCompanies();
-        }
-
-        // Mettre à jour les indicateurs de tri
-        function updateSortIndicators() {
-            // Réinitialiser tous les indicateurs
-            document.querySelectorAll('.companies-table th').forEach(th => {
-                th.classList.remove('sort-asc', 'sort-desc');
-                const arrow = th.querySelector('.sort-arrow');
-                if (arrow) {
-                    arrow.textContent = '↕️';
-                }
-            });
-            
-            // Mettre à jour l'indicateur actif
-            if (currentSort.field) {
-                const activeTh = document.querySelector(`[data-sort="${currentSort.field}"]`);
-                if (activeTh) {
-                    activeTh.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
-                    const arrow = activeTh.querySelector('.sort-arrow');
-                    if (arrow) {
-                        arrow.textContent = currentSort.direction === 'asc' ? '↑' : '↓';
-                    }
-                }
-            }
-        }
-
-        // Filtrer les sociétés
-        function filterCompanies(filter) {
-            currentFilter = filter;
-            
-            // Mettre à jour les boutons de filtre
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
-            
-            // Filtrer les données
-            if (filter === 'all') {
+            // Filtrer
+            if (status === 'all') {
                 filteredCompanies = [...companies];
             } else {
-                filteredCompanies = companies.filter(company => company.status === filter);
+                filteredCompanies = companies.filter(c => c.status === status);
             }
             
-            // Appliquer la recherche si active
-            const searchTerm = document.getElementById('searchInput').value;
-            if (searchTerm) {
-                searchCompanies();
-            } else {
-                // Réappliquer le tri si un tri est actif
-                if (currentSort.field) {
-                    sortTable(currentSort.field);
-                } else {
-                    renderCompanies();
-                }
-            }
+            renderCompanies();
         }
 
-        // Recherche dans les sociétés
         function searchCompanies() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             
             if (!searchTerm) {
-                renderCompanies();
+                filterCompanies(currentFilter);
                 return;
             }
             
-            const searchResults = filteredCompanies.filter(company =>
+            const baseList = currentFilter === 'all' ? companies : companies.filter(c => c.status === currentFilter);
+            
+            filteredCompanies = baseList.filter(company =>
                 company.name.toLowerCase().includes(searchTerm) ||
                 (company.industry && company.industry.toLowerCase().includes(searchTerm)) ||
                 (company.city && company.city.toLowerCase().includes(searchTerm)) ||
                 (company.account_manager && company.account_manager.toLowerCase().includes(searchTerm))
             );
             
-            renderCompanies(searchResults);
-            
-            // Réappliquer le tri si un tri est actif
-            if (currentSort.field && searchResults.length > 0) {
-                sortTable(currentSort.field);
-            }
+            renderCompanies();
         }
 
-        // Rendu des sociétés
-        function renderCompanies(companiesToRender = filteredCompanies) {
-            console.log('🎨 Rendu des sociétés:', companiesToRender.length, 'vue:', currentView);
+        function sortCompanies() {
+            const sortValue = document.getElementById('sortSelect').value;
             
-            if (companiesToRender.length === 0) {
-                document.getElementById('tableView').style.display = 'none';
-                document.getElementById('cardsView').style.display = 'none';
-                document.getElementById('emptyState').style.display = 'block';
+            filteredCompanies.sort((a, b) => {
+                switch (sortValue) {
+                    case 'name_asc':
+                        return a.name.localeCompare(b.name);
+                    case 'name_desc':
+                        return b.name.localeCompare(a.name);
+                    case 'date_desc':
+                        return new Date(b.created_at) - new Date(a.created_at);
+                    case 'date_asc':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    case 'status':
+                        const statusOrder = { prospect: 1, sponsor: 2, client: 3, onboarded: 4 };
+                        return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+                    default:
+                        return 0;
+                }
+            });
+            
+            renderCompanies();
+        }
+
+        function renderCompanies() {
+            const tbody = document.getElementById('companiesTableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (filteredCompanies.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
                 return;
             }
             
-            document.getElementById('emptyState').style.display = 'none';
+            emptyState.style.display = 'none';
             
-            if (currentView === 'table') {
-                renderTableView(companiesToRender);
-            } else {
-                renderCardsView(companiesToRender);
-            }
-        }
-
-        // Rendu vue tableau
-        function renderTableView(companiesToRender) {
-            document.getElementById('tableView').style.display = 'block';
-            document.getElementById('cardsView').style.display = 'none';
-            
-            const tbody = document.getElementById('companiesTableBody');
-            tbody.innerHTML = companiesToRender.map(company => {
+            tbody.innerHTML = filteredCompanies.map(company => {
                 const contactsCount = company.company_contacts ? company.company_contacts.length : 0;
-                const revenue = getCompanyRevenue(company.id);
                 
                 return `
-                    <tr onclick="openCompanyDetails('${company.id}')" style="cursor: pointer;">
+                    <tr>
                         <td>
-                            <div class="company-name">${escapeHtml(company.name)}</div>
+                            <div style="font-weight: 600; color: #1f2937; cursor: pointer;" onclick="viewCompany('${company.id}')">
+                                ${escapeHtml(company.name)}
+                            </div>
                         </td>
                         <td>
                             <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span>
@@ -982,9 +502,8 @@
                         <td>${escapeHtml(company.industry || '-')}</td>
                         <td>${escapeHtml(company.account_manager || '-')}</td>
                         <td><strong>${contactsCount}</strong></td>
-                        <td><span class="revenue-amount">${formatCurrency(revenue)}</span></td>
                         <td>${escapeHtml(company.city || '-')}</td>
-                        <td onclick="event.stopPropagation()">
+                        <td>
                             <div style="display: flex; gap: 0.5rem;">
                                 <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')" title="Modifier">
                                     ✏️
@@ -999,75 +518,161 @@
             }).join('');
         }
 
-        // Rendu vue cartes
-        function renderCardsView(companiesToRender) {
-            document.getElementById('tableView').style.display = 'none';
-            document.getElementById('cardsView').style.display = 'grid';
-            
-            const grid = document.getElementById('cardsView');
-            grid.innerHTML = companiesToRender.map(company => {
-                const contactsCount = company.company_contacts ? company.company_contacts.length : 0;
-                const revenue = getCompanyRevenue(company.id);
-                
-                return `
-                    <div class="company-card" onclick="openCompanyDetails('${company.id}')">
-                        <div class="company-header">
-                            <div>
-                                <div class="company-name" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;">${escapeHtml(company.name)}</div>
-                                <div class="company-industry">${escapeHtml(company.industry || 'Secteur non spécifié')}</div>
-                            </div>
-                            <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span>
-                        </div>
-                        
-                        <div class="company-info">
-                            <div class="company-info-item">
-                                <span>💰</span>
-                                <span class="revenue-amount">${formatCurrency(revenue)}/mois</span>
-                            </div>
-                            ${company.account_manager ? `
-                                <div class="company-info-item">
-                                    <span>👤</span>
-                                    <span>${escapeHtml(company.account_manager)}</span>
-                                </div>
-                            ` : ''}
-                            ${company.website ? `
-                                <div class="company-info-item">
-                                    <span>🌐</span>
-                                    <span>${escapeHtml(company.website)}</span>
-                                </div>
-                            ` : ''}
-                            ${company.phone ? `
-                                <div class="company-info-item">
-                                    <span>📞</span>
-                                    <span>${escapeHtml(company.phone)}</span>
-                                </div>
-                            ` : ''}
-                            ${company.city ? `
-                                <div class="company-info-item">
-                                    <span>📍</span>
-                                    <span>${escapeHtml(company.city)}${company.country ? ', ' + escapeHtml(company.country) : ''}</span>
-                                </div>
-                            ` : ''}
-                            <div class="company-info-item">
-                                <span>👥</span>
-                                <span>${contactsCount} contact(s)</span>
-                            </div>
-                        </div>
-                        
-                        <div class="company-actions" onclick="event.stopPropagation()">
-                            <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')" title="Modifier">
-                                ✏️
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}')" title="Supprimer">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+        function getStatusText(status) {
+            const statusMap = {
+                prospect: 'Prospect',
+                sponsor: 'Sponsor', 
+                client: 'Client',
+                onboarded: 'Onboardé'
+            };
+            return statusMap[status] || status;
         }
 
-        // Utilitaires
+        function viewCompany(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            console.log('👁️ Affichage société:', company.name);
+            
+            // Ici vous pourriez ouvrir un modal de détails
+            // Pour l'instant, on redirige vers la page contacts avec le filtre société
+            if (company.company_contacts && company.company_contacts.length > 0) {
+                window.location.href = `contacts.html?company=${companyId}`;
+            } else {
+                showSuccess(`Société ${company.name} sélectionnée`);
+            }
+        }
+
+        function openAddModal() {
+            resetForm();
+            document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
+            document.getElementById('submitBtn').textContent = '💾 Créer la société';
+            editingCompany = null;
+            
+            document.getElementById('companyModal').classList.add('show');
+        }
+
+        function editCompany(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            editingCompany = company;
+            
+            // Remplir le formulaire
+            document.getElementById('companyName').value = company.name || '';
+            document.getElementById('companyStatus').value = company.status || '';
+            document.getElementById('companyIndustry').value = company.industry || '';
+            document.getElementById('accountManager').value = company.account_manager || '';
+            document.getElementById('companyWebsite').value = company.website || '';
+            document.getElementById('companyPhone').value = company.phone || '';
+            document.getElementById('companyAddress').value = company.address || '';
+            document.getElementById('companyCity').value = company.city || '';
+            document.getElementById('companyPostalCode').value = company.postal_code || '';
+            document.getElementById('companyCountry').value = company.country || 'France';
+            document.getElementById('companyNotes').value = company.notes || '';
+            
+            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
+            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
+            
+            document.getElementById('companyModal').classList.add('show');
+        }
+
+        async function deleteCompany(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            if (!confirm(`Supprimer "${company.name}" ?\n\nCette action est irréversible.`)) return;
+            
+            showLoading(true);
+            
+            try {
+                const result = await CRMService.deleteCompany(companyId);
+                if (result.success) {
+                    showSuccess('Société supprimée avec succès');
+                    await loadCompanies();
+                } else {
+                    throw new Error(result.error || 'Erreur suppression');
+                }
+            } catch (error) {
+                console.error('❌ Erreur suppression:', error);
+                showError('Erreur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('companyForm').reset();
+            document.getElementById('companyCountry').value = 'France';
+            editingCompany = null;
+        }
+
+        function closeModal() {
+            document.getElementById('companyModal').classList.remove('show');
+            resetForm();
+        }
+
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
+            
+            if (action === 'add') {
+                setTimeout(() => openAddModal(), 100);
+            }
+        }
+
+        // Gestion du formulaire
+        document.getElementById('companyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('companyName').value.trim();
+            const status = document.getElementById('companyStatus').value;
+            
+            if (!name || !status) {
+                showError('Nom et statut sont obligatoires');
+                return;
+            }
+            
+            const formData = {
+                name: name,
+                status: status,
+                industry: document.getElementById('companyIndustry').value.trim() || null,
+                account_manager: document.getElementById('accountManager').value.trim() || null,
+                website: document.getElementById('companyWebsite').value.trim() || null,
+                phone: document.getElementById('companyPhone').value.trim() || null,
+                address: document.getElementById('companyAddress').value.trim() || null,
+                city: document.getElementById('companyCity').value.trim() || null,
+                postal_code: document.getElementById('companyPostalCode').value.trim() || null,
+                country: document.getElementById('companyCountry').value.trim() || null,
+                notes: document.getElementById('companyNotes').value.trim() || null
+            };
+            
+            showLoading(true);
+            
+            try {
+                let result;
+                if (editingCompany) {
+                    result = await CRMService.updateCompany(editingCompany.id, formData);
+                } else {
+                    result = await CRMService.createCompany(formData);
+                }
+                
+                if (result.success) {
+                    showSuccess(editingCompany ? 'Société modifiée avec succès' : 'Société créée avec succès');
+                    closeModal();
+                    await loadCompanies();
+                } else {
+                    throw new Error(result.error || 'Erreur sauvegarde');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur sauvegarde:', error);
+                showError('Erreur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -1075,342 +680,18 @@
             return div.innerHTML;
         }
 
-        function getStatusText(status) {
-            const statusMap = {
-                'prospect': 'Prospect',
-                'sponsor': 'Sponsor',
-                'client': 'Client',
-                'onboarded': 'Onboardé'
-            };
-            return statusMap[status] || status;
-        }
-
-        function formatCurrency(amount) {
-            if (!amount || isNaN(amount)) return '0,00 €';
-            return new Intl.NumberFormat('fr-FR', {
-                style: 'currency',
-                currency: 'EUR'
-            }).format(amount);
-        }
-
-        // Gestion des modals
-        function openAddCompanyModal() {
-            resetCompanyForm();
-            document.getElementById('modalTitle').textContent = '➕ Nouvelle Société';
-            document.getElementById('submitBtn').textContent = '💾 Créer la société';
-            editingCompany = null;
-            
-            const modal = document.getElementById('companyModal');
-            modal.classList.add('show');
-        }
-
-        function closeCompanyModal() {
-            const modal = document.getElementById('companyModal');
-            modal.classList.remove('show');
-            resetCompanyForm();
-        }
-
-        function closeDetailsModal() {
-            const modal = document.getElementById('detailsModal');
-            modal.classList.remove('show');
-        }
-
-        function resetCompanyForm() {
-            document.getElementById('companyForm').reset();
-            document.getElementById('companyCountry').value = 'France';
-            editingCompany = null;
-        }
-
-        // Modifier une société
-        function editCompany(companyId) {
-            console.log('📝 Modification société:', companyId);
-            
-            const company = companies.find(c => c.id === companyId);
-            if (!company) {
-                console.error('Société non trouvée:', companyId);
-                showError('Société non trouvée');
-                return;
-            }
-            
-            // Fermer le modal de détails s'il est ouvert
-            closeDetailsModal();
-            
-            // Passer en mode édition
-            editingCompany = company;
-            
-            // Remplir le formulaire avec les valeurs actuelles
-            document.getElementById('companyName').value = company.name || '';
-            document.getElementById('companyStatus').value = company.status || 'prospect';
-            document.getElementById('companyIndustry').value = company.industry || '';
-            document.getElementById('accountManager').value = company.account_manager || '';
-            document.getElementById('companyWebsite').value = company.website || '';
-            document.getElementById('companyPhone').value = company.phone || '';
-            document.getElementById('companySiret').value = company.siret || '';
-            document.getElementById('companyAddress').value = company.address || '';
-            document.getElementById('companyCity').value = company.city || '';
-            document.getElementById('companyPostalCode').value = company.postal_code || '';
-            document.getElementById('companyCountry').value = company.country || 'France';
-            document.getElementById('companyNotes').value = company.notes || '';
-            
-            // Modifier les textes du modal
-            document.getElementById('modalTitle').textContent = '✏️ Modifier la société';
-            document.getElementById('submitBtn').textContent = '💾 Mettre à jour';
-            
-            // Ouvrir le modal
-            document.getElementById('companyModal').classList.add('show');
-        }
-
-        // Supprimer une société
-        async function deleteCompany(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) {
-                showError('Société non trouvée');
-                return;
-            }
-            
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${company.name}" ?\n\nCette action est irréversible et supprimera également tous les contacts associés.`)) {
-                return;
-            }
-            
-            showLoading(true);
-            
-            try {
-                console.log('🗑️ Suppression société:', companyId);
-                
-                const result = await CRMService.deleteCompany(companyId);
-                if (result.success) {
-                    showSuccess('Société supprimée avec succès');
-                    await loadData();
-                } else {
-                    throw new Error(result.error || 'Erreur lors de la suppression');
-                }
-            } catch (error) {
-                console.error('❌ Erreur suppression société:', error);
-                showError('Erreur lors de la suppression: ' + error.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Ouvrir les détails d'une société
-        function openCompanyDetails(companyId) {
-            const company = companies.find(c => c.id === companyId);
-            if (!company) {
-                showError('Société non trouvée');
-                return;
-            }
-            
-            console.log('👁️ Ouverture détails société:', company.name);
-            
-            document.getElementById('detailsTitle').textContent = company.name;
-            
-            const revenue = getCompanyRevenue(company.id);
-            const companyLicenses = licenses.filter(l => l.company_id === company.id);
-            
-            // Contenu des détails
-            const contactsHtml = company.company_contacts && company.company_contacts.length > 0 ? 
-                company.company_contacts.map(contact => `
-                    <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 0.5rem;">
-                        <div style="font-weight: 600; margin-bottom: 0.25rem;">
-                            ${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}
-                        </div>
-                        <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
-                            ${escapeHtml(contact.position || 'Poste non spécifié')} • ${escapeHtml(contact.email)}
-                        </div>
-                        ${contact.phone ? `
-                            <div style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 0.5rem;">
-                                📞 ${escapeHtml(contact.phone)}
-                            </div>
-                        ` : ''}
-                        ${contact.is_admin_contact || contact.is_payment_contact ? `
-                            <div style="margin-top: 0.5rem;">
-                                ${contact.is_admin_contact ? '<span style="background: #dbeafe; color: #1e40af; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; margin-right: 0.25rem;">Admin</span>' : ''}
-                                ${contact.is_payment_contact ? '<span style="background: #fef3c7; color: #92400e; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem;">Facturation</span>' : ''}
-                            </div>
-                        ` : ''}
-                    </div>
-                `).join('') :
-                '<p style="color: var(--gray-500); font-style: italic;">Aucun contact enregistré</p>';
-
-            document.getElementById('detailsContent').innerHTML = `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📋 Informations générales</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Statut :</strong> <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span></div>
-                            <div><strong>Revenus mensuels :</strong> <span class="revenue-amount">${formatCurrency(revenue)}</span></div>
-                            <div><strong>Licences :</strong> ${companyLicenses.length} licence(s)</div>
-                            <div><strong>Secteur :</strong> ${escapeHtml(company.industry || 'Non spécifié')}</div>
-                            <div><strong>Site web :</strong> ${company.website ? `<a href="${escapeHtml(company.website)}" target="_blank" style="color: var(--primary-color);">${escapeHtml(company.website)}</a>` : 'Non spécifié'}</div>
-                            <div><strong>Téléphone :</strong> ${escapeHtml(company.phone || 'Non spécifié')}</div>
-                            <div><strong>SIRET :</strong> ${escapeHtml(company.siret || 'Non spécifié')}</div>
-                            <div><strong>Responsable :</strong> ${escapeHtml(company.account_manager || 'Non assigné')}</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📍 Adresse</h4>
-                        <div style="display: grid; gap: 0.75rem;">
-                            <div><strong>Adresse :</strong> ${escapeHtml(company.address || 'Non spécifiée')}</div>
-                            <div><strong>Ville :</strong> ${escapeHtml(company.city || 'Non spécifiée')}</div>
-                            <div><strong>Code postal :</strong> ${escapeHtml(company.postal_code || 'Non spécifié')}</div>
-                            <div><strong>Pays :</strong> ${escapeHtml(company.country || 'Non spécifié')}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                ${company.notes ? `
-                    <div style="margin-bottom: 2rem;">
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📝 Notes</h4>
-                        <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); color: var(--gray-700);">
-                            ${escapeHtml(company.notes).replace(/\n/g, '<br>')}
-                        </div>
-                    </div>
-                ` : ''}
-                
-                <div style="margin-bottom: 2rem;">
-                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">👥 Contacts (${company.company_contacts ? company.company_contacts.length : 0})</h4>
-                    ${contactsHtml}
-                </div>
-                
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid var(--gray-200);">
-                    <button class="btn btn-secondary" onclick="closeDetailsModal()">
-                        Fermer
-                    </button>
-                    <button class="btn btn-primary" onclick="editCompany('${company.id}')">
-                        ✏️ Modifier
-                    </button>
-                    <a href="contacts.html?company=${company.id}" class="btn btn-success">
-                        👥 Gérer les contacts
-                    </a>
-                    <a href="licenses.html" class="btn btn-warning">
-                        📄 Voir les licences
-                    </a>
-                </div>
-            `;
-            
-            document.getElementById('detailsModal').classList.add('show');
-        }
-
-        // Gestion du formulaire
-        document.getElementById('companyForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Récupérer les valeurs du formulaire
-            const name = document.getElementById('companyName').value.trim();
-            const status = document.getElementById('companyStatus').value;
-            const industry = document.getElementById('companyIndustry').value.trim();
-            const accountManager = document.getElementById('accountManager').value.trim();
-            const website = document.getElementById('companyWebsite').value.trim();
-            const phone = document.getElementById('companyPhone').value.trim();
-            const siret = document.getElementById('companySiret').value.trim();
-            const address = document.getElementById('companyAddress').value.trim();
-            const city = document.getElementById('companyCity').value.trim();
-            const postalCode = document.getElementById('companyPostalCode').value.trim();
-            const country = document.getElementById('companyCountry').value.trim();
-            const notes = document.getElementById('companyNotes').value.trim();
-            
-            // Validation des champs obligatoires
-            if (!name) {
-                showError('Le nom de la société est obligatoire');
-                document.getElementById('companyName').focus();
-                return;
-            }
-            
-            if (!status) {
-                showError('Le statut est obligatoire');
-                document.getElementById('companyStatus').focus();
-                return;
-            }
-
-            // Valider que le statut est dans les valeurs autorisées
-            const validStatuses = ['prospect', 'sponsor', 'client', 'onboarded'];
-            if (!validStatuses.includes(status)) {
-                showError('Statut invalide. Veuillez sélectionner un statut valide.');
-                document.getElementById('companyStatus').focus();
-                return;
-            }
-            
-            // Préparer les données pour l'API
-            const formData = {
-                name: name,
-                status: status,
-                industry: industry || null,
-                account_manager: accountManager || null,
-                website: website || null,
-                phone: phone || null,
-                siret: siret || null,
-                address: address || null,
-                city: city || null,
-                postal_code: postalCode || null,
-                country: country || null,
-                notes: notes || null
-            };
-            
-            console.log('📋 Données du formulaire:', formData);
-            
-            showLoading(true);
-            
-            try {
-                let result;
-                if (editingCompany) {
-                    console.log('📝 Mise à jour société:', editingCompany.id);
-                    result = await CRMService.updateCompany(editingCompany.id, formData);
-                    if (result.success) {
-                        showSuccess('Société modifiée avec succès !');
-                    }
-                } else {
-                    console.log('➕ Création société');
-                    result = await CRMService.createCompany(formData);
-                    if (result.success) {
-                        showSuccess('Société créée avec succès !');
-                    }
-                }
-                
-                if (result.success) {
-                    closeCompanyModal();
-                    await loadData();
-                } else {
-                    console.error('❌ Erreur API:', result.error);
-                    throw new Error(result.error || 'Erreur lors de la sauvegarde');
-                }
-            } catch (error) {
-                console.error('❌ Erreur sauvegarde société:', error);
-                showError('Erreur lors de la sauvegarde: ' + error.message);
-            } finally {
-                showLoading(false);
-            }
-        });
-
-        // Gérer les paramètres URL
-        function handleUrlParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const action = urlParams.get('action');
-            
-            if (action === 'add') {
-                setTimeout(() => openAddCompanyModal(), 100);
-            }
-        }
-
         // Event listeners
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
-                if (e.target.id === 'companyModal') {
-                    closeCompanyModal();
-                } else if (e.target.id === 'detailsModal') {
-                    closeDetailsModal();
-                }
+                closeModal();
             }
         });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const companyModal = document.getElementById('companyModal');
-                const detailsModal = document.getElementById('detailsModal');
-                
-                if (companyModal.classList.contains('show')) {
-                    closeCompanyModal();
-                } else if (detailsModal.classList.contains('show')) {
-                    closeDetailsModal();
+                const modal = document.getElementById('companyModal');
+                if (modal.classList.contains('show')) {
+                    closeModal();
                 }
             }
             
@@ -1418,7 +699,7 @@
                 switch (e.key) {
                     case 'n':
                         e.preventDefault();
-                        openAddCompanyModal();
+                        openAddModal();
                         break;
                     case 'f':
                         e.preventDefault();
