@@ -1082,46 +1082,71 @@
         document.getElementById('companyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = {
-                name: document.getElementById('companyName').value.trim(),
-                status: document.getElementById('companyStatus').value,
-                industry: document.getElementById('companyIndustry').value.trim(),
-                account_manager: document.getElementById('accountManager').value.trim(),
-                website: document.getElementById('companyWebsite').value.trim(),
-                phone: document.getElementById('companyPhone').value.trim(),
-                siret: document.getElementById('companySiret').value.trim(),
-                address: document.getElementById('companyAddress').value.trim(),
-                city: document.getElementById('companyCity').value.trim(),
-                postal_code: document.getElementById('companyPostalCode').value.trim(),
-                country: document.getElementById('companyCountry').value.trim(),
-                notes: document.getElementById('companyNotes').value.trim()
-            };
+            // Récupérer les valeurs du formulaire
+            const name = document.getElementById('companyName').value.trim();
+            const status = document.getElementById('companyStatus').value;
+            const industry = document.getElementById('companyIndustry').value.trim();
+            const accountManager = document.getElementById('accountManager').value.trim();
+            const website = document.getElementById('companyWebsite').value.trim();
+            const phone = document.getElementById('companyPhone').value.trim();
+            const siret = document.getElementById('companySiret').value.trim();
+            const address = document.getElementById('companyAddress').value.trim();
+            const city = document.getElementById('companyCity').value.trim();
+            const postalCode = document.getElementById('companyPostalCode').value.trim();
+            const country = document.getElementById('companyCountry').value.trim();
+            const notes = document.getElementById('companyNotes').value.trim();
             
-            // Validation
-            if (!formData.name) {
+            // Validation des champs obligatoires
+            if (!name) {
                 showError('Le nom de la société est obligatoire');
                 document.getElementById('companyName').focus();
                 return;
             }
             
-            if (!formData.status) {
+            if (!status) {
                 showError('Le statut est obligatoire');
                 document.getElementById('companyStatus').focus();
                 return;
             }
+
+            // Valider que le statut est dans les valeurs autorisées
+            const validStatuses = ['prospect', 'sponsor', 'client', 'onboarded'];
+            if (!validStatuses.includes(status)) {
+                showError('Statut invalide. Veuillez sélectionner un statut valide.');
+                document.getElementById('companyStatus').focus();
+                return;
+            }
+            
+            // Préparer les données pour l'API
+            const formData = {
+                name: name,
+                status: status,
+                industry: industry || null,
+                account_manager: accountManager || null,
+                website: website || null,
+                phone: phone || null,
+                siret: siret || null,
+                address: address || null,
+                city: city || null,
+                postal_code: postalCode || null,
+                country: country || null,
+                notes: notes || null
+            };
+            
+            console.log('📋 Données du formulaire:', formData);
             
             showLoading(true);
             
             try {
                 let result;
                 if (editingCompany) {
-                    console.log('📝 Mise à jour société:', editingCompany.id, formData);
+                    console.log('📝 Mise à jour société:', editingCompany.id);
                     result = await CRMService.updateCompany(editingCompany.id, formData);
                     if (result.success) {
                         showSuccess('Société modifiée avec succès !');
                     }
                 } else {
-                    console.log('➕ Création société:', formData);
+                    console.log('➕ Création société');
                     result = await CRMService.createCompany(formData);
                     if (result.success) {
                         showSuccess('Société créée avec succès !');
@@ -1132,6 +1157,7 @@
                     closeCompanyModal();
                     await loadData();
                 } else {
+                    console.error('❌ Erreur API:', result.error);
                     throw new Error(result.error || 'Erreur lors de la sauvegarde');
                 }
             } catch (error) {
