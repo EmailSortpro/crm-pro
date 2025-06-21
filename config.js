@@ -1,6 +1,6 @@
 // ===================================
-// CRM PRO - CONFIGURATION MIXTE
-// Netlify functions + CRMService complet
+// CRM PRO - CONFIGURATION COMPLÈTE CORRIGÉE
+// Netlify functions + CRMService complet + Gestion opportunités
 // ===================================
 
 console.log('🚀 CRM Pro - Initialisation...');
@@ -334,6 +334,49 @@ class CRMService {
         console.log(`🔄 CRM Service - ${action}`, data ? data : '');
     }
 
+    // Utilitaire pour nettoyer les données
+    static cleanData(data, fields = {}) {
+        const cleaned = {};
+        
+        for (const [key, value] of Object.entries(data)) {
+            const fieldConfig = fields[key] || {};
+            
+            if (value === null || value === undefined) {
+                cleaned[key] = fieldConfig.allowNull !== false ? null : fieldConfig.default || null;
+                continue;
+            }
+            
+            // Nettoyer les chaînes
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed === '') {
+                    cleaned[key] = fieldConfig.allowEmpty ? '' : null;
+                } else {
+                    cleaned[key] = trimmed;
+                }
+                continue;
+            }
+            
+            // Nettoyer les nombres
+            if (fieldConfig.type === 'number') {
+                const num = parseFloat(value);
+                cleaned[key] = isNaN(num) ? (fieldConfig.default || 0) : num;
+                continue;
+            }
+            
+            if (fieldConfig.type === 'integer') {
+                const num = parseInt(value);
+                cleaned[key] = isNaN(num) ? (fieldConfig.default || 0) : num;
+                continue;
+            }
+            
+            // Autres types
+            cleaned[key] = value;
+        }
+        
+        return cleaned;
+    }
+
     // ========== SOCIÉTÉS ==========
     
     static async getCompanies() {
@@ -384,13 +427,21 @@ class CRMService {
                 throw new Error('Le nom de la société est obligatoire');
             }
             
+            const cleanData = this.cleanData(companyData, {
+                name: { allowEmpty: false },
+                description: { allowNull: true },
+                website: { allowNull: true },
+                industry: { allowNull: true },
+                size: { allowNull: true },
+                status: { default: 'prospect' }
+            });
+            
+            cleanData.created_at = new Date().toISOString();
+            cleanData.updated_at = new Date().toISOString();
+            
             const { data, error } = await client
                 .from('companies')
-                .insert([{
-                    ...companyData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
+                .insert([cleanData])
                 .select();
             
             if (error) {
@@ -416,12 +467,19 @@ class CRMService {
                 throw new Error('ID de société manquant');
             }
             
+            const cleanData = this.cleanData(companyData, {
+                name: { allowEmpty: false },
+                description: { allowNull: true },
+                website: { allowNull: true },
+                industry: { allowNull: true },
+                size: { allowNull: true }
+            });
+            
+            cleanData.updated_at = new Date().toISOString();
+            
             const { data, error } = await client
                 .from('companies')
-                .update({
-                    ...companyData,
-                    updated_at: new Date().toISOString()
-                })
+                .update(cleanData)
                 .eq('id', id)
                 .select();
             
@@ -530,13 +588,21 @@ class CRMService {
                 throw new Error('Société, prénom et nom sont obligatoires');
             }
             
+            const cleanData = this.cleanData(contactData, {
+                first_name: { allowEmpty: false },
+                last_name: { allowEmpty: false },
+                email: { allowNull: true },
+                phone: { allowNull: true },
+                position: { allowNull: true },
+                contact_type: { default: 'primary' }
+            });
+            
+            cleanData.created_at = new Date().toISOString();
+            cleanData.updated_at = new Date().toISOString();
+            
             const { data, error } = await client
                 .from('company_contacts')
-                .insert([{
-                    ...contactData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
+                .insert([cleanData])
                 .select();
             
             if (error) {
@@ -558,12 +624,19 @@ class CRMService {
             
             const client = await this.getClient();
             
+            const cleanData = this.cleanData(contactData, {
+                first_name: { allowEmpty: false },
+                last_name: { allowEmpty: false },
+                email: { allowNull: true },
+                phone: { allowNull: true },
+                position: { allowNull: true }
+            });
+            
+            cleanData.updated_at = new Date().toISOString();
+            
             const { data, error } = await client
                 .from('company_contacts')
-                .update({
-                    ...contactData,
-                    updated_at: new Date().toISOString()
-                })
+                .update(cleanData)
                 .eq('id', id)
                 .select();
             
@@ -654,13 +727,18 @@ class CRMService {
                 throw new Error('Société, plan et nombre de licences sont obligatoires');
             }
             
+            const cleanData = this.cleanData(licenseData, {
+                license_count: { type: 'integer', default: 1 },
+                monthly_cost: { type: 'number', default: 0 },
+                status: { default: 'active' }
+            });
+            
+            cleanData.created_at = new Date().toISOString();
+            cleanData.updated_at = new Date().toISOString();
+            
             const { data, error } = await client
                 .from('company_licenses')
-                .insert([{
-                    ...licenseData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
+                .insert([cleanData])
                 .select(`
                     *,
                     companies (
@@ -695,12 +773,16 @@ class CRMService {
             
             const client = await this.getClient();
             
+            const cleanData = this.cleanData(licenseData, {
+                license_count: { type: 'integer' },
+                monthly_cost: { type: 'number' }
+            });
+            
+            cleanData.updated_at = new Date().toISOString();
+            
             const { data, error } = await client
                 .from('company_licenses')
-                .update({
-                    ...licenseData,
-                    updated_at: new Date().toISOString()
-                })
+                .update(cleanData)
                 .eq('id', id)
                 .select(`
                     *,
@@ -1000,13 +1082,44 @@ class CRMService {
                 throw new Error('La société est obligatoire');
             }
             
+            if (!opportunityData.value || parseFloat(opportunityData.value) <= 0) {
+                throw new Error('La valeur doit être supérieure à 0');
+            }
+            
+            // Nettoyer et valider les données avec règles spécifiques
+            const cleanData = this.cleanData(opportunityData, {
+                company_id: { allowNull: false },
+                value: { type: 'number', default: 0 },
+                stage: { default: 'prospect' },
+                probability: { type: 'integer', default: 25 },
+                expected_close_date: { allowNull: true },
+                source: { allowNull: true }, // IMPORTANT: permet NULL pour source
+                notes: { allowNull: true }
+            });
+            
+            // Validation des contraintes de base
+            const validStages = ['prospect', 'qualification', 'proposal', 'negotiation', 'closing'];
+            if (!validStages.includes(cleanData.stage)) {
+                cleanData.stage = 'prospect';
+            }
+            
+            const validSources = ['website', 'referral', 'cold_call', 'marketing', 'partner', 'event'];
+            if (cleanData.source && !validSources.includes(cleanData.source)) {
+                cleanData.source = null;
+            }
+            
+            if (cleanData.probability < 0 || cleanData.probability > 100) {
+                cleanData.probability = 25;
+            }
+            
+            cleanData.created_at = new Date().toISOString();
+            cleanData.updated_at = new Date().toISOString();
+            
+            console.log('🧹 Données nettoyées pour création:', cleanData);
+            
             const { data, error } = await client
                 .from('opportunities')
-                .insert([{
-                    ...opportunityData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
+                .insert([cleanData])
                 .select(`
                     *,
                     companies (
@@ -1039,12 +1152,39 @@ class CRMService {
                 throw new Error('ID d\'opportunité manquant');
             }
             
+            // Nettoyer et valider les données
+            const cleanData = this.cleanData(opportunityData, {
+                company_id: { allowNull: false },
+                value: { type: 'number' },
+                stage: { allowNull: false },
+                probability: { type: 'integer' },
+                expected_close_date: { allowNull: true },
+                source: { allowNull: true },
+                notes: { allowNull: true }
+            });
+            
+            // Validation des contraintes
+            const validStages = ['prospect', 'qualification', 'proposal', 'negotiation', 'closing'];
+            if (cleanData.stage && !validStages.includes(cleanData.stage)) {
+                cleanData.stage = 'prospect';
+            }
+            
+            const validSources = ['website', 'referral', 'cold_call', 'marketing', 'partner', 'event'];
+            if (cleanData.source && !validSources.includes(cleanData.source)) {
+                cleanData.source = null;
+            }
+            
+            if (cleanData.probability !== undefined && (cleanData.probability < 0 || cleanData.probability > 100)) {
+                cleanData.probability = 25;
+            }
+            
+            cleanData.updated_at = new Date().toISOString();
+            
+            console.log('🧹 Données nettoyées pour MAJ:', cleanData);
+            
             const { data, error } = await client
                 .from('opportunities')
-                .update({
-                    ...opportunityData,
-                    updated_at: new Date().toISOString()
-                })
+                .update(cleanData)
                 .eq('id', id)
                 .select(`
                     *,
@@ -1106,10 +1246,11 @@ class CRMService {
         try {
             this.log('Calcul des statistiques');
             
-            const [companiesResult, licensesResult, contactsResult] = await Promise.all([
+            const [companiesResult, licensesResult, contactsResult, opportunitiesResult] = await Promise.all([
                 this.getCompanies(),
                 this.getLicenses(),
-                this.getContacts()
+                this.getContacts(),
+                this.getOpportunities()
             ]);
             
             if (!companiesResult.success || !licensesResult.success || !contactsResult.success) {
@@ -1119,6 +1260,7 @@ class CRMService {
             const companies = companiesResult.data;
             const licenses = licensesResult.data;
             const contacts = contactsResult.data;
+            const opportunities = opportunitiesResult.success ? opportunitiesResult.data : [];
             
             // Calculs des statistiques
             const now = new Date();
@@ -1140,16 +1282,20 @@ class CRMService {
                 activeLicenses: licenses.filter(l => l.status === 'active').length,
                 totalLicenseCount: licenses
                     .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.license_count || 0), 0),
+                    .reduce((sum, l) => sum + (parseInt(l.license_count) || 0), 0),
                 
                 // Revenus
                 monthlyRevenue: licenses
                     .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.monthly_cost || 0), 0),
+                    .reduce((sum, l) => sum + (parseFloat(l.monthly_cost) || 0), 0),
                 
                 yearlyRevenue: licenses
                     .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + ((l.monthly_cost || 0) * 12), 0),
+                    .reduce((sum, l) => sum + ((parseFloat(l.monthly_cost) || 0) * 12), 0),
+                
+                // Opportunités
+                totalOpportunities: opportunities.length,
+                opportunitiesValue: opportunities.reduce((sum, o) => sum + (parseFloat(o.value) || 0), 0),
                 
                 // Expirations
                 expiringLicenses: licenses.filter(l => {
@@ -1208,7 +1354,7 @@ function formatCurrency(amount) {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
         currency: 'EUR'
-    }).format(amount);
+    }).format(parseFloat(amount));
 }
 
 // Génération d'initiales
@@ -1498,6 +1644,20 @@ window.testConfig = async function() {
     };
 };
 
+// Test direct des opportunités
+window.testOpportunities = async function() {
+    console.log('🧪 Test des opportunités...');
+    
+    try {
+        const result = await CRMService.getOpportunities();
+        console.log('📊 Résultat:', result);
+        return result;
+    } catch (error) {
+        console.error('❌ Erreur test opportunités:', error);
+        return { error };
+    }
+};
+
 // Gestion des erreurs globales
 window.addEventListener('error', (e) => {
     console.error('Erreur globale:', e.error?.message);
@@ -1508,4 +1668,5 @@ window.addEventListener('unhandledrejection', (e) => {
     e.preventDefault();
 });
 
-console.log('✅ Configuration CRM chargée - Prêt pour l\'initialisation');
+console.log('✅ Configuration CRM complète chargée - Prêt pour l\'initialisation');
+console.log('🛠️ Fonctions disponibles: testConfig(), testOpportunities()');
