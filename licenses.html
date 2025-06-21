@@ -1477,9 +1477,15 @@
                                         <span style="margin-left: 0.5rem; font-size: 0.75rem; color: var(--gray-500);">
                                             ${user.is_active ? '🟢 Actif' : '🔴 Inactif'}
                                         </span>
+                                        <span style="margin-left: 0.5rem; font-size: 0.75rem; color: var(--gray-400);">
+                                            Ajouté le ${formatDateShort(user.activated_at)}
+                                        </span>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="editUserContact('${user.contact_id}')" title="Modifier le contact">
+                                        ✏️
+                                    </button>
                                     <button class="btn btn-sm btn-danger" onclick="removeUser('${user.id}', '${license.id}')" title="Supprimer">
                                         🗑️
                                     </button>
@@ -1493,8 +1499,39 @@
                     <button class="btn btn-secondary" onclick="closeUsersModal()">
                         Fermer
                     </button>
+                    <button class="btn btn-info" onclick="refreshUsers('${license.id}')">
+                        🔄 Actualiser
+                    </button>
                 </div>
             `;
+        }
+
+        // Fonctions supplémentaires pour la gestion des utilisateurs
+        function editUserContact(contactId) {
+            // Ouvrir une modal pour modifier le contact
+            alert(`Modification du contact ID: ${contactId}\nCette fonctionnalité sera implémentée prochainement.`);
+        }
+
+        async function refreshUsers(licenseId) {
+            showLoading(true);
+            try {
+                // Recharger les utilisateurs de la licence
+                const result = await CRMService.getLicenseUsers(licenseId);
+                const license = licenses.find(l => l.id === licenseId);
+                
+                if (result.success && license) {
+                    license.users = result.data;
+                    renderUsersModal(license, result.data);
+                    showSuccess('Liste des utilisateurs actualisée');
+                } else {
+                    throw new Error('Erreur lors de l\'actualisation');
+                }
+            } catch (error) {
+                console.error('Erreur actualisation utilisateurs:', error);
+                showError('Erreur lors de l\'actualisation: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
         }
 
         // Gestion des utilisateurs - Fonctions
@@ -1505,14 +1542,20 @@
         function hideAddUserForm() {
             document.getElementById('addUserForm').style.display = 'none';
             document.getElementById('userForm').reset();
-            document.getElementById('selectedContactId').value = '';
-            // Réinitialiser les sélections de contacts
-            document.querySelectorAll('.contact-suggestion').forEach(el => {
-                el.classList.remove('selected');
-            });
+            
+            // Nettoyer la sélection de contact
+            clearContactSelection();
+            
+            // Supprimer le bouton de désélection
+            const clearBtn = document.getElementById('clearSelectionBtn');
+            if (clearBtn) {
+                clearBtn.remove();
+            }
         }
 
         function selectExistingContact(contactId, firstName, lastName, email) {
+            console.log('👤 Sélection du contact:', { contactId, firstName, lastName, email });
+            
             // Marquer le contact comme sélectionné visuellement
             document.querySelectorAll('.contact-suggestion').forEach(el => {
                 el.classList.remove('selected');
@@ -1525,10 +1568,13 @@
             document.getElementById('userLastName').value = lastName;
             document.getElementById('userEmail').value = email;
             
-            // Désactiver les champs pour éviter la modification
+            // Marquer les champs comme remplis automatiquement
             document.getElementById('userFirstName').readOnly = true;
             document.getElementById('userLastName').readOnly = true;
             document.getElementById('userEmail').readOnly = true;
+            document.getElementById('userFirstName').style.backgroundColor = '#f3f4f6';
+            document.getElementById('userLastName').style.backgroundColor = '#f3f4f6';
+            document.getElementById('userEmail').style.backgroundColor = '#f3f4f6';
             
             // Trouver le contact complet pour récupérer les autres informations
             const fullContact = allContacts.find(c => c.id === contactId);
@@ -1537,6 +1583,25 @@
                 document.getElementById('userPhone').value = fullContact.phone || '';
                 document.getElementById('userPosition').readOnly = true;
                 document.getElementById('userPhone').readOnly = true;
+                document.getElementById('userPosition').style.backgroundColor = '#f3f4f6';
+                document.getElementById('userPhone').style.backgroundColor = '#f3f4f6';
+            }
+            
+            // Ajouter un bouton pour désélectionner
+            const existingBtn = document.getElementById('clearSelectionBtn');
+            if (!existingBtn) {
+                const clearBtn = document.createElement('button');
+                clearBtn.id = 'clearSelectionBtn';
+                clearBtn.type = 'button';
+                clearBtn.className = 'btn btn-sm btn-warning';
+                clearBtn.textContent = '🔄 Nouveau contact';
+                clearBtn.onclick = clearContactSelection;
+                clearBtn.style.marginLeft = '0.5rem';
+                
+                const submitBtn = document.querySelector('#userForm button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.parentNode.insertBefore(clearBtn, submitBtn);
+                }
             }
         }
 
@@ -1752,28 +1817,49 @@
 
         // Réinitialiser les champs lors de la déselection d'un contact
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.contact-suggestion') && !e.target.closest('#userForm input')) {
+            if (!e.target.closest('.contact-suggestion') && 
+                !e.target.closest('#userForm input') && 
+                !e.target.closest('#userForm select')) {
+                
                 // Si on clique ailleurs que sur une suggestion ou un champ du formulaire
                 const selectedContactId = document.getElementById('selectedContactId');
-                if (selectedContactId && selectedContactId.value) {
-                    // Ne rien faire si un contact est déjà sélectionné
-                    return;
+                if (selectedContactId && !selectedContactId.value) {
+                    // Réactiver tous les champs seulement si aucun contact n'est sélectionné
+                    ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
+                        const field = document.getElementById(fieldId);
+                        if (field) {
+                            field.readOnly = false;
+                            field.style.backgroundColor = '';
+                        }
+                    });
+                    
+                    // Désélectionner visuellement tous les contacts
+                    document.querySelectorAll('.contact-suggestion').forEach(el => {
+                        el.classList.remove('selected');
+                    });
                 }
-                
-                // Réactiver tous les champs
-                ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
-                    const field = document.getElementById(fieldId);
-                    if (field) {
-                        field.readOnly = false;
-                    }
-                });
-                
-                // Désélectionner visuellement tous les contacts
-                document.querySelectorAll('.contact-suggestion').forEach(el => {
-                    el.classList.remove('selected');
-                });
             }
         });
+
+        // Fonction pour réinitialiser la sélection de contact
+        function clearContactSelection() {
+            document.getElementById('selectedContactId').value = '';
+            
+            // Réactiver tous les champs
+            ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.readOnly = false;
+                    field.style.backgroundColor = '';
+                    field.value = '';
+                }
+            });
+            
+            // Désélectionner visuellement tous les contacts
+            document.querySelectorAll('.contact-suggestion').forEach(el => {
+                el.classList.remove('selected');
+            });
+        }
     </script>
 </body>
 </html>
