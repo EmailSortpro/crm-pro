@@ -1680,6 +1680,9 @@
             const usedContactIds = users.map(u => u.contact_id);
             const availableContacts = companyContacts.filter(c => !usedContactIds.includes(c.id));
             
+            // Récupérer toutes les licences de cette société pour voir qui a quoi
+            const companyLicenses = licenses.filter(l => l.company_id === license.company_id);
+            
             document.getElementById('usersModalContent').innerHTML = `
                 <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
@@ -1695,6 +1698,37 @@
                             <div style="font-size: 1.5rem; font-weight: 700; color: ${availableSlots > 0 ? 'var(--success-color)' : 'var(--error-color)'};">${availableSlots}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-600);">Places libres</div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Vue d'ensemble des licences de la société -->
+                <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📊 Vue d'ensemble - ${escapeHtml(license.company_name)}</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${companyLicenses.map(lic => {
+                            const licUsers = lic.users?.filter(u => u.is_active).length || 0;
+                            const isCurrentLicense = lic.id === license.id;
+                            return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-radius: var(--radius); margin-bottom: 0.5rem; background: ${isCurrentLicense ? 'var(--primary-color)' : 'var(--white)'}; color: ${isCurrentLicense ? 'var(--white)' : 'var(--gray-800)'};">
+                                    <div>
+                                        <div style="font-weight: 600;">
+                                            ${lic.license_type === 'individual' ? '👤' : '🏢'} ${escapeHtml(lic.plan_name)}
+                                            ${isCurrentLicense ? ' (ACTUELLE)' : ''}
+                                        </div>
+                                        <div style="font-size: 0.75rem; opacity: 0.8;">
+                                            ${lic.license_type === 'individual' ? lic.individual_contact_name : `${licUsers}/${lic.license_count} utilisateurs`}
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 600;">${formatCurrency(lic.monthly_cost || 0)}</div>
+                                        <div style="font-size: 0.75rem; opacity: 0.8;">${getStatusText(lic.status)}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                        <strong>Total mensuel société: ${formatCurrency(companyLicenses.filter(l => l.status === 'active').reduce((sum, l) => sum + (l.monthly_cost || 0), 0))}</strong>
                     </div>
                 </div>
 
@@ -1784,7 +1818,7 @@
 
                 <!-- Liste des utilisateurs -->
                 <div style="margin-top: 1.5rem;">
-                    <h4 style="margin-bottom: 1rem;">Utilisateurs existants</h4>
+                    <h4 style="margin-bottom: 1rem;">Utilisateurs de cette licence</h4>
                     <div id="usersList">
                         ${users.length > 0 ? users.map(user => `
                             <div class="user-card ${!user.is_active ? 'user-status-inactive' : ''}">
