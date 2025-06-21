@@ -97,18 +97,24 @@
             margin-top: 0.5rem;
         }
 
-        /* Contrôles de vue */
+        /* Contrôles de vue optimisés */
         .view-controls {
             background: white;
-            padding: 1rem;
+            padding: 1.5rem;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             margin-bottom: 2rem;
             display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .controls-row {
+            display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
             gap: 1rem;
+            flex-wrap: wrap;
         }
 
         .view-toggle {
@@ -124,6 +130,7 @@
             cursor: pointer;
             font-size: 0.875rem;
             transition: all 0.2s;
+            font-weight: 500;
         }
 
         .toggle-btn.active {
@@ -132,11 +139,48 @@
             border-color: var(--primary);
         }
 
+        .toggle-btn:hover:not(.active) {
+            background: var(--gray-50);
+            border-color: var(--gray-300);
+        }
+
         .search-input {
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             border: 1px solid var(--gray-200);
             border-radius: var(--radius);
-            min-width: 250px;
+            min-width: 300px;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .sort-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .sort-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-200);
+            background: white;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .sort-btn.active {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .sort-btn:hover:not(.active) {
+            background: var(--gray-50);
+            border-color: var(--gray-300);
+            transform: translateY(-1px);
         }
 
         /* Vue par société */
@@ -550,17 +594,28 @@
             }
 
             .view-controls {
-                flex-direction: column;
-                align-items: stretch;
+                padding: 1rem;
             }
 
-            .view-controls > div:last-child {
+            .controls-row {
                 flex-direction: column;
+                align-items: stretch;
                 gap: 1rem;
+            }
+
+            .sort-buttons {
+                justify-content: center;
+                gap: 0.25rem;
+            }
+
+            .sort-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
             }
 
             .search-input {
                 min-width: auto;
+                max-width: none;
             }
 
             .company-stats {
@@ -633,12 +688,9 @@
 
     <!-- Contenu principal -->
     <div class="container">
-        <!-- Header -->
+        <!-- Header simplifié -->
         <div class="header">
-            <h1 class="title">📄 Licences</h1>
-            <button class="btn btn-primary" onclick="openCreateModal()">
-                ➕ Nouvelle licence
-            </button>
+            <h1 class="title">📄 Gestion des licences</h1>
         </div>
 
         <!-- Stats -->
@@ -661,31 +713,34 @@
             </div>
         </div>
 
-        <!-- Contrôles de vue -->
+        <!-- Contrôles de vue optimisés -->
         <div class="view-controls">
-            <div class="view-toggle">
-                <button class="toggle-btn active" onclick="setView('companies')" id="viewCompanies">
-                    🏢 Par société
-                </button>
-                <button class="toggle-btn" onclick="setView('list')" id="viewList">
-                    📋 Liste complète
+            <div class="controls-row">
+                <div class="view-toggle">
+                    <button class="toggle-btn active" onclick="setView('companies')" id="viewCompanies">
+                        🏢 Par société
+                    </button>
+                    <button class="toggle-btn" onclick="setView('list')" id="viewList">
+                        📋 Liste complète
+                    </button>
+                </div>
+                
+                <button class="btn btn-primary" onclick="openCreateModal()">
+                    ➕ Nouvelle licence
                 </button>
             </div>
-            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            
+            <div class="controls-row">
                 <input type="text" class="search-input" placeholder="🔍 Rechercher par nom, email ou société..." oninput="searchLicenses()" id="searchInput">
                 
-                <select class="form-select" id="sortSelect" onchange="applySorting()" style="min-width: 200px;">
-                    <option value="created_desc">➕ Plus récentes</option>
-                    <option value="created_asc">📅 Plus anciennes</option>
-                    <option value="renewal_asc">🔄 Renouvellement proche</option>
-                    <option value="renewal_desc">📆 Renouvellement lointain</option>
-                    <option value="price_desc">💰 Prix décroissant</option>
-                    <option value="price_asc">💸 Prix croissant</option>
-                    <option value="company_asc">🏢 Société A-Z</option>
-                    <option value="company_desc">🏢 Société Z-A</option>
-                    <option value="status_active">✅ Actives d'abord</option>
-                    <option value="status_expiring">⚠️ À renouveler d'abord</option>
-                </select>
+                <div class="sort-buttons">
+                    <button class="sort-btn active" onclick="applySortFilter('created_desc')" data-sort="created_desc">📅 Récentes</button>
+                    <button class="sort-btn" onclick="applySortFilter('renewal_asc')" data-sort="renewal_asc">🔄 À renouveler</button>
+                    <button class="sort-btn" onclick="applySortFilter('price_desc')" data-sort="price_desc">💰 Prix ↓</button>
+                    <button class="sort-btn" onclick="applySortFilter('price_asc')" data-sort="price_asc">💸 Prix ↑</button>
+                    <button class="sort-btn" onclick="applySortFilter('company_asc')" data-sort="company_asc">🏢 A-Z</button>
+                    <button class="sort-btn" onclick="applySortFilter('status_active')" data-sort="status_active">✅ Actives</button>
+                </div>
             </div>
         </div>
 
@@ -818,6 +873,7 @@
             currentView: 'companies',
             currentCompany: null,
             currentLicense: null,
+            currentSort: 'created_desc',
             isEditing: false,
             filteredData: [],
             isLoading: false
@@ -892,6 +948,10 @@
                 
                 // Initialiser les filtres avec toutes les licences
                 appData.filteredData = [...appData.licenses];
+                
+                // Initialiser le tri par défaut
+                document.querySelector('[data-sort="created_desc"]')?.classList.add('active');
+                
                 applyFiltersAndSorting();
                 
             } catch (error) {
@@ -1862,11 +1922,19 @@
             }
         }
 
-        function searchLicenses() {
+        function applySortFilter(sortType) {
+            // Mettre à jour l'UI des boutons
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-sort="${sortType}"]`).classList.add('active');
+            
+            // Appliquer le tri
+            appData.currentSort = sortType;
             applyFiltersAndSorting();
         }
 
-        function applySorting() {
+        function searchLicenses() {
             applyFiltersAndSorting();
         }
 
@@ -1911,8 +1979,8 @@
             }
 
             // Tri
-            const sortValue = document.getElementById('sortSelect').value;
-            filtered = sortLicenses(filtered, sortValue);
+            const sortType = appData.currentSort || 'created_desc';
+            filtered = sortLicenses(filtered, sortType);
 
             appData.filteredData = filtered;
             renderContent();
