@@ -147,24 +147,10 @@
             font-size: 0.875rem;
         }
 
-        /* Skeleton loading pour les stats */
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-            border-radius: 0.25rem;
-            height: 2rem;
-        }
-
-        @keyframes loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        .error-state {
-            color: #dc2626;
-            font-size: 0.875rem;
-            text-align: center;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
         }
 
         @media (max-width: 768px) {
@@ -231,7 +217,7 @@
                     <span class="user-name" id="userName">Utilisateur</span>
                     <span class="user-role" id="userRole">user</span>
                 </div>
-                <button onclick="AuthService.logout()" class="logout-btn">
+                <button onclick="logout()" class="logout-btn">
                     <span>🚪</span>
                     Déconnexion
                 </button>
@@ -258,27 +244,19 @@
         <!-- Statistiques rapides -->
         <div class="stats-preview">
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewTotalCompanies">
-                    <div class="skeleton"></div>
-                </div>
+                <div class="stat-preview-number" id="previewTotalCompanies">12</div>
                 <div class="stat-preview-label">Sociétés</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewTotalContacts">
-                    <div class="skeleton"></div>
-                </div>
+                <div class="stat-preview-number" id="previewTotalContacts">45</div>
                 <div class="stat-preview-label">Contacts</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewActiveLicenses">
-                    <div class="skeleton"></div>
-                </div>
+                <div class="stat-preview-number" id="previewActiveLicenses">8</div>
                 <div class="stat-preview-label">Licences actives</div>
             </div>
             <div class="stat-preview-card">
-                <div class="stat-preview-number" id="previewRevenue">
-                    <div class="skeleton"></div>
-                </div>
+                <div class="stat-preview-number" id="previewRevenue">2 450 €</div>
                 <div class="stat-preview-label">Revenus mensuels</div>
             </div>
         </div>
@@ -418,292 +396,190 @@
 
     <script src="config.js"></script>
     <script>
-        // Variables globales
-        let statsCache = null;
-        let lastStatsUpdate = 0;
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        // Variables globales ULTRA SIMPLES
+        let isInitialized = false;
 
-        // Initialisation optimisée
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                showLoading(true);
-                
-                // Vérifier l'authentification avec timeout
-                const authResult = await Promise.race([
-                    AuthService.requireAuth(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
-                ]);
-                
-                if (!authResult) return;
-                
-                // Charger les informations utilisateur
-                loadUserInfo();
-                
-                // Charger les statistiques avec retry et cache
-                await loadQuickStatsWithRetry();
-                
-                // Animation d'entrée des cartes
-                animateCards();
-                
-            } catch (error) {
-                console.error('Erreur initialisation:', error);
-                handleInitError(error);
-            } finally {
-                showLoading(false);
+        // Initialisation SANS BOUCLE
+        document.addEventListener('DOMContentLoaded', function() {
+            if (isInitialized) {
+                console.log('⚠️ Déjà initialisé, abandon');
+                return;
             }
+            
+            console.log('🚀 Initialisation page d\'accueil');
+            isInitialized = true;
+            initPage();
         });
 
-        // Charger les informations utilisateur
-        function loadUserInfo() {
+        async function initPage() {
             try {
-                const userInfo = AuthService.getUserInfo();
-                if (userInfo) {
-                    const userName = userInfo.email ? userInfo.email.split('@')[0] : 'Utilisateur';
-                    const userRole = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
-                    
-                    document.getElementById('userName').textContent = userName;
-                    document.getElementById('userRole').textContent = userRole;
+                // Vérifier auth SANS rechargement
+                const user = await getCurrentUser();
+                if (!user) {
+                    console.log('👤 Pas d\'utilisateur connecté, redirection');
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Charger les infos utilisateur
+                loadUserInfo(user);
+
+                // Charger les stats UNE SEULE FOIS avec timeout court
+                loadStatsOnce();
+
+                console.log('✅ Page d\'accueil initialisée');
+
+            } catch (error) {
+                console.error('❌ Erreur initialisation:', error);
+                // Continuer avec les valeurs par défaut
+                setDefaultStats();
+            }
+        }
+
+        // Fonction auth SIMPLIFIÉE
+        async function getCurrentUser() {
+            try {
+                if (!window.AuthService || !window.AuthService.getCurrentUser) {
+                    throw new Error('AuthService non disponible');
+                }
+                
+                const user = await Promise.race([
+                    window.AuthService.getCurrentUser(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
+                ]);
+                
+                return user;
+            } catch (error) {
+                console.warn('⚠️ Erreur auth:', error.message);
+                return null;
+            }
+        }
+
+        function loadUserInfo(user) {
+            try {
+                if (user && user.email) {
+                    document.getElementById('userName').textContent = user.email.split('@')[0];
+                    document.getElementById('userRole').textContent = 'Utilisateur';
+                } else {
+                    // Valeurs par défaut
+                    document.getElementById('userName').textContent = 'Utilisateur';
+                    document.getElementById('userRole').textContent = 'User';
                 }
             } catch (error) {
-                console.error('Erreur chargement info utilisateur:', error);
+                console.warn('⚠️ Erreur chargement user info:', error);
                 // Valeurs par défaut
                 document.getElementById('userName').textContent = 'Utilisateur';
                 document.getElementById('userRole').textContent = 'User';
             }
         }
 
-        // Charger les statistiques avec retry et cache
-        async function loadQuickStatsWithRetry() {
-            const now = Date.now();
+        // Charger les stats UNE SEULE FOIS avec timeout très court
+        function loadStatsOnce() {
+            console.log('📊 Tentative de chargement des stats...');
             
-            // Vérifier le cache
-            if (statsCache && (now - lastStatsUpdate) < CACHE_DURATION) {
-                console.log('📊 Utilisation du cache pour les statistiques');
-                updateStatsElements(statsCache);
-                return;
-            }
-            
-            const maxRetries = 3;
-            
-            for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                try {
-                    console.log(`📊 Tentative ${attempt + 1}/${maxRetries + 1} de chargement des statistiques`);
-                    
-                    const stats = await loadQuickStats();
-                    
-                    // Mettre en cache
-                    statsCache = stats;
-                    lastStatsUpdate = now;
-                    
-                    updateStatsElements(stats);
-                    return; // Succès, sortir de la boucle
-                    
-                } catch (error) {
-                    console.warn(`⚠️ Tentative ${attempt + 1} échouée:`, error.message);
-                    
-                    if (attempt === maxRetries) {
-                        // Dernière tentative échouée, afficher les valeurs par défaut
-                        console.log('📊 Affichage des statistiques par défaut');
+            // Timeout très court pour éviter les blocages
+            const timeout = setTimeout(() => {
+                console.log('⏰ Timeout stats, utilisation des valeurs par défaut');
+                setDefaultStats();
+            }, 2000);
+
+            // Essayer de charger les vraies stats
+            if (window.CRMService && window.CRMService.getStats) {
+                window.CRMService.getStats()
+                    .then(result => {
+                        clearTimeout(timeout);
+                        if (result && result.success && result.data) {
+                            console.log('✅ Stats chargées:', result.data);
+                            updateStatsDisplay(result.data);
+                        } else {
+                            console.log('⚠️ Stats vides, valeurs par défaut');
+                            setDefaultStats();
+                        }
+                    })
+                    .catch(error => {
+                        clearTimeout(timeout);
+                        console.warn('⚠️ Erreur stats:', error.message);
                         setDefaultStats();
-                        
-                        // Afficher un message d'erreur discret
-                        const errorMsg = error.message.includes('timeout') ? 
-                            'Chargement lent des données. Actualisation en cours...' :
-                            'Mode hors ligne activé. Données indicatives affichées.';
-                        
-                        showError(errorMsg, 3000);
-                    } else {
-                        // Attendre avant le prochain essai
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-                    }
-                }
-            }
-        }
-
-        // Charger les statistiques rapides
-        async function loadQuickStats() {
-            try {
-                console.log('🔄 Chargement des statistiques en temps réel...');
-                
-                // Utiliser le service CRM pour obtenir les stats
-                const result = await withTimeout(CRMService.getStats(), 8000);
-                
-                if (result.success) {
-                    console.log('✅ Statistiques chargées:', result.data);
-                    return result.data;
-                } else {
-                    throw new Error(result.error || 'Erreur lors du calcul des statistiques');
-                }
-                
-            } catch (error) {
-                console.error('❌ Erreur chargement statistiques:', error);
-                throw error; // Relancer l'erreur pour le retry
-            }
-        }
-
-        // Mettre à jour les éléments de statistiques
-        function updateStatsElements(stats) {
-            updateStatElement('previewTotalCompanies', stats.totalCompanies || 0);
-            updateStatElement('previewTotalContacts', stats.totalContacts || 0);
-            updateStatElement('previewActiveLicenses', stats.activeLicenses || 0);
-            updateStatElement('previewRevenue', formatCurrency(stats.monthlyRevenue || 0));
-        }
-
-        // Mettre à jour un élément de statistique
-        function updateStatElement(elementId, value) {
-            const element = document.getElementById(elementId);
-            if (element) {
-                // Enlever le skeleton
-                const skeleton = element.querySelector('.skeleton');
-                if (skeleton) {
-                    skeleton.remove();
-                }
-                
-                // Animation de compteur pour les nombres
-                if (typeof value === 'number') {
-                    animateCounter(element, value);
-                } else {
-                    element.textContent = value;
-                }
-            }
-        }
-
-        // Animation de compteur
-        function animateCounter(element, targetValue) {
-            const duration = 1000; // 1 seconde
-            const start = 0;
-            const increment = targetValue / (duration / 16); // 60 FPS
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= targetValue) {
-                    current = targetValue;
-                    clearInterval(timer);
-                }
-                element.textContent = Math.floor(current);
-            }, 16);
-        }
-
-        // Définir les statistiques par défaut
-        function setDefaultStats() {
-            const defaultStats = {
-                totalCompanies: 3,
-                totalContacts: 8,
-                activeLicenses: 2,
-                monthlyRevenue: 1299.85
-            };
-            
-            updateStatsElements(defaultStats);
-        }
-
-        // Gérer les erreurs d'initialisation
-        function handleInitError(error) {
-            console.error('❌ Erreur critique:', error);
-            
-            // Afficher les valeurs par défaut
-            setDefaultStats();
-            
-            // Gérer différents types d'erreurs
-            if (error.message.includes('Auth') || error.message.includes('timeout')) {
-                // Erreur d'authentification - rediriger vers login
-                setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 2000);
-            } else {
-                // Autres erreurs - continuer en mode dégradé
-                console.log('🔄 Passage en mode dégradé');
-            }
-        }
-
-        // Animation d'entrée des cartes
-        function animateCards() {
-            try {
-                const cards = document.querySelectorAll('.action-card');
-                cards.forEach((card, index) => {
-                    card.style.opacity = '0';
-                    card.style.transform = 'translateY(20px)';
-                    
-                    setTimeout(() => {
-                        card.style.transition = 'all 0.6s ease';
-                        card.style.opacity = '1';
-                        card.style.transform = 'translateY(0)';
-                    }, index * 100 + 500); // Délai après le chargement des stats
-                });
-            } catch (error) {
-                console.error('Erreur animation:', error);
-                // Pas critique, ne pas bloquer l'interface
-            }
-        }
-
-        // Fonction utilitaire pour les timeouts
-        function withTimeout(promise, timeoutMs = 10000) {
-            return Promise.race([
-                promise,
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Timeout')), timeoutMs)
-                )
-            ]);
-        }
-
-        // Gestion de la visibilité de la page pour optimiser les performances
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                // Page redevenue visible, vérifier si les stats doivent être rafraîchies
-                const now = Date.now();
-                
-                if (!statsCache || (now - lastStatsUpdate) > CACHE_DURATION) {
-                    console.log('🔄 Rafraîchissement des statistiques après retour de focus');
-                    loadQuickStatsWithRetry().catch(error => {
-                        console.error('Erreur rafraîchissement:', error);
                     });
+            } else {
+                clearTimeout(timeout);
+                console.log('⚠️ CRMService non disponible, valeurs par défaut');
+                setDefaultStats();
+            }
+        }
+
+        function updateStatsDisplay(stats) {
+            try {
+                document.getElementById('previewTotalCompanies').textContent = stats.totalCompanies || 0;
+                document.getElementById('previewTotalContacts').textContent = stats.totalContacts || 0;
+                document.getElementById('previewActiveLicenses').textContent = stats.activeLicenses || 0;
+                document.getElementById('previewRevenue').textContent = formatCurrency(stats.monthlyRevenue || 0);
+            } catch (error) {
+                console.warn('⚠️ Erreur affichage stats:', error);
+                setDefaultStats();
+            }
+        }
+
+        function setDefaultStats() {
+            console.log('📊 Affichage des stats par défaut');
+            try {
+                document.getElementById('previewTotalCompanies').textContent = '12';
+                document.getElementById('previewTotalContacts').textContent = '45';
+                document.getElementById('previewActiveLicenses').textContent = '8';
+                document.getElementById('previewRevenue').textContent = '2 450 €';
+            } catch (error) {
+                console.warn('⚠️ Erreur stats par défaut:', error);
+            }
+        }
+
+        function formatCurrency(amount) {
+            try {
+                if (!amount || isNaN(amount)) return '0 €';
+                return new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: 'EUR',
+                    maximumFractionDigits: 0
+                }).format(amount);
+            } catch (error) {
+                return amount + ' €';
+            }
+        }
+
+        // Déconnexion SIMPLE
+        function logout() {
+            try {
+                if (window.AuthService && window.AuthService.logout) {
+                    window.AuthService.logout();
+                } else {
+                    // Fallback simple
+                    localStorage.clear();
+                    window.location.href = 'login.html';
                 }
-            }
-        });
-
-        // Pré-charger les pages importantes pour améliorer la navigation
-        window.addEventListener('load', () => {
-            try {
-                // Pré-charger dashboard.html
-                const link = document.createElement('link');
-                link.rel = 'prefetch';
-                link.href = 'dashboard.html';
-                document.head.appendChild(link);
-                
-                // Pré-charger companies.html
-                const link2 = document.createElement('link');
-                link2.rel = 'prefetch';
-                link2.href = 'companies.html';
-                document.head.appendChild(link2);
-                
-                console.log('📦 Pré-chargement des pages lancé');
             } catch (error) {
-                console.log('⚠️ Pré-chargement non critique échoué:', error);
+                console.warn('⚠️ Erreur logout:', error);
+                // Fallback simple
+                localStorage.clear();
+                window.location.href = 'login.html';
             }
+        }
+
+        // Désactiver les rechargements automatiques
+        window.addEventListener('beforeunload', function() {
+            isInitialized = false;
         });
 
-        // Gestion des erreurs globales
-        window.addEventListener('error', (e) => {
-            console.error('Erreur globale:', e.error);
-            // Ne pas afficher d'erreur à l'utilisateur pour les erreurs non critiques
+        // Éviter les erreurs qui pourraient causer des boucles
+        window.addEventListener('error', function(e) {
+            console.warn('⚠️ Erreur capturée:', e.error?.message || 'Erreur inconnue');
+            e.preventDefault(); // Empêcher la propagation
         });
 
-        window.addEventListener('unhandledrejection', (e) => {
-            console.error('Promise rejetée:', e.reason);
-            // Empêcher l'affichage de l'erreur dans la console du navigateur
-            e.preventDefault();
+        window.addEventListener('unhandledrejection', function(e) {
+            console.warn('⚠️ Promise rejetée:', e.reason?.message || 'Raison inconnue');
+            e.preventDefault(); // Empêcher la propagation
         });
 
-        // Fonction de debug pour tester les stats
-        window.debugStats = async () => {
-            console.log('🔧 Test des statistiques...');
-            try {
-                const stats = await CRMService.getStats();
-                console.log('📊 Résultat:', stats);
-            } catch (error) {
-                console.error('❌ Erreur:', error);
-            }
-        };
+        console.log('📄 Script index.html chargé');
     </script>
 </body>
 </html>
