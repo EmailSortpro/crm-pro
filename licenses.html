@@ -746,49 +746,6 @@
         </div>
     </div>
 
-    <!-- Modal Gestion -->
-    <div class="modal" id="manageModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="manageModalTitle">Gestion de licence</h3>
-                <button class="btn btn-secondary btn-sm" onclick="closeManageModal()">✕</button>
-            </div>
-            <div class="modal-body">
-                <!-- Tabs -->
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('info')">📋 Informations</button>
-                    <button class="tab" onclick="switchTab('users')">👥 Utilisateurs</button>
-                    <button class="tab" onclick="switchTab('pricing')">💰 Tarification</button>
-                </div>
-
-                <!-- Tab Info -->
-                <div class="tab-content active" id="tabInfo">
-                    <div id="licenseInfoContent">
-                        <!-- Rempli dynamiquement -->
-                    </div>
-                </div>
-
-                <!-- Tab Users -->
-                <div class="tab-content" id="tabUsers">
-                    <div id="usersSection">
-                        <!-- Rempli dynamiquement -->
-                    </div>
-                </div>
-
-                <!-- Tab Pricing -->
-                <div class="tab-content" id="tabPricing">
-                    <div id="pricingSection">
-                        <!-- Rempli dynamiquement -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeManageModal()">Fermer</button>
-                <button type="button" class="btn btn-primary" onclick="saveLicense()" id="saveBtn" style="display: none;">Sauvegarder</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Loading -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -805,8 +762,9 @@
         let currentFilter = 'all';
         let currentLicense = null;
         let editMode = false;
+        let isLoading = false; // FLAG POUR ÉVITER LES BOUCLES
 
-        // Initialisation
+        // Initialisation SIMPLIFIÉE
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Initialisation licences');
             
@@ -814,7 +772,7 @@
                 if (!await AuthService.requireAuth()) return;
                 
                 loadUserInfo();
-                await loadAllData();
+                await loadData();
                 setupForm();
                 
                 console.log('✅ Licences initialisées');
@@ -832,18 +790,37 @@
             }
         }
 
-        // Chargement des données
-        async function loadAllData() {
+        // ===== CHARGEMENT DES DONNÉES SIMPLIFIÉ =====
+        async function loadData() {
+            if (isLoading) {
+                console.log('⚠️ Chargement déjà en cours, abandon');
+                return;
+            }
+
+            isLoading = true;
             showLoading(true);
             
             try {
                 console.log('📊 Chargement des données...');
                 
+                // Charger en parallèle avec timeout
                 const [licensesRes, companiesRes, contactsRes, plansRes] = await Promise.all([
-                    CRMService.getLicenses(),
-                    CRMService.getCompanies(),
-                    CRMService.getContacts(),
-                    CRMService.getLicensePlans()
+                    Promise.race([
+                        CRMService.getLicenses(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout licences')), 10000))
+                    ]),
+                    Promise.race([
+                        CRMService.getCompanies(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout sociétés')), 10000))
+                    ]),
+                    Promise.race([
+                        CRMService.getContacts(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout contacts')), 10000))
+                    ]),
+                    Promise.race([
+                        CRMService.getLicensePlans(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout plans')), 10000))
+                    ])
                 ]);
 
                 licenses = licensesRes.success ? licensesRes.data || [] : [];
@@ -858,24 +835,27 @@
                     plans: plans.length
                 });
 
-                // Charger les utilisateurs pour chaque licence
+                // Charger les utilisateurs UNE SEULE FOIS
                 await loadLicenseUsers();
                 
-                updateStats();
-                updateCounts();
-                renderLicenses();
-                populateSelects();
+                // Mettre à jour l'UI UNE SEULE FOIS
+                updateUI();
                 
             } catch (error) {
                 console.error('❌ Erreur chargement:', error);
                 notify('Erreur lors du chargement des données', 'error');
+                
+                // Afficher des données par défaut
+                setDefaultData();
+                updateUI();
             } finally {
+                isLoading = false;
                 showLoading(false);
             }
         }
 
         async function loadLicenseUsers() {
-            for (let license of licenses) {
+            const promises = licenses.map(async (license) => {
                 try {
                     const result = await CRMService.getLicenseUsers(license.id);
                     license.users = result.success ? result.data || [] : [];
@@ -883,10 +863,26 @@
                     console.warn('Erreur utilisateurs licence:', license.id, error);
                     license.users = [];
                 }
-            }
+            });
+
+            await Promise.all(promises);
         }
 
-        // Mise à jour des stats
+        function setDefaultData() {
+            licenses = [];
+            companies = [];
+            contacts = [];
+            plans = [];
+        }
+
+        // ===== MISE À JOUR DE L'UI =====
+        function updateUI() {
+            updateStats();
+            updateCounts();
+            applyFilters(); // Ceci va appeler renderLicenses()
+            populateSelects();
+        }
+
         function updateStats() {
             const active = licenses.filter(l => l.status === 'active');
             const totalUsers = active.reduce((sum, l) => sum + (l.users?.filter(u => u.is_active).length || 0), 0);
@@ -947,7 +943,7 @@
                 const renewal = getRenewalInfo(license.renewal_date);
 
                 return `
-                    <tr class="license-row" onclick="openManageLicense('${license.id}')">
+                    <tr class="license-row" onclick="viewLicense('${license.id}')">
                         <td>
                             <div class="company-info">
                                 <div class="avatar">${getInitials(client)}</div>
@@ -979,7 +975,6 @@
                         </td>
                         <td onclick="event.stopPropagation()">
                             <div class="actions">
-                                <button class="action-btn btn-secondary" onclick="openManageLicense('${license.id}')" title="Gérer">⚙️</button>
                                 <button class="action-btn btn-warning" onclick="editLicense('${license.id}')" title="Modifier">✏️</button>
                                 <button class="action-btn btn-danger" onclick="deleteLicense('${license.id}')" title="Supprimer">🗑️</button>
                             </div>
@@ -1143,7 +1138,11 @@
         async function handleSubmit(e) {
             e.preventDefault();
 
-            const formData = new FormData(e.target);
+            if (isLoading) {
+                notify('Chargement en cours, veuillez patienter', 'error');
+                return;
+            }
+
             const type = document.querySelector('input[name="type"]:checked').value;
             const customPricing = document.getElementById('customPricing').checked;
             const unitPrice = parseFloat(document.getElementById('unitPrice').value) || 0;
@@ -1179,7 +1178,9 @@
                 if (result.success) {
                     notify(editMode ? 'Licence modifiée' : 'Licence créée', 'success');
                     closeLicenseModal();
-                    await loadAllData();
+                    
+                    // RECHARGER SEULEMENT SI NÉCESSAIRE
+                    await loadData();
                 } else {
                     throw new Error(result.error || 'Erreur sauvegarde');
                 }
@@ -1191,7 +1192,7 @@
             }
         }
 
-        // Actions
+        // Actions simplifiées
         function openCreateLicense() {
             editMode = false;
             currentLicense = null;
@@ -1247,20 +1248,14 @@
             document.getElementById('licenseModal').classList.add('show');
         }
 
-        function openManageLicense(licenseId) {
+        function viewLicense(licenseId) {
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
 
-            currentLicense = license;
+            const client = getClientName(license);
+            const plan = plans.find(p => p.id === license.plan_id);
             
-            document.getElementById('manageModalTitle').textContent = `Gestion - ${getClientName(license)}`;
-            
-            switchTab('info');
-            renderLicenseInfo();
-            renderLicenseUsers();
-            renderLicensePricing();
-            
-            document.getElementById('manageModal').classList.add('show');
+            alert(`Licence: ${client}\nPlan: ${plan?.name || 'Inconnu'}\nStatut: ${getStatus(license).text}`);
         }
 
         async function deleteLicense(licenseId) {
@@ -1277,283 +1272,12 @@
 
                 if (result.success) {
                     notify('Licence supprimée', 'success');
-                    await loadAllData();
+                    await loadData();
                 } else {
                     throw new Error(result.error || 'Erreur suppression');
                 }
             } catch (error) {
                 console.error('❌ Erreur suppression:', error);
-                notify('Erreur: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Gestion des tabs
-        function switchTab(tabName) {
-            // Masquer tous les tabs
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            // Activer le tab sélectionné
-            document.querySelector(`.tab:nth-child(${tabName === 'info' ? 1 : tabName === 'users' ? 2 : 3})`).classList.add('active');
-            document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('active');
-        }
-
-        function renderLicenseInfo() {
-            if (!currentLicense) return;
-
-            const client = getClientName(currentLicense);
-            const plan = plans.find(p => p.id === currentLicense.plan_id);
-            const activeUsers = currentLicense.users?.filter(u => u.is_active).length || 0;
-
-            document.getElementById('licenseInfoContent').innerHTML = `
-                <div class="license-card">
-                    <div class="license-card-header">
-                        <h4>${currentLicense.license_type === 'individual' ? '👤' : '🏢'} ${escapeHtml(client)}</h4>
-                        <span class="status ${getStatus(currentLicense).class}">${getStatus(currentLicense).text}</span>
-                    </div>
-                    
-                    <div class="form-grid">
-                        <div>
-                            <strong>Plan :</strong> ${escapeHtml(plan?.name || 'Plan inconnu')}<br>
-                            <strong>Utilisateurs :</strong> ${activeUsers}/${currentLicense.license_count}<br>
-                            <strong>Coût mensuel :</strong> ${formatCurrency(currentLicense.monthly_cost || 0)}
-                        </div>
-                        <div>
-                            <strong>Début :</strong> ${formatDate(currentLicense.start_date)}<br>
-                            <strong>Fin :</strong> ${formatDate(currentLicense.end_date)}<br>
-                            <strong>Renouvellement :</strong> ${formatDate(currentLicense.renewal_date)}
-                        </div>
-                    </div>
-                    
-                    ${currentLicense.notes ? `
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                            <strong>Notes :</strong><br>
-                            <p style="margin-top: 0.5rem; color: var(--gray-600);">${escapeHtml(currentLicense.notes)}</p>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
-        function renderLicenseUsers() {
-            if (!currentLicense) return;
-
-            const users = currentLicense.users || [];
-            const activeUsers = users.filter(u => u.is_active);
-            const availableSlots = currentLicense.license_count - activeUsers.length;
-            
-            // Contacts disponibles pour cette licence
-            let availableContacts = [];
-            if (currentLicense.license_type === 'company' && currentLicense.company_id) {
-                const usedContactIds = users.map(u => u.contact_id);
-                availableContacts = contacts.filter(c => 
-                    c.company_id === currentLicense.company_id && 
-                    !usedContactIds.includes(c.id)
-                );
-            }
-
-            document.getElementById('usersSection').innerHTML = `
-                <div class="license-card">
-                    <div class="license-card-header">
-                        <h4>👥 Utilisateurs (${activeUsers.length}/${currentLicense.license_count})</h4>
-                        <span style="color: ${availableSlots > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">
-                            ${availableSlots} place(s) libre(s)
-                        </span>
-                    </div>
-                    
-                    <div class="users-list">
-                        ${users.length > 0 ? users.map(user => `
-                            <div class="user-item">
-                                <div class="user-info">
-                                    <div class="user-name">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
-                                    <div class="user-email">${escapeHtml(user.email)}</div>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 1rem;">
-                                    <span class="status ${user.is_active ? 'status-active' : 'status-expired'}">
-                                        ${user.is_active ? 'Actif' : 'Inactif'}
-                                    </span>
-                                    <button class="btn btn-danger btn-xs" onclick="removeUser('${user.id}')">🗑️</button>
-                                </div>
-                            </div>
-                        `).join('') : '<p style="text-align: center; color: var(--gray-500); padding: 2rem;">Aucun utilisateur</p>'}
-                    </div>
-                    
-                    ${currentLicense.license_type === 'company' && availableSlots > 0 && availableContacts.length > 0 ? `
-                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                            <h5>➕ Ajouter un utilisateur</h5>
-                            <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                                <select id="newUserSelect" style="flex: 1; padding: 0.5rem; border: 1px solid var(--gray-200); border-radius: var(--radius);">
-                                    <option value="">Sélectionner un contact...</option>
-                                    ${availableContacts.map(contact => `
-                                        <option value="${contact.id}">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}</option>
-                                    `).join('')}
-                                </select>
-                                <button class="btn btn-success btn-sm" onclick="addUser()">Ajouter</button>
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
-        function renderLicensePricing() {
-            if (!currentLicense) return;
-
-            const plan = plans.find(p => p.id === currentLicense.plan_id);
-            const isCustom = currentLicense.custom_price_per_user !== null;
-            const unitPrice = isCustom ? currentLicense.custom_price_per_user : plan?.price_per_user || 0;
-
-            document.getElementById('pricingSection').innerHTML = `
-                <div class="license-card">
-                    <div class="license-card-header">
-                        <h4>💰 Tarification</h4>
-                        <button class="btn btn-warning btn-sm" onclick="editPricing()">✏️ Modifier</button>
-                    </div>
-                    
-                    <div class="form-grid">
-                        <div>
-                            <strong>Plan :</strong> ${escapeHtml(plan?.name || 'Plan inconnu')}<br>
-                            <strong>Prix unitaire :</strong> ${formatCurrency(unitPrice)}/mois<br>
-                            <strong>Nombre d'utilisateurs :</strong> ${currentLicense.license_count}
-                        </div>
-                        <div>
-                            <strong>Total mensuel :</strong> ${formatCurrency(currentLicense.monthly_cost || 0)}<br>
-                            <strong>Total annuel :</strong> ${formatCurrency((currentLicense.monthly_cost || 0) * 12)}<br>
-                            <strong>Type :</strong> ${isCustom ? 'Tarif personnalisé' : 'Tarif standard'}
-                        </div>
-                    </div>
-                    
-                    ${isCustom && currentLicense.custom_description ? `
-                        <div style="margin-top: 1rem; padding: 1rem; background: var(--warning); color: white; border-radius: var(--radius);">
-                            <strong>Tarif personnalisé :</strong> ${escapeHtml(currentLicense.custom_description)}
-                        </div>
-                    ` : ''}
-                    
-                    <div id="pricingEditForm" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                        <h5>Modifier la tarification</h5>
-                        <div class="form-grid" style="margin-top: 1rem;">
-                            <div class="form-group">
-                                <label class="form-label">Prix unitaire (€/mois)</label>
-                                <input type="number" class="form-input" id="editUnitPrice" step="0.01" value="${unitPrice}">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Nombre d'utilisateurs</label>
-                                <input type="number" class="form-input" id="editUserCount" min="1" value="${currentLicense.license_count}">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Description (optionnel)</label>
-                            <input type="text" class="form-input" id="editDescription" value="${currentLicense.custom_description || ''}" placeholder="Ex: Tarif négocié">
-                        </div>
-                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                            <button class="btn btn-secondary btn-sm" onclick="cancelPricingEdit()">Annuler</button>
-                            <button class="btn btn-primary btn-sm" onclick="savePricing()">Sauvegarder</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Gestion des utilisateurs
-        async function addUser() {
-            const contactId = document.getElementById('newUserSelect').value;
-            if (!contactId) {
-                notify('Sélectionnez un contact', 'error');
-                return;
-            }
-
-            showLoading(true);
-
-            try {
-                const result = await CRMService.createLicenseUser(currentLicense.id, contactId);
-
-                if (result.success) {
-                    notify('Utilisateur ajouté', 'success');
-                    await loadAllData();
-                    renderLicenseUsers();
-                } else {
-                    throw new Error(result.error || 'Erreur ajout');
-                }
-            } catch (error) {
-                console.error('❌ Erreur ajout utilisateur:', error);
-                notify('Erreur: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function removeUser(userId) {
-            if (!confirm('Supprimer cet utilisateur ?')) return;
-
-            showLoading(true);
-
-            try {
-                const result = await CRMService.deleteLicenseUser(userId);
-
-                if (result.success) {
-                    notify('Utilisateur supprimé', 'success');
-                    await loadAllData();
-                    renderLicenseUsers();
-                } else {
-                    throw new Error(result.error || 'Erreur suppression');
-                }
-            } catch (error) {
-                console.error('❌ Erreur suppression utilisateur:', error);
-                notify('Erreur: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Gestion de la tarification
-        function editPricing() {
-            document.getElementById('pricingEditForm').style.display = 'block';
-            document.getElementById('saveBtn').style.display = 'block';
-        }
-
-        function cancelPricingEdit() {
-            document.getElementById('pricingEditForm').style.display = 'none';
-            document.getElementById('saveBtn').style.display = 'none';
-        }
-
-        async function savePricing() {
-            const unitPrice = parseFloat(document.getElementById('editUnitPrice').value);
-            const userCount = parseInt(document.getElementById('editUserCount').value);
-            const description = document.getElementById('editDescription').value.trim();
-
-            if (!unitPrice || !userCount) {
-                notify('Prix et nombre d\'utilisateurs requis', 'error');
-                return;
-            }
-
-            const plan = plans.find(p => p.id === currentLicense.plan_id);
-            const isCustom = unitPrice !== (plan?.price_per_user || 0);
-
-            const data = {
-                license_count: userCount,
-                monthly_cost: unitPrice * userCount,
-                custom_price_per_user: isCustom ? unitPrice : null,
-                custom_description: isCustom && description ? description : null
-            };
-
-            showLoading(true);
-
-            try {
-                const result = await CRMService.updateLicense(currentLicense.id, data);
-
-                if (result.success) {
-                    notify('Tarification mise à jour', 'success');
-                    await loadAllData();
-                    currentLicense = licenses.find(l => l.id === currentLicense.id);
-                    renderLicensePricing();
-                    cancelPricingEdit();
-                } else {
-                    throw new Error(result.error || 'Erreur sauvegarde');
-                }
-            } catch (error) {
-                console.error('❌ Erreur sauvegarde tarification:', error);
                 notify('Erreur: ' + error.message, 'error');
             } finally {
                 showLoading(false);
@@ -1566,14 +1290,12 @@
                 if (license.individual_contact) {
                     return `${license.individual_contact.first_name} ${license.individual_contact.last_name}`;
                 }
-                // Fallback: chercher dans la liste des contacts
                 const contact = contacts.find(c => c.id === license.individual_contact_id);
                 return contact ? `${contact.first_name} ${contact.last_name}` : 'Contact inconnu';
             } else {
                 if (license.companies) {
                     return license.companies.name;
                 }
-                // Fallback: chercher dans la liste des sociétés
                 const company = companies.find(c => c.id === license.company_id);
                 return company ? company.name : 'Société inconnue';
             }
@@ -1592,7 +1314,6 @@
                 return statusMap[license.status] || { class: 'status-expired', text: license.status };
             }
 
-            // Vérifier si expiring
             if (license.renewal_date) {
                 const now = new Date();
                 const renewal = new Date(license.renewal_date);
@@ -1664,11 +1385,6 @@
         // Gestion des modals
         function closeLicenseModal() {
             document.getElementById('licenseModal').classList.remove('show');
-        }
-
-        function closeManageModal() {
-            document.getElementById('manageModal').classList.remove('show');
-            document.getElementById('saveBtn').style.display = 'none';
         }
 
         function showLoading(show) {
