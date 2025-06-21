@@ -1,1235 +1,1602 @@
-// ===================================
-// CONFIGURATION SUPABASE
-// ===================================
-
-// Configuration avec tes vraies clés Supabase
-const SUPABASE_URL = 'https://oxyiamruvyliueecpaam.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94eWlhbXJ1dnlsaXVlZWNwYWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MDM0MTgsImV4cCI6MjA2NTk3OTQxOH0.Wy_jbUB7D5Bly-rZB6oc2bXUHzZQ8MivDL4vdM1jcE0';
-
-// Initialisation du client Supabase avec gestion d'erreur
-let supabase = null;
-
-try {
-    if (typeof window !== 'undefined' && window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Connexion Supabase initialisée');
-        
-        // Test de connexion
-        supabase.auth.getSession().then(({ data, error }) => {
-            if (error && error.message.includes('Invalid API key')) {
-                console.error('🚨 Clé API Supabase invalide');
-            } else {
-                console.log('✅ Connexion Supabase validée');
-            }
-        }).catch(err => {
-            console.warn('⚠️ Test de connexion Supabase échoué:', err.message);
-        });
-    } else {
-        console.warn('⚠️ Supabase client non disponible');
-        throw new Error('Supabase non disponible');
-    }
-} catch (error) {
-    console.error('❌ Erreur initialisation Supabase:', error.message);
-    supabase = null;
-}
-
-// ===================================
-// GESTION DE L'AUTHENTIFICATION
-// ===================================
-
-class AuthService {
-    static async getCurrentUser() {
-        try {
-            if (!supabase) {
-                throw new Error('Supabase non initialisé');
-            }
-            
-            const { data: { user }, error } = await supabase.auth.getUser();
-            if (error) throw error;
-            return user;
-        } catch (error) {
-            console.error('Erreur récupération utilisateur:', error);
-            return null;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Forecast & Opportunités</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .filter-btn {
+            padding: 0.5rem 0.75rem;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #374151;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
-    }
-    
-    static async login(email, password) {
-        try {
-            if (!supabase) {
-                throw new Error('Service non disponible');
-            }
-            
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
-            
-            if (error) throw error;
-            
-            // Sauvegarder les infos utilisateur
-            if (data.user) {
-                const userInfo = {
-                    id: data.user.id,
-                    email: data.user.email,
-                    role: data.user.user_metadata?.role || 'user'
-                };
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-            }
-            
-            return { success: true, user: data.user };
-        } catch (error) {
-            console.error('Erreur connexion:', error);
-            return { success: false, error: error.message };
+        .filter-btn:hover {
+            background: #e5e7eb;
         }
-    }
-    
-    static async logout() {
-        try {
-            if (supabase) {
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
-            }
-            
-            // Nettoyer le localStorage
-            localStorage.removeItem('userInfo');
-            
-            // Rediriger vers la page de connexion
-            window.location.href = 'index.html';
-        } catch (error) {
-            console.error('Erreur déconnexion:', error);
-            showError('Erreur lors de la déconnexion');
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
         }
-    }
-    
-    static getUserInfo() {
-        const userInfo = localStorage.getItem('userInfo');
-        return userInfo ? JSON.parse(userInfo) : null;
-    }
-    
-    static isAdmin() {
-        const userInfo = this.getUserInfo();
-        return userInfo && userInfo.role === 'admin';
-    }
-    
-    static async requireAuth() {
-        const user = await this.getCurrentUser();
-        if (!user) {
-            window.location.href = 'index.html';
-            return false;
-        }
-        return true;
-    }
-}
 
-// ===================================
-// SERVICE DE DONNÉES CRM
-// ===================================
-
-class CRMService {
-    // Méthode utilitaire pour les logs
-    static log(action, data = null) {
-        console.log(`🔄 CRM Service - ${action}`, data ? data : '');
-    }
-
-    // ========== SOCIÉTÉS ==========
-    
-    static async getCompanies() {
-        try {
-            this.log('Récupération des sociétés');
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { data, error } = await supabase
-                .from('companies')
-                .select(`
-                    *,
-                    company_contacts (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone,
-                        contact_type,
-                        is_admin_contact,
-                        is_payment_contact,
-                        created_at
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getCompanies:', error);
-                throw error;
-            }
-            
-            this.log('Sociétés récupérées', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération sociétés:', error);
-            return { success: false, error: error.message };
+        /* Styles pour le tableau des opportunités */
+        .opportunities-table {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
         }
-    }
-    
-    static async createCompany(companyData) {
-        try {
-            this.log('Création société', companyData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
 
-            // Valider les données
-            if (!companyData.name) {
-                throw new Error('Le nom de la société est obligatoire');
-            }
-            
-            const { data, error } = await supabase
-                .from('companies')
-                .insert([{
-                    ...companyData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur création société:', error);
-                throw error;
-            }
-            
-            this.log('Société créée avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création société:', error);
-            return { success: false, error: error.message };
+        .opportunities-table table {
+            width: 100%;
+            border-collapse: collapse;
         }
-    }
-    
-    static async updateCompany(id, companyData) {
-        try {
-            this.log('Mise à jour société', { id, data: companyData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            if (!id) {
-                throw new Error('ID de société manquant');
-            }
-            
-            const { data, error } = await supabase
-                .from('companies')
-                .update({
-                    ...companyData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur mise à jour société:', error);
-                throw error;
-            }
-            
-            if (!data || data.length === 0) {
-                throw new Error('Société non trouvée');
-            }
-            
-            this.log('Société mise à jour avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur mise à jour société:', error);
-            return { success: false, error: error.message };
+
+        .opportunities-table th {
+            background: #f9fafb;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s ease;
         }
-    }
-    
-    static async deleteCompany(id) {
-        try {
-            this.log('Suppression société', { id });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
+
+        .opportunities-table th:hover {
+            background: #f3f4f6;
+        }
+
+        .opportunities-table th.sortable {
+            padding-right: 2rem;
+        }
+
+        .sort-arrow {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+
+        .opportunities-table th:hover .sort-arrow {
+            opacity: 0.8;
+        }
+
+        .opportunities-table th.sort-asc .sort-arrow {
+            opacity: 1;
+            color: #2563eb;
+        }
+
+        .opportunities-table th.sort-desc .sort-arrow {
+            opacity: 1;
+            color: #2563eb;
+        }
+
+        .opportunities-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+
+        .opportunities-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .opportunity-title {
+            font-weight: 600;
+            color: #1f2937;
+            cursor: pointer;
+        }
+
+        .opportunity-title:hover {
+            color: #667eea;
+        }
+
+        .stage-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .stage-prospect {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .stage-qualification {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .stage-proposal {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .stage-negotiation {
+            background: #fed7aa;
+            color: #c2410c;
+        }
+        .stage-closing {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .probability-bar {
+            width: 80px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.25rem 0;
+        }
+
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+            transition: width 0.3s ease;
+        }
+
+        .value-amount {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* Controls et pagination */
+        .table-controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .left-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .status-filters {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            min-width: 0;
+        }
+
+        .status-filters::-webkit-scrollbar {
+            display: none;
+        }
+
+        .status-filters {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .search-input {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            min-width: 200px;
+            font-size: 0.8rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .per-page-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .per-page-selector span {
+            font-size: 0.8rem;
+        }
+
+        .per-page-selector select {
+            padding: 0.4rem 0.6rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            min-width: 100px;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin: 0 1rem;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.25rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+        .close-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        /* Responsive - Optimisé pour une ligne */
+        @media (max-width: 1400px) {
+            .filter-btn {
+                padding: 0.4rem 0.6rem;
+                font-size: 0.75rem;
             }
             
-            if (!id) {
-                throw new Error('ID de société manquant');
+            .per-page-selector span {
+                display: none;
             }
             
-            // Vérifier s'il y a des licences associées
-            const { data: licenses } = await supabase
-                .from('company_licenses')
-                .select('id')
-                .eq('company_id', id);
+            .search-input {
+                min-width: 180px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .controls-row {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .left-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            .right-controls {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .opportunities-table {
+                overflow-x: auto;
+            }
+            
+            .opportunities-table table {
+                min-width: 900px;
+            }
+            
+            .search-input {
+                min-width: 150px;
+                width: 100%;
+            }
+            
+            .pagination {
+                flex-wrap: wrap;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .left-controls,
+            .right-controls {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <span class="logo-icon">🚀</span>
+                <span class="logo-text">CRM Pro</span>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Accueil
+                </a>
+                <a href="dashboard.html" class="nav-link">
+                    <span class="nav-icon">📊</span>
+                    Tableau de bord
+                </a>
+                <a href="companies.html" class="nav-link">
+                    <span class="nav-icon">🏢</span>
+                    Sociétés
+                </a>
+                <a href="contacts.html" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Contacts
+                </a>
+                <a href="forecast.html" class="nav-link active">
+                    <span class="nav-icon">📈</span>
+                    Forecast
+                </a>
+                <a href="onboarding.html" class="nav-link">
+                    <span class="nav-icon">🎯</span>
+                    Onboarding
+                </a>
+                <a href="licenses.html" class="nav-link">
+                    <span class="nav-icon">📄</span>
+                    Licences
+                </a>
+            </div>
+            
+            <div class="nav-user">
+                <div class="user-info">
+                    <span class="user-name" id="userName">Utilisateur</span>
+                    <span class="user-role" id="userRole">user</span>
+                </div>
+                <button onclick="AuthService.logout()" class="logout-btn">
+                    <span>🚪</span>
+                    Déconnexion
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenu principal -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        <!-- En-tête de page -->
+        <div style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2rem; font-weight: 700; color: #1f2937; margin-bottom: 0;">
+                📈 Forecast & Opportunités <span style="font-size: 1rem; font-weight: 400; color: #6b7280; margin-left: 1rem;">Analysez vos prévisions et suivez vos opportunités</span>
+            </h1>
+        </div>
+
+        <!-- Métriques de forecast -->
+        <div class="stats-grid" style="margin-bottom: 2rem;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalOpportunities">0</div>
+                <div class="stat-label">Opportunités Totales</div>
+                <div class="stat-change" id="opportunitiesChange">Basé sur les données réelles</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-number" id="projectedRevenue">0 €</div>
+                <div class="stat-label">Revenus Projetés</div>
+                <div class="stat-change" id="revenueChange">Valeur totale des opportunités</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-number" id="conversionRate">0%</div>
+                <div class="stat-label">Taux de Conversion</div>
+                <div class="stat-change" id="conversionTrend">Prospect → Client</div>
+            </div>
+            <div class="stat-card error">
+                <div class="stat-number" id="avgDealSize">0 €</div>
+                <div class="stat-label">Taille Moyenne</div>
+                <div class="stat-change" id="dealSizeTrend">Par opportunité</div>
+            </div>
+        </div>
+
+        <!-- Contrôles et filtres pour le tableau -->
+        <div class="table-controls">
+            <div class="controls-row">
+                <div class="left-controls">
+                    <!-- Filtres par statut -->
+                    <div class="status-filters">
+                        <button class="filter-btn active" data-filter="all" onclick="filterOpportunities('all')">
+                            Toutes (<span id="count-all">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="prospect" onclick="filterOpportunities('prospect')">
+                            Prospects (<span id="count-prospect">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="qualification" onclick="filterOpportunities('qualification')">
+                            Qualification (<span id="count-qualification">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="proposal" onclick="filterOpportunities('proposal')">
+                            Proposition (<span id="count-proposal">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="negotiation" onclick="filterOpportunities('negotiation')">
+                            Négociation (<span id="count-negotiation">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="closing" onclick="filterOpportunities('closing')">
+                            Finalisation (<span id="count-closing">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- Sélecteur nombre par page -->
+                    <div class="per-page-selector">
+                        <span style="font-weight: 600; color: #374151;">Afficher :</span>
+                        <select id="perPageSelect" onchange="changePerPage()">
+                            <option value="10">10 lignes</option>
+                            <option value="25" selected>25 lignes</option>
+                            <option value="50">50 lignes</option>
+                            <option value="100">100 lignes</option>
+                            <option value="all">Tout afficher</option>
+                        </select>
+                    </div>
+                </div>
                 
-            if (licenses && licenses.length > 0) {
-                throw new Error('Impossible de supprimer une société qui a des licences actives');
-            }
-            
-            const { error } = await supabase
-                .from('companies')
-                .delete()
-                .eq('id', id);
-            
-            if (error) {
-                console.error('❌ Erreur suppression société:', error);
-                throw error;
-            }
-            
-            this.log('Société supprimée avec succès');
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Erreur suppression société:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== CONTACTS ==========
-    
-    static async getContacts(companyId = null) {
-        try {
-            this.log('Récupération des contacts', { companyId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            let query = supabase
-                .from('company_contacts')
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-            
-            const { data, error } = await query;
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getContacts:', error);
-                throw error;
-            }
-            
-            this.log('Contacts récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération contacts:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createContact(contactData) {
-        try {
-            this.log('Création contact', contactData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+                <div class="right-controls">
+                    <!-- Barre de recherche -->
+                    <input type="text" id="opportunitySearch" class="search-input" placeholder="🔍 Rechercher une opportunité..." 
+                           oninput="searchOpportunities()">
+                    
+                    <!-- Actions -->
+                    <button class="btn btn-secondary btn-sm" onclick="clearAllOpportunities()" title="Vider toutes les opportunités">
+                        🗑️ Vider tout
+                    </button>
+                    <button class="btn btn-primary" onclick="openModal('add-opportunity')">
+                        ➕ Nouvelle Opportunité
+                    </button>
+                </div>
+            </div>
+        </div>
 
-            // Valider les données
-            if (!contactData.first_name || !contactData.last_name) {
-                throw new Error('Prénom et nom sont obligatoires');
-            }
-            
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .insert([{
-                    ...contactData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur création contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact créé avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateContact(id, contactData) {
-        try {
-            this.log('Mise à jour contact', { id, data: contactData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .update({
-                    ...contactData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur mise à jour contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact mis à jour avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur mise à jour contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteContact(id) {
-        try {
-            this.log('Suppression contact', { id });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { error } = await supabase
-                .from('company_contacts')
-                .delete()
-                .eq('id', id);
-            
-            if (error) {
-                console.error('❌ Erreur suppression contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact supprimé avec succès');
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Erreur suppression contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== LICENCES ==========
-    
-    static async getLicenses() {
-        try {
-            this.log('Récupération des licences');
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    ),
-                    individual_contact:company_contacts!individual_contact_id (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getLicenses:', error);
-                throw error;
-            }
-            
-            this.log('Licences récupérées', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération licences:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createLicense(licenseData) {
-        try {
-            this.log('Création licence', licenseData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+        <!-- Tableau des opportunités -->
+        <div id="opportunitiesTableView" class="opportunities-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="title" onclick="sortOpportunities('title')">
+                            Opportunité <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="company_name" onclick="sortOpportunities('company_name')">
+                            Société <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="value" onclick="sortOpportunities('value')">
+                            Valeur <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="stage" onclick="sortOpportunities('stage')">
+                            Étape <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="probability" onclick="sortOpportunities('probability')">
+                            Probabilité <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="expected_close_date" onclick="sortOpportunities('expected_close_date')">
+                            Clôture prévue <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="source" onclick="sortOpportunities('source')">
+                            Source <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="opportunitiesTableBody">
+                    <!-- Chargé dynamiquement -->
+                </tbody>
+            </table>
+        </div>
 
-            // Valider les données selon le type de licence
-            if (licenseData.license_type === 'individual') {
-                if (!licenseData.individual_contact_id || !licenseData.plan_id) {
-                    throw new Error('Contact et plan sont obligatoires pour une licence individuelle');
+        <!-- Pagination -->
+        <div id="paginationContainer" class="pagination">
+            <!-- Chargé dynamiquement -->
+        </div>
+
+        <!-- État vide -->
+        <div id="emptyState" class="card" style="display: none; text-align: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+            <h3 style="margin-bottom: 1rem; color: #6b7280;">Aucune opportunité trouvée</h3>
+            <p style="color: #9ca3af; margin-bottom: 2rem;">
+                Créez votre première opportunité pour commencer le suivi
+            </p>
+            <button class="btn btn-primary" onclick="openModal('add-opportunity')">
+                ➕ Créer une opportunité
+            </button>
+        </div>
+
+        <!-- Graphiques et analyses -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem; margin-top: 2rem;">
+            <!-- Graphique principal -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📊 Évolution Basée sur les Licences Réelles</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-sm btn-secondary active" onclick="updateForecastChart('monthly')">Mensuel</button>
+                        <button class="btn btn-sm btn-secondary" onclick="updateForecastChart('quarterly')">Trimestriel</button>
+                        <button class="btn btn-sm btn-secondary" onclick="updateForecastChart('yearly')">Annuel</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="forecastChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Pipeline de vente -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">🔄 Répartition des Sociétés</h3>
+                    <p class="card-subtitle">Données réelles de la base</p>
+                </div>
+                <div class="card-body">
+                    <canvas id="pipelineChart" width="300" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prévisions par trimestre -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📅 Prévisions par Trimestre</h3>
+                <p class="card-subtitle">Basé sur les dates de clôture de vos opportunités réelles</p>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Période</th>
+                                <th>Opportunités</th>
+                                <th>Revenus Estimés</th>
+                                <th>Probabilité</th>
+                                <th>Revenus Pondérés</th>
+                                <th>Tendance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forecastTableBody">
+                            <!-- Chargé dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Nouvelle Opportunité -->
+    <div id="modal-add-opportunity" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">🎯 Nouvelle Opportunité</h3>
+                <button class="close-btn" onclick="closeModal('add-opportunity')">&times;</button>
+            </div>
+            
+            <form id="addOpportunityForm">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="opportunityCompany">Société *</label>
+                        <select id="opportunityCompany" required>
+                            <option value="">Sélectionner une société</option>
+                            <!-- Options chargées dynamiquement -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="opportunityTitle">Titre de l'opportunité *</label>
+                        <input type="text" id="opportunityTitle" required placeholder="Ex: Licence pour 50 utilisateurs">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="opportunityValue">Valeur estimée (€) *</label>
+                        <input type="number" id="opportunityValue" required min="0" step="0.01" placeholder="5000">
+                    </div>
+                    <div class="form-group">
+                        <label for="opportunityStage">Étape *</label>
+                        <select id="opportunityStage" required onchange="updateStageDefaults()">
+                            <option value="prospect">Prospect</option>
+                            <option value="qualification">Qualification</option>
+                            <option value="proposal">Proposition</option>
+                            <option value="negotiation">Négociation</option>
+                            <option value="closing">Finalisation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="opportunityProbability">Probabilité (%)</label>
+                        <input type="number" id="opportunityProbability" min="0" max="100" value="25">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label for="expectedCloseDate">Date de clôture prévue</label>
+                        <input type="date" id="expectedCloseDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="opportunitySource">Source</label>
+                        <select id="opportunitySource">
+                            <option value="">Sélectionner</option>
+                            <option value="website">Site web</option>
+                            <option value="referral">Référence</option>
+                            <option value="cold_call">Prospection</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="partner">Partenaire</option>
+                            <option value="event">Événement</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label for="opportunityNotes">Notes</label>
+                    <textarea id="opportunityNotes" rows="3" placeholder="Détails sur l'opportunité, besoins client, prochaines étapes..."></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('add-opportunity')">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        💾 <span id="submitButtonText">Créer l'opportunité</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Détails Opportunité -->
+    <div id="modal-opportunity-details" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="opportunityDetailsTitle">Détails de l'opportunité</h3>
+                <button class="close-btn" onclick="closeModal('opportunity-details')">&times;</button>
+            </div>
+            
+            <div id="opportunityDetailsContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // Variables globales
+        let companies = [];
+        let opportunities = [];
+        let licenses = [];
+        let filteredOpportunities = [];
+        let paginatedOpportunities = [];
+        let forecastChart = null;
+        let pipelineChart = null;
+        let selectedOpportunity = null;
+        let currentFilter = 'all';
+        let currentSort = { field: null, direction: 'asc' };
+        let currentPage = 1;
+        let itemsPerPage = 25;
+
+        // Stockage local des opportunités
+        const OPPORTUNITIES_STORAGE_KEY = 'crm_opportunities';
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isAuthenticated = await AuthService.requireAuth();
+            if (!isAuthenticated) return;
+
+            loadUserInfo();
+            await loadAllData();
+            initializeCharts();
+            calculateForecastMetrics();
+        });
+
+        function loadUserInfo() {
+            const userInfo = AuthService.getUserInfo();
+            if (userInfo) {
+                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
+                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
+            }
+        }
+
+        // Charger toutes les données
+        async function loadAllData() {
+            showLoading(true);
+            
+            try {
+                const [companiesResult, licensesResult] = await Promise.all([
+                    CRMService.getCompanies(),
+                    CRMService.getLicenses()
+                ]);
+                
+                if (companiesResult.success) {
+                    companies = companiesResult.data;
+                    populateCompanySelect();
+                } else {
+                    companies = [];
                 }
-                // Forcer license_count à 1 pour les licences individuelles
-                licenseData.license_count = 1;
-            } else {
-                if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
-                    throw new Error('Société, plan et nombre de licences sont obligatoires pour une licence société');
+                
+                if (licensesResult.success) {
+                    licenses = licensesResult.data;
+                } else {
+                    licenses = [];
                 }
+                
+                loadOpportunities();
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showError('Erreur lors du chargement des données');
+                companies = [];
+                licenses = [];
+                opportunities = [];
+            } finally {
+                showLoading(false);
             }
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .insert([{
-                    ...licenseData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    ),
-                    individual_contact:company_contacts!individual_contact_id (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur création licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence créée avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création licence:', error);
-            return { success: false, error: error.message };
         }
-    }
-    
-    static async updateLicense(id, licenseData) {
-        try {
-            this.log('Mise à jour licence', { id, data: licenseData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .update({
-                    ...licenseData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    ),
-                    individual_contact:company_contacts!individual_contact_id (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur mise à jour licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence mise à jour avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur mise à jour licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteLicense(id) {
-        try {
-            this.log('Suppression licence', { id });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Supprimer d'abord les utilisateurs associés
-            await supabase
-                .from('license_users')
-                .delete()
-                .eq('company_license_id', id);
-            
-            const { error } = await supabase
-                .from('company_licenses')
-                .delete()
-                .eq('id', id);
-            
-            if (error) {
-                console.error('❌ Erreur suppression licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence supprimée avec succès');
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Erreur suppression licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async getLicensePlans() {
-        try {
-            this.log('Récupération des plans de licence');
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { data, error } = await supabase
-                .from('license_plans')
-                .select('*')
-                .eq('is_active', true)
-                .order('price_per_user', { ascending: true });
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getLicensePlans:', error);
-                throw error;
-            }
-            
-            this.log('Plans de licence récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération plans de licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
 
-    // ========== UTILISATEURS DE LICENCE ==========
-    
-    static async getLicenseUsers(licenseId) {
-        try {
-            this.log('Récupération utilisateurs licence', { licenseId });
+        function loadOpportunities() {
+            const stored = localStorage.getItem(OPPORTUNITIES_STORAGE_KEY);
+            let localOpportunities = stored ? JSON.parse(stored) : [];
             
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            const { data, error } = await supabase
-                .from('license_users')
-                .select(`
-                    *,
-                    company_contacts (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `)
-                .eq('company_license_id', licenseId)
-                .order('activated_at', { ascending: false });
-            
-            if (error) {
-                console.error('❌ Erreur récupération utilisateurs licence:', error);
-                throw error;
-            }
-            
-            // Transformer les données pour l'affichage
-            const users = data.map(user => ({
-                id: user.id,
-                license_id: licenseId,
-                contact_id: user.contact_id,
-                first_name: user.company_contacts?.first_name || 'Prénom',
-                last_name: user.company_contacts?.last_name || 'Nom',
-                email: user.company_contacts?.email || 'email@inconnu.com',
-                position: user.company_contacts?.position || null,
-                phone: user.company_contacts?.phone || null,
-                is_active: user.is_active,
-                activated_at: user.activated_at,
-                deactivated_at: user.deactivated_at,
-                status: user.is_active ? 'active' : 'inactive'
+            opportunities = localOpportunities.map(opp => ({
+                ...opp,
+                company_name: companies.find(c => c.id === opp.company_id)?.name || 'Société inconnue'
             }));
             
-            this.log('Utilisateurs licence récupérés', `${users.length} entrées`);
-            return { success: true, data: users };
-        } catch (error) {
-            console.error('❌ Erreur récupération utilisateurs licence:', error);
-            return { success: false, error: error.message };
+            filteredOpportunities = [...opportunities];
+            currentPage = 1;
+            renderOpportunities();
+            updateOpportunityCounts();
         }
-    }
-    
-    static async createLicenseUser(licenseId, contactId) {
-        try {
-            this.log('Création utilisateur licence', { licenseId, contactId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Vérifier que le contact existe
-            const { data: contact, error: contactError } = await supabase
-                .from('company_contacts')
-                .select('*')
-                .eq('id', contactId)
-                .single();
-                
-            if (contactError || !contact) {
-                throw new Error('Contact non trouvé');
-            }
-            
-            // Vérifier que l'utilisateur n'est pas déjà dans cette licence
-            const { data: existingUser } = await supabase
-                .from('license_users')
-                .select('id')
-                .eq('company_license_id', licenseId)
-                .eq('contact_id', contactId)
-                .eq('is_active', true)
-                .single();
-                
-            if (existingUser) {
-                throw new Error('Ce contact est déjà utilisateur de cette licence');
-            }
-            
-            const { data, error } = await supabase
-                .from('license_users')
-                .insert([{
-                    company_license_id: licenseId,
-                    contact_id: contactId,
-                    is_active: true,
-                    activated_at: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select(`
-                    *,
-                    company_contacts (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur création utilisateur licence:', error);
-                throw error;
-            }
-            
-            this.log('Utilisateur licence créé avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création utilisateur licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteLicenseUser(userId) {
-        try {
-            this.log('Suppression utilisateur licence', { userId });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Marquer comme inactif au lieu de supprimer
-            const { data, error } = await supabase
-                .from('license_users')
-                .update({
-                    is_active: false,
-                    deactivated_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', userId)
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur suppression utilisateur licence:', error);
-                throw error;
-            }
-            
-            this.log('Utilisateur licence supprimé avec succès');
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur suppression utilisateur licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
 
-    // ========== ACTIVITÉ DES UTILISATEURS ==========
-    
-    static async getUserActivity(licenseUserId) {
-        try {
-            this.log('Récupération activité utilisateur', { licenseUserId });
+        function populateCompanySelect() {
+            const select = document.getElementById('opportunityCompany');
+            if (!select) return;
             
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
+            select.innerHTML = '<option value="">Sélectionner une société</option>';
             
-            const { data, error } = await supabase
-                .from('license_user_activity')
-                .select('*')
-                .eq('license_user_id', licenseUserId)
-                .single();
-            
-            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-                console.error('❌ Erreur récupération activité utilisateur:', error);
-                throw error;
-            }
-            
-            this.log('Activité utilisateur récupérée', data);
-            return { success: true, data: data || null };
-        } catch (error) {
-            console.error('❌ Erreur récupération activité utilisateur:', error);
-            return { success: false, error: error.message };
+            companies.forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = `${company.name} (${company.status})`;
+                select.appendChild(option);
+            });
         }
-    }
-    
-    static async updateUserActivity(licenseUserId, activityData) {
-        try {
-            this.log('Mise à jour activité utilisateur', { licenseUserId, activityData });
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-            
-            // Vérifier si l'enregistrement existe
-            const { data: existing } = await supabase
-                .from('license_user_activity')
-                .select('id')
-                .eq('license_user_id', licenseUserId)
-                .single();
-            
-            let result;
-            if (existing) {
-                // Mettre à jour
-                result = await supabase
-                    .from('license_user_activity')
-                    .update({
-                        ...activityData,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('license_user_id', licenseUserId)
-                    .select();
+
+        // Tri des opportunités
+        function sortOpportunities(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
             } else {
-                // Créer
-                result = await supabase
-                    .from('license_user_activity')
-                    .insert([{
-                        license_user_id: licenseUserId,
-                        ...activityData,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
-                    .select();
+                currentSort.field = field;
+                currentSort.direction = 'asc';
             }
             
-            if (result.error) {
-                console.error('❌ Erreur mise à jour activité utilisateur:', result.error);
-                throw result.error;
-            }
+            updateSortIndicators();
             
-            this.log('Activité utilisateur mise à jour avec succès', result.data[0]);
-            return { success: true, data: result.data[0] };
-        } catch (error) {
-            console.error('❌ Erreur mise à jour activité utilisateur:', error);
-            return { success: false, error: error.message };
+            filteredOpportunities.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch (field) {
+                    case 'title':
+                        valueA = (a.title || '').toLowerCase();
+                        valueB = (b.title || '').toLowerCase();
+                        break;
+                    case 'company_name':
+                        valueA = (a.company_name || '').toLowerCase();
+                        valueB = (b.company_name || '').toLowerCase();
+                        break;
+                    case 'value':
+                        valueA = a.value || 0;
+                        valueB = b.value || 0;
+                        break;
+                    case 'stage':
+                        const stageOrder = { 'prospect': 1, 'qualification': 2, 'proposal': 3, 'negotiation': 4, 'closing': 5 };
+                        valueA = stageOrder[a.stage] || 0;
+                        valueB = stageOrder[b.stage] || 0;
+                        break;
+                    case 'probability':
+                        valueA = a.probability || 0;
+                        valueB = b.probability || 0;
+                        break;
+                    case 'expected_close_date':
+                        valueA = new Date(a.expected_close_date || '1970-01-01');
+                        valueB = new Date(b.expected_close_date || '1970-01-01');
+                        break;
+                    case 'source':
+                        valueA = (a.source || '').toLowerCase();
+                        valueB = (b.source || '').toLowerCase();
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (currentSort.direction === 'asc') {
+                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                } else {
+                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                }
+            });
+            
+            currentPage = 1;
+            renderOpportunities();
         }
-    }
 
-    // ========== STATISTIQUES ==========
-    
-    static async getStats() {
-        try {
-            this.log('Calcul des statistiques');
+        function updateSortIndicators() {
+            document.querySelectorAll('.opportunities-table th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                const arrow = th.querySelector('.sort-arrow');
+                if (arrow) {
+                    arrow.textContent = '↕️';
+                }
+            });
             
-            const [companiesResult, licensesResult, contactsResult] = await Promise.all([
-                this.getCompanies(),
-                this.getLicenses(),
-                this.getContacts()
-            ]);
+            if (currentSort.field) {
+                const activeTh = document.querySelector(`[data-sort="${currentSort.field}"]`);
+                if (activeTh) {
+                    activeTh.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                    const arrow = activeTh.querySelector('.sort-arrow');
+                    if (arrow) {
+                        arrow.textContent = currentSort.direction === 'asc' ? '↑' : '↓';
+                    }
+                }
+            }
+        }
+
+        // Pagination
+        function changePerPage() {
+            const newPerPage = document.getElementById('perPageSelect').value;
+            itemsPerPage = newPerPage === 'all' ? filteredOpportunities.length : parseInt(newPerPage);
+            currentPage = 1;
+            renderOpportunities();
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredOpportunities.length / itemsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderOpportunities();
+            }
+        }
+
+        function renderPagination() {
+            const container = document.getElementById('paginationContainer');
+            const totalPages = Math.ceil(filteredOpportunities.length / itemsPerPage);
             
-            if (!companiesResult.success || !licensesResult.success || !contactsResult.success) {
-                throw new Error('Erreur récupération données pour statistiques');
+            if (totalPages <= 1) {
+                container.style.display = 'none';
+                return;
             }
             
-            const companies = companiesResult.data;
-            const licenses = licensesResult.data;
-            const contacts = contactsResult.data;
+            container.style.display = 'flex';
             
-            // Calculs des statistiques
-            const now = new Date();
-            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const startItem = (currentPage - 1) * itemsPerPage + 1;
+            const endItem = Math.min(currentPage * itemsPerPage, filteredOpportunities.length);
             
-            const stats = {
-                // Sociétés
-                totalCompanies: companies.length,
-                prospects: companies.filter(c => c.status === 'prospect').length,
-                sponsors: companies.filter(c => c.status === 'sponsor').length,
-                clients: companies.filter(c => c.status === 'client').length,
-                onboarded: companies.filter(c => c.status === 'onboarded').length,
+            let paginationHTML = `
+                <button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>⏮️</button>
+                <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀️</button>
+            `;
+            
+            // Pages à afficher
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, currentPage + 2);
+            
+            if (endPage - startPage < 4) {
+                if (startPage === 1) {
+                    endPage = Math.min(totalPages, startPage + 4);
+                } else {
+                    startPage = Math.max(1, endPage - 4);
+                }
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>
+                `;
+            }
+            
+            paginationHTML += `
+                <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>▶️</button>
+                <button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>⏭️</button>
+                <span class="pagination-info">${startItem}-${endItem} sur ${filteredOpportunities.length}</span>
+            `;
+            
+            container.innerHTML = paginationHTML;
+        }
+
+        // Filtrer les opportunités
+        function filterOpportunities(stage) {
+            currentFilter = stage;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${stage}"]`).classList.add('active');
+            
+            if (stage === 'all') {
+                filteredOpportunities = [...opportunities];
+            } else {
+                filteredOpportunities = opportunities.filter(opp => opp.stage === stage);
+            }
+            
+            currentPage = 1;
+            renderOpportunities();
+        }
+
+        function searchOpportunities() {
+            const searchTerm = document.getElementById('opportunitySearch').value.toLowerCase();
+            
+            if (!searchTerm) {
+                filterOpportunities(currentFilter);
+                return;
+            }
+            
+            const searchResults = opportunities.filter(opp => {
+                if (currentFilter !== 'all' && opp.stage !== currentFilter) {
+                    return false;
+                }
                 
-                // Contacts
-                totalContacts: contacts.length,
+                return opp.title.toLowerCase().includes(searchTerm) ||
+                       opp.company_name.toLowerCase().includes(searchTerm) ||
+                       (opp.notes && opp.notes.toLowerCase().includes(searchTerm)) ||
+                       (opp.source && opp.source.toLowerCase().includes(searchTerm));
+            });
+            
+            filteredOpportunities = searchResults;
+            currentPage = 1;
+            renderOpportunities();
+        }
+
+        function renderOpportunities() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            paginatedOpportunities = filteredOpportunities.slice(startIndex, endIndex);
+            
+            const tbody = document.getElementById('opportunitiesTableBody');
+            const tableView = document.getElementById('opportunitiesTableView');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (filteredOpportunities.length === 0) {
+                tableView.style.display = 'none';
+                emptyState.style.display = 'block';
+                document.getElementById('paginationContainer').style.display = 'none';
+                return;
+            }
+            
+            tableView.style.display = 'block';
+            emptyState.style.display = 'none';
+            
+            tbody.innerHTML = paginatedOpportunities.map(opp => `
+                <tr onclick="openOpportunityDetails('${opp.id}')" style="cursor: pointer;">
+                    <td>
+                        <div class="opportunity-title">${escapeHtml(opp.title)}</div>
+                    </td>
+                    <td>${escapeHtml(opp.company_name)}</td>
+                    <td><span class="value-amount">${formatCurrency(opp.value)}</span></td>
+                    <td>
+                        <span class="stage-badge stage-${opp.stage}">${getStageLabel(opp.stage)}</span>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="probability-bar">
+                                <div class="probability-fill" style="width: ${opp.probability}%;"></div>
+                            </div>
+                            <span style="font-weight: 600; font-size: 0.875rem;">${opp.probability}%</span>
+                        </div>
+                    </td>
+                    <td>${formatDateShort(opp.expected_close_date)}</td>
+                    <td>${getSourceLabel(opp.source)}</td>
+                    <td onclick="event.stopPropagation()">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-sm btn-secondary" onclick="editOpportunity('${opp.id}')" title="Modifier">
+                                ✏️
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteOpportunity('${opp.id}')" title="Supprimer">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            renderPagination();
+        }
+
+        function calculateForecastMetrics() {
+            const totalOpportunities = opportunities.length;
+            const projectedRevenue = opportunities.reduce((sum, opp) => sum + opp.value, 0);
+            
+            const totalCompanies = companies.length;
+            const clientCompanies = companies.filter(c => c.status === 'client' || c.status === 'onboarded').length;
+            const conversionRate = totalCompanies > 0 ? (clientCompanies / totalCompanies * 100) : 0;
+            
+            const avgDealSize = opportunities.length > 0 ? projectedRevenue / opportunities.length : 0;
+            
+            document.getElementById('totalOpportunities').textContent = totalOpportunities;
+            document.getElementById('projectedRevenue').textContent = formatCurrency(projectedRevenue);
+            document.getElementById('conversionRate').textContent = conversionRate.toFixed(1) + '%';
+            document.getElementById('avgDealSize').textContent = formatCurrency(avgDealSize);
+            
+            const prospectCount = companies.filter(c => c.status === 'prospect').length;
+            const clientCount = companies.filter(c => c.status === 'client').length;
+            
+            document.getElementById('opportunitiesChange').textContent = `${prospectCount} prospects à convertir`;
+            document.getElementById('revenueChange').textContent = `Valeur totale`;
+            document.getElementById('conversionTrend').textContent = `${clientCount}/${totalCompanies} sociétés`;
+            document.getElementById('dealSizeTrend').textContent = 'Par opportunité';
+        }
+
+        function updateOpportunityCounts() {
+            document.getElementById('count-all').textContent = opportunities.length;
+            document.getElementById('count-prospect').textContent = opportunities.filter(o => o.stage === 'prospect').length;
+            document.getElementById('count-qualification').textContent = opportunities.filter(o => o.stage === 'qualification').length;
+            document.getElementById('count-proposal').textContent = opportunities.filter(o => o.stage === 'proposal').length;
+            document.getElementById('count-negotiation').textContent = opportunities.filter(o => o.stage === 'negotiation').length;
+            document.getElementById('count-closing').textContent = opportunities.filter(o => o.stage === 'closing').length;
+        }
+
+        function initializeCharts() {
+            initializeForecastChart();
+            initializePipelineChart();
+            updateForecastTable();
+        }
+
+        function initializeForecastChart() {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            const months = [];
+            const projectedData = [];
+            const actualData = [];
+            
+            const currentMonthlyRevenue = licenses
+                .filter(l => l.status === 'active')
+                .reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
+            
+            for (let i = 0; i < 6; i++) {
+                const date = new Date();
+                date.setMonth(date.getMonth() + i);
+                months.push(date.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));
                 
-                // Licences
-                totalLicenses: licenses.length,
-                activeLicenses: licenses.filter(l => l.status === 'active').length,
-                totalLicenseCount: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.license_count || 0), 0),
+                const baseRevenue = currentMonthlyRevenue;
+                const growthFromOpportunities = opportunities
+                    .filter(opp => new Date(opp.expected_close_date) <= date)
+                    .reduce((sum, opp) => sum + (opp.value * opp.probability / 100 / 12), 0);
                 
-                // Revenus
-                monthlyRevenue: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.monthly_cost || 0), 0),
-                
-                yearlyRevenue: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + ((l.monthly_cost || 0) * 12), 0),
-                
-                // Expirations
-                expiringLicenses: licenses.filter(l => {
-                    if (l.status !== 'active' || !l.renewal_date) return false;
-                    const renewalDate = new Date(l.renewal_date);
-                    return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
-                }).length,
-                
-                expiredLicenses: licenses.filter(l => l.status === 'expired').length
+                projectedData.push(baseRevenue + growthFromOpportunities);
+                actualData.push(i === 0 ? baseRevenue : null);
+            }
+            
+            if (forecastChart) {
+                forecastChart.destroy();
+            }
+            
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Revenus Projetés',
+                            data: projectedData,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Revenus Actuels',
+                            data: actualData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializePipelineChart() {
+            const ctx = document.getElementById('pipelineChart').getContext('2d');
+            
+            const statusCounts = {
+                prospect: companies.filter(c => c.status === 'prospect').length,
+                sponsor: companies.filter(c => c.status === 'sponsor').length,
+                client: companies.filter(c => c.status === 'client').length,
+                onboarded: companies.filter(c => c.status === 'onboarded').length
             };
             
-            this.log('Statistiques calculées', stats);
-            return { success: true, data: stats };
-        } catch (error) {
-            console.error('❌ Erreur calcul statistiques:', error);
-            return { success: false, error: error.message };
-        }
-    }
-}
-
-// ===================================
-// UTILITAIRES GÉNÉRAUX
-// ===================================
-
-// Formatage des dates
-function formatDate(dateString) {
-    if (!dateString) return 'Non défini';
-    
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    } catch (error) {
-        return 'Date invalide';
-    }
-}
-
-function formatDateShort(dateString) {
-    if (!dateString) return 'Non défini';
-    
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR');
-    } catch (error) {
-        return 'Date invalide';
-    }
-}
-
-// Formatage des montants
-function formatCurrency(amount) {
-    if (amount === null || amount === undefined || isNaN(amount)) return '0,00 €';
-    
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'EUR'
-    }).format(amount);
-}
-
-// Génération d'initiales
-function getInitials(firstName, lastName) {
-    if (!firstName && !lastName) return '??';
-    
-    const first = firstName ? firstName.charAt(0).toUpperCase() : '';
-    const last = lastName ? lastName.charAt(0).toUpperCase() : '';
-    return first + last || '?';
-}
-
-// Gestion des erreurs
-function showError(message, duration = 5000) {
-    console.error('Erreur:', message);
-    
-    // Créer ou réutiliser le conteneur d'erreurs
-    let errorContainer = document.getElementById('error-container');
-    if (!errorContainer) {
-        errorContainer = document.createElement('div');
-        errorContainer.id = 'error-container';
-        errorContainer.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(errorContainer);
-    }
-    
-    // Créer le message d'erreur
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'notification error';
-    errorDiv.style.cssText = `
-        background: #fee2e2;
-        color: #dc2626;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid #dc2626;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        pointer-events: auto;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    // Ajouter les keyframes d'animation
-    if (!document.getElementById('notification-styles')) {
-        const style = document.createElement('style');
-        style.id = 'notification-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    errorDiv.textContent = message;
-    
-    // Ajouter le bouton de fermeture
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `
-        background: none;
-        border: none;
-        font-size: 1.25rem;
-        cursor: pointer;
-        margin-left: 0.5rem;
-        color: inherit;
-        opacity: 0.8;
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    closeBtn.onclick = () => errorDiv.remove();
-    
-    errorDiv.appendChild(closeBtn);
-    errorContainer.appendChild(errorDiv);
-    
-    // Auto-suppression
-    if (duration > 0) {
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.remove();
-            }
-        }, duration);
-    }
-}
-
-// Gestion des succès
-function showSuccess(message, duration = 3000) {
-    console.log('Succès:', message);
-    
-    let successContainer = document.getElementById('success-container');
-    if (!successContainer) {
-        successContainer = document.createElement('div');
-        successContainer.id = 'success-container';
-        successContainer.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(successContainer);
-    }
-    
-    const successDiv = document.createElement('div');
-    successDiv.className = 'notification success';
-    successDiv.style.cssText = `
-        background: #d1fae5;
-        color: #065f46;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin-bottom: 0.5rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        border-left: 4px solid #10b981;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        pointer-events: auto;
-        animation: slideIn 0.3s ease;
-    `;
-    successDiv.textContent = message;
-    
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '×';
-    closeBtn.style.cssText = `
-        background: none;
-        border: none;
-        font-size: 1.25rem;
-        cursor: pointer;
-        margin-left: 0.5rem;
-        color: inherit;
-        opacity: 0.8;
-        padding: 0;
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    `;
-    closeBtn.onclick = () => successDiv.remove();
-    
-    successDiv.appendChild(closeBtn);
-    successContainer.appendChild(successDiv);
-    
-    if (duration > 0) {
-        setTimeout(() => {
-            if (successDiv.parentNode) {
-                successDiv.remove();
-            }
-        }, duration);
-    }
-}
-
-// Loading overlay
-function showLoading(show = true) {
-    let loader = document.getElementById('global-loader');
-    
-    if (show) {
-        if (!loader) {
-            loader = document.createElement('div');
-            loader.id = 'global-loader';
-            loader.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(255, 255, 255, 0.9);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-                backdrop-filter: blur(3px);
-            `;
+            const labels = ['Prospects', 'Sponsors', 'Clients', 'Onboardés'];
+            const data = [statusCounts.prospect, statusCounts.sponsor, statusCounts.client, statusCounts.onboarded];
             
-            const spinner = document.createElement('div');
-            spinner.style.cssText = `
-                width: 3rem;
-                height: 3rem;
-                border: 3px solid #e5e7eb;
-                border-top: 3px solid #3b82f6;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            `;
+            if (pipelineChart) {
+                pipelineChart.destroy();
+            }
             
-            loader.appendChild(spinner);
-            
-            // Ajout des keyframes pour l'animation
-            if (!document.getElementById('spinner-styles')) {
-                const style = document.createElement('style');
-                style.id = 'spinner-styles';
-                style.textContent = `
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
+            pipelineChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#f59e0b',
+                            '#8b5cf6', 
+                            '#3b82f6',
+                            '#10b981'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        }
                     }
+                }
+            });
+        }
+
+        function updateForecastTable() {
+            const tableBody = document.getElementById('forecastTableBody');
+            const quarters = ['T1 2025', 'T2 2025', 'T3 2025', 'T4 2025'];
+            
+            const periods = quarters.map((quarter, index) => {
+                const quarterStart = new Date(2025, index * 3, 1);
+                const quarterEnd = new Date(2025, (index + 1) * 3, 0);
+                
+                const quarterOpportunities = opportunities.filter(opp => {
+                    const closeDate = new Date(opp.expected_close_date);
+                    return closeDate >= quarterStart && closeDate <= quarterEnd;
+                });
+                
+                const estimatedRevenue = quarterOpportunities.reduce((sum, opp) => sum + opp.value, 0);
+                
+                return {
+                    name: quarter,
+                    opportunities: quarterOpportunities.length,
+                    estimated: estimatedRevenue,
+                    probability: 100,
+                    realOpportunities: quarterOpportunities
+                };
+            });
+            
+            tableBody.innerHTML = periods.map(period => {
+                const weightedRevenue = period.estimated;
+                
+                let trend = '📊';
+                if (period.opportunities > 0) {
+                    trend = '📈';
+                } else if (period.estimated === 0) {
+                    trend = '📉';
+                }
+                
+                return `
+                    <tr>
+                        <td style="font-weight: 600;">${period.name}</td>
+                        <td>${period.opportunities}</td>
+                        <td style="font-weight: 600;">${formatCurrency(period.estimated)}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="probability-bar" style="width: 100px;">
+                                    <div class="probability-fill" style="width: ${period.probability}%;"></div>
+                                </div>
+                                <span style="font-weight: 600;">${period.probability}%</span>
+                            </div>
+                        </td>
+                        <td style="font-weight: 600; color: #667eea;">${formatCurrency(weightedRevenue)}</td>
+                        <td style="font-size: 1.25rem;" title="${period.realOpportunities.map(o => o.title).join(', ') || 'Aucune opportunité'}">${trend}</td>
+                    </tr>
                 `;
-                document.head.appendChild(style);
+            }).join('');
+        }
+
+        // Fonctions utilitaires
+        function getStageLabel(stage) {
+            const labels = {
+                prospect: 'Prospect',
+                qualification: 'Qualification',
+                proposal: 'Proposition',
+                negotiation: 'Négociation',
+                closing: 'Finalisation'
+            };
+            return labels[stage] || stage;
+        }
+
+        function getSourceLabel(source) {
+            const labels = {
+                website: 'Site web',
+                referral: 'Référence',
+                cold_call: 'Prospection',
+                marketing: 'Marketing',
+                partner: 'Partenaire',
+                event: 'Événement'
+            };
+            return labels[source] || source || '-';
+        }
+
+        function formatDateShort(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric' 
+            });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { 
+                weekday: 'long',
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            });
+        }
+
+        function formatCurrency(amount) {
+            if (!amount || isNaN(amount)) return '0,00 €';
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Fonctions de gestion des opportunités (continuent comme dans l'original...)
+        function openOpportunityDetails(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            selectedOpportunity = opportunity;
+            document.getElementById('opportunityDetailsTitle').textContent = opportunity.title;
+            
+            document.getElementById('opportunityDetailsContent').innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Informations générales</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Société :</strong> ${opportunity.company_name}</div>
+                            <div><strong>Valeur :</strong> <span style="color: #667eea; font-weight: 700;">${formatCurrency(opportunity.value)}</span></div>
+                            <div><strong>Étape :</strong> <span class="stage-badge stage-${opportunity.stage}">${getStageLabel(opportunity.stage)}</span></div>
+                            <div><strong>Probabilité :</strong> ${opportunity.probability}%</div>
+                            <div><strong>Source :</strong> ${getSourceLabel(opportunity.source)}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Échéances</h4>
+                        <div style="display: grid; gap: 0.75rem;">
+                            <div><strong>Clôture prévue :</strong> ${formatDate(opportunity.expected_close_date)}</div>
+                            <div><strong>Créée le :</strong> ${formatDate(opportunity.created_at)}</div>
+                            <div><strong>Revenus pondérés :</strong> <span style="color: #10b981; font-weight: 600;">${formatCurrency(opportunity.value)}</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${opportunity.notes ? `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="margin-bottom: 1rem; color: #1f2937;">Notes</h4>
+                        <div style="background: #f9fafb; padding: 1rem; border-radius: 0.5rem; color: #374151;">
+                            ${opportunity.notes}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+                    <button class="btn btn-secondary" onclick="closeModal('opportunity-details')">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="editOpportunity('${opportunity.id}')">
+                        ✏️ Modifier
+                    </button>
+                </div>
+            `;
+            
+            openModal('opportunity-details');
+        }
+
+        function editOpportunity(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            selectedOpportunity = opportunity;
+            
+            document.getElementById('opportunityCompany').value = opportunity.company_id;
+            document.getElementById('opportunityTitle').value = opportunity.title;
+            document.getElementById('opportunityValue').value = opportunity.value;
+            document.getElementById('opportunityStage').value = opportunity.stage;
+            document.getElementById('opportunityProbability').value = opportunity.probability;
+            document.getElementById('expectedCloseDate').value = opportunity.expected_close_date;
+            document.getElementById('opportunitySource').value = opportunity.source || '';
+            document.getElementById('opportunityNotes').value = opportunity.notes || '';
+            
+            document.querySelector('#modal-add-opportunity .modal-title').textContent = '✏️ Modifier l\'opportunité';
+            document.getElementById('submitButtonText').textContent = 'Sauvegarder les modifications';
+            
+            closeModal('opportunity-details');
+            openModal('add-opportunity');
+        }
+
+        function deleteOpportunity(opportunityId) {
+            const opportunity = opportunities.find(opp => opp.id === opportunityId);
+            if (!opportunity) return;
+            
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'opportunité "${opportunity.title}" ?\n\nCette action est irréversible.`)) {
+                return;
             }
             
-            document.body.appendChild(loader);
+            const stored = JSON.parse(localStorage.getItem(OPPORTUNITIES_STORAGE_KEY) || '[]');
+            const updatedStored = stored.filter(opp => opp.id !== opportunityId);
+            localStorage.setItem(OPPORTUNITIES_STORAGE_KEY, JSON.stringify(updatedStored));
+            
+            loadOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            showSuccess('Opportunité supprimée avec succès');
         }
-        loader.style.display = 'flex';
-    } else {
-        if (loader) {
-            loader.style.display = 'none';
+
+        function clearAllOpportunities() {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer TOUTES les opportunités ?\n\nCette action est irréversible et videra complètement votre pipeline.')) {
+                return;
+            }
+            
+            localStorage.removeItem(OPPORTUNITIES_STORAGE_KEY);
+            loadOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            showSuccess('Toutes les opportunités ont été supprimées');
         }
-    }
-}
 
-// ===================================
-// EXPORT GLOBAL
-// ===================================
+        function updateStageDefaults() {
+            const stage = document.getElementById('opportunityStage').value;
+            const probabilityInput = document.getElementById('opportunityProbability');
+            
+            const defaultProbabilities = {
+                prospect: 25,
+                qualification: 40,
+                proposal: 60,
+                negotiation: 75,
+                closing: 90
+            };
+            
+            if (defaultProbabilities[stage]) {
+                probabilityInput.value = defaultProbabilities[stage];
+            }
+        }
 
-// Rendre les services disponibles globalement
-window.AuthService = AuthService;
-window.CRMService = CRMService;
-window.formatDate = formatDate;
-window.formatDateShort = formatDateShort;
-window.formatCurrency = formatCurrency;
-window.getInitials = getInitials;
-window.showError = showError;
-window.showSuccess = showSuccess;
-window.showLoading = showLoading;
+        function updateForecastChart(period) {
+            document.querySelectorAll('.card-header .btn-sm').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
 
-// Gestion globale des erreurs
-window.addEventListener('error', (e) => {
-    console.error('Erreur globale:', e.error);
-});
+        // Gestion des modals
+        function openModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.add('show');
+            
+            if (modalId === 'add-opportunity' && !selectedOpportunity) {
+                document.getElementById('addOpportunityForm').reset();
+                document.querySelector('#modal-add-opportunity .modal-title').textContent = '🎯 Nouvelle Opportunité';
+                document.getElementById('submitButtonText').textContent = 'Créer l\'opportunité';
+                
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 30);
+                document.getElementById('expectedCloseDate').value = futureDate.toISOString().split('T')[0];
+                
+                updateStageDefaults();
+            }
+        }
 
-window.addEventListener('unhandledrejection', (e) => {
-    console.error('Promise rejetée:', e.reason);
-    e.preventDefault();
-});
+        function closeModal(modalId) {
+            const modal = document.getElementById(`modal-${modalId}`);
+            modal.classList.remove('show');
+            
+            if (modalId === 'add-opportunity') {
+                selectedOpportunity = null;
+            }
+        }
 
-console.log('🚀 Configuration CRM Pro chargée avec succès');
+        // Gestion du formulaire d'opportunité
+        document.getElementById('addOpportunityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                company_id: document.getElementById('opportunityCompany').value,
+                title: document.getElementById('opportunityTitle').value,
+                value: parseFloat(document.getElementById('opportunityValue').value),
+                stage: document.getElementById('opportunityStage').value,
+                probability: parseInt(document.getElementById('opportunityProbability').value),
+                expected_close_date: document.getElementById('expectedCloseDate').value,
+                source: document.getElementById('opportunitySource').value,
+                notes: document.getElementById('opportunityNotes').value
+            };
+            
+            const stored = JSON.parse(localStorage.getItem(OPPORTUNITIES_STORAGE_KEY) || '[]');
+            
+            if (selectedOpportunity) {
+                const index = stored.findIndex(opp => opp.id === selectedOpportunity.id);
+                if (index !== -1) {
+                    stored[index] = { ...stored[index], ...formData };
+                }
+                showSuccess('Opportunité modifiée avec succès !');
+            } else {
+                const newOpportunity = {
+                    id: Date.now().toString(),
+                    ...formData,
+                    created_at: new Date().toISOString()
+                };
+                stored.push(newOpportunity);
+                showSuccess('Opportunité créée avec succès !');
+            }
+            
+            localStorage.setItem(OPPORTUNITIES_STORAGE_KEY, JSON.stringify(stored));
+            
+            loadOpportunities();
+            calculateForecastMetrics();
+            initializePipelineChart();
+            updateForecastTable();
+            
+            closeModal('add-opportunity');
+            selectedOpportunity = null;
+        });
+
+        // Event listeners
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                const modalId = e.target.id.replace('modal-', '');
+                closeModal(modalId);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.show').forEach(modal => {
+                    const modalId = modal.id.replace('modal-', '');
+                    closeModal(modalId);
+                });
+            }
+            
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'n':
+                        e.preventDefault();
+                        openModal('add-opportunity');
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
