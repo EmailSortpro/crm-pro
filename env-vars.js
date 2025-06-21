@@ -1,99 +1,97 @@
-// netlify/functions/env-vars.js
-// Fonction pour servir les variables d'environnement de manière sécurisée
+// env-vars.js - Fonction Netlify pour exposer les variables d'environnement
+// À placer à la racine du projet
 
 exports.handler = async (event, context) => {
-  // Log pour debug
-  console.log('🔑 Fonction env-vars appelée');
-  console.log('Origin:', event.headers.origin);
-  console.log('Method:', event.httpMethod);
+  console.log('🔧 Fonction env-vars appelée');
   
-  // Vérifier la méthode HTTP
-  if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      },
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
-
-  // Vérifier que c'est bien votre domaine (sécurité)
-  const origin = event.headers.origin || event.headers.referer;
-  const allowedOrigins = [
-    'https://your-crm-site.netlify.app', // Remplacez par votre vraie URL
-    'http://localhost',
-    'http://127.0.0.1',
-    'https://localhost'
-  ];
-  
-  const isAllowed = allowedOrigins.some(allowed => 
-    origin && (origin.includes(allowed.replace('https://', '').replace('http://', '')) || 
-    origin.startsWith(allowed))
-  );
-  
-  // En production, vérifier l'origine
-  if (process.env.NODE_ENV === 'production' && !isAllowed) {
-    console.warn('❌ Origine non autorisée:', origin);
-    return {
-      statusCode: 403,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': origin || '*'
-      },
-      body: JSON.stringify({ error: 'Access denied' })
-    };
-  }
-
-  // Récupérer les variables d'environnement
-  const envVars = {
-    VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || '',
-    VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY || ''
+  // Headers CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Content-Type': 'application/javascript; charset=utf-8',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
   };
 
-  // Vérifier que les variables existent
-  if (!envVars.VITE_SUPABASE_URL || !envVars.VITE_SUPABASE_ANON_KEY) {
-    console.error('❌ Variables d\'environnement manquantes');
-    console.log('URL présente:', !!envVars.VITE_SUPABASE_URL);
-    console.log('KEY présente:', !!envVars.VITE_SUPABASE_ANON_KEY);
+  // Gérer les requêtes OPTIONS (preflight CORS)
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  try {
+    // Récupérer les variables d'environnement depuis Netlify
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+    
+    console.log('🔍 Variables trouvées:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey,
+      keyLength: supabaseKey?.length || 0
+    });
+
+    // Vérifier que la clé principale existe
+    if (!supabaseKey) {
+      console.error('❌ VITE_SUPABASE_ANON_KEY manquante !');
+      
+      const errorJs = `
+console.error('❌ Variables Netlify non configurées !');
+console.error('🚨 VITE_SUPABASE_ANON_KEY manquante dans les variables d\\'environnement Netlify');
+console.log('📝 Pour configurer :');
+console.log('1. Dashboard Netlify → Site Settings → Environment Variables');
+console.log('2. Ajouter : VITE_SUPABASE_ANON_KEY = votre_cle_supabase');
+console.log('3. Redéployer le site');
+window.NETLIFY_ENV_ERROR = 'Variables manquantes';
+`;
+      
+      return {
+        statusCode: 200, // 200 pour éviter les erreurs CORS
+        headers,
+        body: errorJs
+      };
+    }
+
+    // Générer le JavaScript qui injecte les variables
+    const jsResponse = `
+// 🌐 Variables d'environnement Netlify via fonction
+console.log('🔧 Injection des variables via fonction Netlify...');
+
+window.NETLIFY_ENV = {
+  VITE_SUPABASE_URL: '${supabaseUrl || 'https://oxyiamruvyliueecpaam.supabase.co'}',
+  VITE_SUPABASE_ANON_KEY: '${supabaseKey.replace(/'/g, "\\'")}'
+};
+
+console.log('✅ Variables Netlify injectées via fonction:', {
+  hasUrl: !!window.NETLIFY_ENV.VITE_SUPABASE_URL,
+  hasKey: !!window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY,
+  keyLength: window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY?.length || 0,
+  source: 'netlify-function'
+});
+`;
+
+    console.log('✅ Fonction réussie, clé de longueur:', supabaseKey.length);
+
+    return {
+      statusCode: 200,
+      headers,
+      body: jsResponse
+    };
+
+  } catch (error) {
+    console.error('❌ Erreur dans la fonction env-vars:', error);
+    
+    const errorJs = `
+console.error('❌ Erreur dans la fonction Netlify env-vars:', '${error.message}');
+window.NETLIFY_ENV_ERROR = '${error.message}';
+`;
     
     return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': origin || '*'
-      },
-      body: JSON.stringify({ 
-        error: 'Variables d\'environnement manquantes',
-        hasUrl: !!envVars.VITE_SUPABASE_URL,
-        hasKey: !!envVars.VITE_SUPABASE_ANON_KEY
-      })
+      statusCode: 200, // 200 pour éviter les erreurs CORS
+      headers,
+      body: errorJs
     };
   }
-
-  // Retourner sous forme de script JS
-  const jsContent = `
-// Variables d'environnement Netlify injectées via fonction
-window.NETLIFY_ENV = ${JSON.stringify(envVars)};
-console.log('✅ Variables Netlify chargées via fonction serverless');
-console.log('🔧 URL présente:', !!window.NETLIFY_ENV.VITE_SUPABASE_URL);
-console.log('🔑 Clé présente:', !!window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY);
-  `;
-
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'application/javascript',
-      'Access-Control-Allow-Origin': origin || '*',
-      'Access-Control-Allow-Methods': 'GET',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    },
-    body: jsContent
-  };
 };
