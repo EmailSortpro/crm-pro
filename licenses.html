@@ -239,6 +239,98 @@
             margin: 1rem 0;
         }
 
+        /* Styles pour les onglets */
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-600);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+            background: var(--gray-50);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: var(--white);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .company-license-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+
+        .company-license-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .company-license-card.current {
+            border-color: var(--primary-color);
+            background: #eff6ff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+
+        .license-timeline {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.5rem 0;
+        }
+
+        .timeline-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray-400);
+        }
+
+        .timeline-dot.start {
+            background: var(--success-color);
+        }
+
+        .timeline-dot.renewal {
+            background: var(--warning-color);
+        }
+
+        .timeline-dot.end {
+            background: var(--error-color);
+        }
+
+        .timeline-line {
+            flex: 1;
+            height: 2px;
+            background: var(--gray-200);
+            position: relative;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 1px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .form-grid,
@@ -441,8 +533,22 @@
                 <button class="close-btn" onclick="closeLicenseModal()">&times;</button>
             </div>
             
+            <!-- Onglets de navigation -->
+            <div id="licenseTabsContainer" style="display: none; border-bottom: 1px solid var(--gray-200);">
+                <div style="display: flex; padding: 0 1.5rem;">
+                    <button class="tab-btn active" data-tab="license-form" onclick="switchLicenseTab('license-form')">
+                        📝 Licence actuelle
+                    </button>
+                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')">
+                        📄 Toutes les licences
+                    </button>
+                </div>
+            </div>
+            
             <div class="modal-body">
-                <form id="licenseForm">
+                <!-- Onglet 1: Formulaire de licence -->
+                <div id="licenseFormTab" class="tab-content active">
+                    <form id="licenseForm">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="licenseCompany">Société *</label>
@@ -1067,7 +1173,11 @@
             document.getElementById('enableCustomPricing').checked = false;
             document.getElementById('customPricingFields').style.display = 'none';
             document.getElementById('customPricePerUser').required = false;
+            document.getElementById('licenseTabsContainer').style.display = 'none';
             editingLicense = null;
+            
+            // Réinitialiser les onglets
+            switchLicenseTab('license-form');
             
             const today = new Date();
             document.getElementById('startDate').value = today.toISOString().split('T')[0];
@@ -1079,6 +1189,9 @@
             if (!license) return;
             
             editingLicense = license;
+            
+            // Afficher les onglets seulement en mode édition
+            document.getElementById('licenseTabsContainer').style.display = 'block';
             
             document.getElementById('licenseCompany').value = license.company_id;
             document.getElementById('licensePlan').value = license.plan_id;
@@ -1102,6 +1215,9 @@
             document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
             
             updatePricing();
+            
+            // S'assurer qu'on est sur l'onglet du formulaire
+            switchLicenseTab('license-form');
             
             document.getElementById('licenseModal').classList.add('show');
         }
