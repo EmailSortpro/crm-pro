@@ -9,17 +9,16 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .filter-btn {
-            padding: 0.375rem 0.75rem;
+            padding: 0.5rem 1rem;
             background: #f3f4f6;
             border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
+            border-radius: 0.5rem;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.875rem;
             font-weight: 500;
             color: #374151;
             transition: all 0.2s ease;
             white-space: nowrap;
-            flex-shrink: 0;
         }
         .filter-btn:hover {
             background: #e5e7eb;
@@ -171,37 +170,18 @@
 
         .controls-row {
             display: flex;
+            justify-content: space-between;
             align-items: center;
             gap: 1rem;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-        }
-
-        .controls-row::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .controls-row::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 2px;
-        }
-
-        .controls-row::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 2px;
-        }
-
-        .controls-row::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+            flex-wrap: wrap;
         }
 
         .left-controls {
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex-wrap: wrap;
             flex: 1;
-            min-width: 0;
         }
 
         .right-controls {
@@ -215,17 +195,15 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            flex-shrink: 0;
+            flex-wrap: wrap;
         }
 
         .search-input {
-            padding: 0.375rem 0.75rem;
+            padding: 0.5rem 1rem;
             border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            width: 200px;
-            font-size: 0.8rem;
-            flex-shrink: 0;
-            background: white;
+            border-radius: 0.5rem;
+            min-width: 250px;
+            font-size: 0.875rem;
         }
 
         .search-input:focus {
@@ -238,23 +216,13 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            flex-shrink: 0;
-            white-space: nowrap;
-        }
-
-        .per-page-selector span {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #374151;
         }
 
         .per-page-selector select {
-            padding: 0.375rem 0.5rem;
+            padding: 0.5rem;
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
-            font-size: 0.8rem;
-            min-width: 90px;
-            background: white;
+            font-size: 0.875rem;
         }
 
         .pagination {
@@ -354,51 +322,22 @@
             color: #374151;
         }
 
-        /* Responsive - Ligne unique optimisée */
-        @media (max-width: 1400px) {
-            .filter-btn {
-                padding: 0.3rem 0.6rem;
-                font-size: 0.75rem;
-            }
-            
-            .search-input {
-                width: 180px;
-            }
-        }
-
+        /* Responsive */
         @media (max-width: 1200px) {
-            .per-page-selector span {
-                display: none;
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1.5rem;
             }
             
-            .search-input {
-                width: 160px;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .controls-row {
-                flex-wrap: wrap;
-                gap: 0.75rem;
+            .left-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1.5rem;
             }
             
             .status-filters {
-                order: 1;
-                width: 100%;
-            }
-            
-            .per-page-selector {
-                order: 2;
-            }
-            
-            .search-input {
-                order: 3;
-                flex: 1;
-                width: auto;
-            }
-            
-            .controls-row > div:last-child {
-                order: 4;
+                justify-content: flex-start;
             }
         }
 
@@ -409,6 +348,11 @@
             
             .opportunities-table table {
                 min-width: 900px;
+            }
+            
+            .search-input {
+                min-width: 200px;
+                width: 100%;
             }
             
             .pagination {
@@ -503,49 +447,51 @@
             </div>
         </div>
 
-        <!-- Contrôles et filtres pour le tableau - UNE SEULE LIGNE -->
+        <!-- Contrôles et filtres pour le tableau -->
         <div class="table-controls">
             <div class="controls-row">
-                <!-- Filtres par statut -->
-                <div class="status-filters">
-                    <button class="filter-btn active" data-filter="all" onclick="filterOpportunities('all')">
-                        Toutes (<span id="count-all">0</span>)
-                    </button>
-                    <button class="filter-btn" data-filter="prospect" onclick="filterOpportunities('prospect')">
-                        Prospects (<span id="count-prospect">0</span>)
-                    </button>
-                    <button class="filter-btn" data-filter="qualification" onclick="filterOpportunities('qualification')">
-                        Qualification (<span id="count-qualification">0</span>)
-                    </button>
-                    <button class="filter-btn" data-filter="proposal" onclick="filterOpportunities('proposal')">
-                        Proposition (<span id="count-proposal">0</span>)
-                    </button>
-                    <button class="filter-btn" data-filter="negotiation" onclick="filterOpportunities('negotiation')">
-                        Négociation (<span id="count-negotiation">0</span>)
-                    </button>
-                    <button class="filter-btn" data-filter="closing" onclick="filterOpportunities('closing')">
-                        Finalisation (<span id="count-closing">0</span>)
-                    </button>
-                </div>
+                <div class="left-controls">
+                    <!-- Filtres par statut -->
+                    <div class="status-filters">
+                        <button class="filter-btn active" data-filter="all" onclick="filterOpportunities('all')">
+                            Toutes (<span id="count-all">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="prospect" onclick="filterOpportunities('prospect')">
+                            Prospects (<span id="count-prospect">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="qualification" onclick="filterOpportunities('qualification')">
+                            Qualification (<span id="count-qualification">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="proposal" onclick="filterOpportunities('proposal')">
+                            Proposition (<span id="count-proposal">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="negotiation" onclick="filterOpportunities('negotiation')">
+                            Négociation (<span id="count-negotiation">0</span>)
+                        </button>
+                        <button class="filter-btn" data-filter="closing" onclick="filterOpportunities('closing')">
+                            Finalisation (<span id="count-closing">0</span>)
+                        </button>
+                    </div>
 
-                <!-- Sélecteur nombre par page -->
-                <div class="per-page-selector">
-                    <span style="font-weight: 600; color: #374151;">Afficher :</span>
-                    <select id="perPageSelect" onchange="changePerPage()">
-                        <option value="10">10 lignes</option>
-                        <option value="25" selected>25 lignes</option>
-                        <option value="50">50 lignes</option>
-                        <option value="100">100 lignes</option>
-                        <option value="all">Tout afficher</option>
-                    </select>
+                    <!-- Sélecteur nombre par page -->
+                    <div class="per-page-selector">
+                        <span style="font-weight: 600; color: #374151;">Afficher :</span>
+                        <select id="perPageSelect" onchange="changePerPage()">
+                            <option value="10">10 lignes</option>
+                            <option value="25" selected>25 lignes</option>
+                            <option value="50">50 lignes</option>
+                            <option value="100">100 lignes</option>
+                            <option value="all">Tout afficher</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <!-- Barre de recherche -->
-                <input type="text" id="opportunitySearch" class="search-input" placeholder="🔍 Rechercher une opportunité..." 
-                       oninput="searchOpportunities()">
-                
-                <!-- Actions -->
-                <div style="display: flex; gap: 0.5rem;">
+                <div class="right-controls">
+                    <!-- Barre de recherche -->
+                    <input type="text" id="opportunitySearch" class="search-input" placeholder="🔍 Rechercher une opportunité..." 
+                           oninput="searchOpportunities()">
+                    
+                    <!-- Actions -->
                     <button class="btn btn-secondary btn-sm" onclick="clearAllOpportunities()" title="Vider toutes les opportunités">
                         🗑️ Vider tout
                     </button>
