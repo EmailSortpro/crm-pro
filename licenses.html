@@ -495,6 +495,22 @@
         </div>
     </main>
 
+    <!-- Modal Détails de Licence -->
+    <div id="licenseDetailsModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="licenseDetailsTitle">📄 Détails de la licence</h3>
+                <button class="close-btn" onclick="closeLicenseDetailsModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div id="licenseDetailsContent">
+                    <!-- Contenu chargé dynamiquement -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Nouvelle/Modifier Licence -->
     <div id="licenseModal" class="modal">
         <div class="modal-content">
@@ -516,6 +532,13 @@
                             <label for="licensePlan">Plan *</label>
                             <select id="licensePlan" required onchange="updatePricing()">
                                 <option value="">Sélectionner un plan</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="billingCycle">Cycle de facturation *</label>
+                            <select id="billingCycle" required onchange="updatePricing(); updateDates();">
+                                <option value="monthly">Mensuel</option>
+                                <option value="yearly">Annuel (-15%)</option>
                             </select>
                         </div>
                     </div>
@@ -567,15 +590,15 @@
                         <div class="form-grid-3" style="text-align: center;">
                             <div>
                                 <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);" class="pricing-label">par utilisateur/mois</div>
                             </div>
                             <div>
                                 <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);" class="pricing-label">équivalent mensuel</div>
                             </div>
                             <div>
                                 <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
+                                <div style="font-size: 0.875rem; color: var(--gray-600);" class="pricing-label">total annuel</div>
                             </div>
                         </div>
                     </div>
@@ -798,20 +821,27 @@
 
         function updateDates() {
             const startDate = new Date(document.getElementById('startDate').value);
+            const billingCycle = document.getElementById('billingCycle').value;
+            
             if (!startDate || isNaN(startDate)) return;
             
             const endDate = new Date(startDate);
-            endDate.setFullYear(endDate.getFullYear() + 1);
+            if (billingCycle === 'yearly') {
+                endDate.setFullYear(endDate.getFullYear() + 1);
+            } else {
+                endDate.setMonth(endDate.getMonth() + 1);
+            }
             document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
             
             const renewalDate = new Date(endDate);
-            renewalDate.setMonth(renewalDate.getMonth() - 1);
+            renewalDate.setDate(renewalDate.getDate() - 7); // 7 jours avant
             document.getElementById('renewalDate').value = renewalDate.toISOString().split('T')[0];
         }
 
         function updatePricing() {
             const planSelect = document.getElementById('licensePlan');
             const licenseCount = parseInt(document.getElementById('licenseCount').value) || 0;
+            const billingCycle = document.getElementById('billingCycle').value;
             const selectedOption = planSelect.options[planSelect.selectedIndex];
             
             if (!selectedOption || !selectedOption.dataset.price) {
@@ -819,13 +849,29 @@
                 return;
             }
             
-            const pricePerUser = parseFloat(selectedOption.dataset.price);
-            const monthlyTotal = pricePerUser * licenseCount;
-            const yearlyTotal = monthlyTotal * 12;
+            const basePricePerUser = parseFloat(selectedOption.dataset.price);
+            let pricePerUser = basePricePerUser;
+            let periodText = 'mois';
+            
+            // Appliquer la remise annuelle
+            if (billingCycle === 'yearly') {
+                pricePerUser = basePricePerUser * 0.85; // 15% de remise
+                periodText = 'an';
+            }
+            
+            const totalPrice = pricePerUser * licenseCount;
+            const monthlyEquivalent = billingCycle === 'yearly' ? totalPrice / 12 : totalPrice;
+            const yearlyTotal = billingCycle === 'yearly' ? totalPrice : totalPrice * 12;
             
             document.getElementById('pricePerUser').textContent = formatCurrency(pricePerUser);
-            document.getElementById('monthlyTotal').textContent = formatCurrency(monthlyTotal);
+            document.getElementById('monthlyTotal').textContent = formatCurrency(monthlyEquivalent);
             document.getElementById('yearlyTotal').textContent = formatCurrency(yearlyTotal);
+            
+            // Mettre à jour les labels
+            document.querySelector('#pricingPreview .form-grid-3 div:first-child .pricing-label').textContent = `par utilisateur/${periodText}`;
+            document.querySelector('#pricingPreview .form-grid-3 div:nth-child(2) .pricing-label').textContent = 'équivalent mensuel';
+            document.querySelector('#pricingPreview .form-grid-3 div:nth-child(3) .pricing-label').textContent = 'total annuel';
+            
             document.getElementById('pricingPreview').style.display = 'block';
         }
 
@@ -949,16 +995,17 @@
                 const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
                 const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
                 const activeUsers = license.users?.filter(u => u.status === 'active').length || 0;
+                const billingType = getBillingType(license);
                 
                 return `
-                    <tr onclick="editLicense('${license.id}')" style="cursor: pointer;" title="Cliquer pour modifier">
+                    <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;" title="Cliquer pour voir les détails">
                         <td>
                             <div style="font-weight: 600;">${escapeHtml(license.company_name)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
                         </td>
                         <td>
                             <div style="font-weight: 500;">${escapeHtml(license.plan_name)}</div>
-                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/mois</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/${billingType.period}</div>
                         </td>
                         <td>
                             <span style="font-weight: 600; font-size: 1.125rem;">${activeUsers}/${license.license_count}</span>
@@ -976,12 +1023,16 @@
                         </td>
                         <td>
                             <span style="font-weight: 600; font-size: 1.125rem;">${formatCurrency(license.monthly_cost || 0)}</span>
+                            <div style="font-size: 0.75rem; color: var(--gray-500);">${billingType.label}</div>
                         </td>
                         <td>
                             <span class="license-status ${statusClass}">${statusText}</span>
                         </td>
                         <td onclick="event.stopPropagation()">
                             <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-primary" onclick="openLicenseDetails('${license.id}')" title="Voir détails">
+                                    👁️
+                                </button>
                                 <button class="btn btn-sm btn-secondary" onclick="editLicense('${license.id}')" title="Modifier">
                                     ✏️
                                 </button>
@@ -1030,6 +1081,265 @@
                 return `Dans ${diffDays} jour(s)`;
             } else {
                 return `Dans ${Math.ceil(diffDays / 30)} mois`;
+            }
+        }
+
+        function getBillingType(license) {
+            // Déterminer le type de facturation basé sur la durée
+            if (!license.start_date || !license.end_date) {
+                return { period: 'mois', label: 'Mensuel' };
+            }
+            
+            const start = new Date(license.start_date);
+            const end = new Date(license.end_date);
+            const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+            
+            if (diffMonths >= 12) {
+                return { period: 'an', label: 'Annuel' };
+            } else {
+                return { period: 'mois', label: 'Mensuel' };
+            }
+        }
+
+        function openLicenseDetails(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            document.getElementById('licenseDetailsTitle').textContent = `📄 ${license.company_name} - ${license.plan_name}`;
+            
+            const billingType = getBillingType(license);
+            const isExpiring = isLicenseExpiring(license);
+            const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
+            const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
+            const activeUsers = license.users?.filter(u => u.status === 'active').length || 0;
+            const inactiveUsers = license.users?.filter(u => u.status === 'inactive').length || 0;
+            
+            // Calculer les métriques financières
+            const totalPaidYearly = license.monthly_cost * 12;
+            const costPerUser = activeUsers > 0 ? license.monthly_cost / activeUsers : 0;
+            const utilizationRate = license.license_count > 0 ? Math.round((activeUsers / license.license_count) * 100) : 0;
+            
+            // Calculer les jours jusqu'à expiration
+            const daysUntilExpiry = getDaysUntilExpiration(license.end_date);
+            const daysUntilRenewal = getDaysUntilRenewal(license.renewal_date);
+            
+            document.getElementById('licenseDetailsContent').innerHTML = `
+                <!-- En-tête avec statut -->
+                <div style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; padding: 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">${escapeHtml(license.company_name)}</h2>
+                            <p style="margin: 0; opacity: 0.9; font-size: 1.125rem;">${escapeHtml(license.plan_name)} - ${billingType.label}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem;">${formatCurrency(license.monthly_cost)}</div>
+                            <div style="opacity: 0.9;">${billingType.period === 'an' ? 'par an' : 'par mois'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métriques principales -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="quick-stat">
+                        <div class="quick-stat-number" style="color: ${utilizationRate >= 80 ? 'var(--success-color)' : utilizationRate >= 50 ? 'var(--warning-color)' : 'var(--error-color)'};">${utilizationRate}%</div>
+                        <div class="quick-stat-label">Taux d'utilisation</div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">${activeUsers}/${license.license_count} licences</div>
+                    </div>
+                    
+                    <div class="quick-stat">
+                        <div class="quick-stat-number">${formatCurrency(costPerUser)}</div>
+                        <div class="quick-stat-label">Coût par utilisateur</div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">par mois</div>
+                    </div>
+                    
+                    <div class="quick-stat">
+                        <div class="quick-stat-number">${formatCurrency(totalPaidYearly)}</div>
+                        <div class="quick-stat-label">Coût annuel total</div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">estimation</div>
+                    </div>
+                    
+                    <div class="quick-stat">
+                        <div class="quick-stat-number" style="color: ${isExpiring ? 'var(--error-color)' : 'var(--success-color)'};">
+                            <span class="license-status ${statusClass}" style="font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px;">${statusText}</span>
+                        </div>
+                        <div class="quick-stat-label">Statut actuel</div>
+                    </div>
+                </div>
+
+                <!-- Informations détaillées -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <!-- Informations licence -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>📋 Informations de la licence</h4>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: grid; gap: 1rem;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Type de facturation:</span>
+                                    <span style="font-weight: 600;">${billingType.label}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Date de début:</span>
+                                    <span style="font-weight: 600;">${formatDateLong(license.start_date)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Date de fin:</span>
+                                    <span style="font-weight: 600;">${formatDateLong(license.end_date)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Jours restants:</span>
+                                    <span style="font-weight: 600; color: ${daysUntilExpiry.includes('Expiré') ? 'var(--error-color)' : daysUntilExpiry.includes('aujourd') || daysUntilExpiry.includes('demain') ? 'var(--warning-color)' : 'var(--success-color)'};">${daysUntilExpiry}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Renouvellement:</span>
+                                    <span style="font-weight: 600;">${formatDateLong(license.renewal_date)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Rappel renouvellement:</span>
+                                    <span style="font-weight: 600; color: ${daysUntilRenewal.includes('Expiré') || daysUntilRenewal.includes('aujourd') ? 'var(--error-color)' : 'var(--primary-color)'};">${daysUntilRenewal}</span>
+                                </div>
+                                ${license.payment_method ? `
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--gray-600);">Méthode de paiement:</span>
+                                    <span style="font-weight: 600;">${getPaymentMethodText(license.payment_method)}</span>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Utilisateurs -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>👥 Utilisateurs (${activeUsers + inactiveUsers})</h4>
+                        </div>
+                        <div class="card-body">
+                            <div style="margin-bottom: 1rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--gray-600);">Actifs:</span>
+                                    <span style="font-weight: 600; color: var(--success-color);">${activeUsers}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                    <span style="color: var(--gray-600);">Inactifs:</span>
+                                    <span style="font-weight: 600; color: var(--error-color);">${inactiveUsers}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                                    <span style="color: var(--gray-600);">Places libres:</span>
+                                    <span style="font-weight: 600; color: var(--primary-color);">${license.license_count - activeUsers}</span>
+                                </div>
+                            </div>
+                            
+                            ${license.users && license.users.length > 0 ? `
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    ${license.users.map(user => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--gray-200); ${user.status === 'inactive' ? 'opacity: 0.6;' : ''}">
+                                            <div>
+                                                <div style="font-weight: 600; font-size: 0.875rem;">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
+                                                <div style="font-size: 0.75rem; color: var(--gray-500);">${escapeHtml(user.email)}</div>
+                                            </div>
+                                            <div style="text-align: right;">
+                                                <div style="font-size: 0.75rem; color: ${user.status === 'active' ? 'var(--success-color)' : 'var(--error-color)'};">
+                                                    ${user.status === 'active' ? '🟢 Actif' : '🔴 Inactif'}
+                                                </div>
+                                                <div style="font-size: 0.7rem; color: var(--gray-500);">${user.role}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div style="text-align: center; color: var(--gray-500); font-style: italic; padding: 1rem;">
+                                    Aucun utilisateur assigné
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historique et actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4>⚡ Actions rapides</h4>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button class="btn btn-primary" onclick="closeLicenseDetailsModal(); editLicense('${license.id}')">
+                                ✏️ Modifier la licence
+                            </button>
+                            <button class="btn btn-secondary" onclick="closeLicenseDetailsModal(); openUsersModal('${license.id}')">
+                                👥 Gérer les utilisateurs
+                            </button>
+                            ${isExpiring ? `
+                                <button class="btn btn-warning" onclick="renewLicense('${license.id}')">
+                                    🔄 Renouveler maintenant
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-info" onclick="exportLicenseReport('${license.id}')">
+                                📊 Exporter rapport
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('licenseDetailsModal').classList.add('show');
+        }
+
+        function closeLicenseDetailsModal() {
+            document.getElementById('licenseDetailsModal').classList.remove('show');
+        }
+
+        function getDaysUntilExpiration(endDate) {
+            if (!endDate) return 'Non défini';
+            
+            const now = new Date();
+            const expiry = new Date(endDate);
+            const diffTime = expiry - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0) {
+                return `Expiré depuis ${Math.abs(diffDays)} jour(s)`;
+            } else if (diffDays === 0) {
+                return 'Expire aujourd\'hui';
+            } else if (diffDays === 1) {
+                return 'Expire demain';
+            } else if (diffDays <= 30) {
+                return `${diffDays} jour(s)`;
+            } else if (diffDays <= 365) {
+                return `${Math.ceil(diffDays / 30)} mois`;
+            } else {
+                return `${Math.ceil(diffDays / 365)} an(s)`;
+            }
+        }
+
+        function formatDateLong(dateString) {
+            if (!dateString) return 'Non défini';
+            try {
+                return new Date(dateString).toLocaleDateString('fr-FR', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            } catch {
+                return 'Date invalide';
+            }
+        }
+
+        function getPaymentMethodText(method) {
+            const methodMap = {
+                'stripe': 'Stripe',
+                'bank_transfer': 'Virement bancaire',
+                'check': 'Chèque',
+                'cash': 'Espèces'
+            };
+            return methodMap[method] || method;
+        }
+
+        function renewLicense(licenseId) {
+            // Fonctionnalité de renouvellement automatique
+            if (confirm('Voulez-vous renouveler cette licence pour une nouvelle période ?')) {
+                showError('Fonctionnalité de renouvellement en cours de développement');
             }
         }
 
@@ -1086,6 +1396,7 @@
             
             document.getElementById('licenseCompany').value = license.company_id;
             document.getElementById('licensePlan').value = license.plan_id;
+            document.getElementById('billingCycle').value = getBillingType(license).period === 'an' ? 'yearly' : 'monthly';
             document.getElementById('licenseCount').value = license.license_count;
             document.getElementById('startDate').value = license.start_date;
             document.getElementById('endDate').value = license.end_date;
@@ -1434,7 +1745,17 @@
             try {
                 const planSelect = document.getElementById('licensePlan');
                 const selectedPlanOption = planSelect.options[planSelect.selectedIndex];
-                const pricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
+                const basePricePerUser = parseFloat(selectedPlanOption.dataset.price) || 0;
+                const billingCycle = document.getElementById('billingCycle').value;
+                
+                // Calculer le prix avec remise éventuelle
+                let finalPricePerUser = basePricePerUser;
+                let monthlyEquivalent = basePricePerUser * licenseCount;
+                
+                if (billingCycle === 'yearly') {
+                    finalPricePerUser = basePricePerUser * 0.85; // 15% de remise
+                    monthlyEquivalent = (finalPricePerUser * licenseCount) / 12;
+                }
                 
                 const licenseData = {
                     company_id: companyId,
@@ -1445,7 +1766,8 @@
                     renewal_date: document.getElementById('renewalDate').value || endDate,
                     status: document.getElementById('licenseStatus').value || 'active',
                     payment_method: document.getElementById('paymentMethod').value || null,
-                    monthly_cost: pricePerUser * licenseCount,
+                    monthly_cost: monthlyEquivalent,
+                    billing_cycle: billingCycle,
                     assigned_contacts: Array.from(selectedContacts)
                 };
                 
@@ -1482,6 +1804,8 @@
                     closeLicenseModal();
                 } else if (e.target.id === 'usersModal') {
                     closeUsersModal();
+                } else if (e.target.id === 'licenseDetailsModal') {
+                    closeLicenseDetailsModal();
                 }
             }
         });
@@ -1491,11 +1815,14 @@
             if (e.key === 'Escape') {
                 const licenseModal = document.getElementById('licenseModal');
                 const usersModal = document.getElementById('usersModal');
+                const detailsModal = document.getElementById('licenseDetailsModal');
                 
                 if (licenseModal.classList.contains('show')) {
                     closeLicenseModal();
                 } else if (usersModal.classList.contains('show')) {
                     closeUsersModal();
+                } else if (detailsModal.classList.contains('show')) {
+                    closeLicenseDetailsModal();
                 }
             }
         });
