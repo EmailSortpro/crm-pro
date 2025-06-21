@@ -1,4 +1,59 @@
-// ===================================
+static async createLicense(licenseData) {
+        try {
+            this.log('Création licence', licenseData);
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+
+            // Valider les données selon le type de licence
+            if (licenseData.license_type === 'individual') {
+                if (!licenseData.individual_contact_id || !licenseData.plan_id) {
+                    throw new Error('Contact et plan sont obligatoires pour une licence individuelle');
+                }
+                // Forcer license_count à 1 pour les licences individuelles
+                licenseData.license_count = 1;
+            } else {
+                if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
+                    throw new Error('Société, plan et nombre de licences sont obligatoires pour une licence société');
+                }
+            }
+            
+            const { data, error } = await supabase
+                .from('company_licenses')
+                .insert([{
+                    ...licenseData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    ),
+                    license_plans (
+                        id,
+                        name,
+                        price_per_user,
+                        features
+                    )
+                `);
+            
+            if (error) {
+                console.error('❌ Erreur création licence:', error);
+                throw error;
+            }
+            
+            this.log('Licence créée avec succès', data[0]);
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('❌ Erreur création licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+                        // ===================================
 // CONFIGURATION SUPABASE
 // ===================================
 
@@ -442,6 +497,14 @@ class CRMService {
                         name,
                         price_per_user,
                         features
+                    ),
+                    individual_contact:company_contacts!individual_contact_id (
+                        id,
+                        first_name,
+                        last_name,
+                        email,
+                        position,
+                        phone
                     )
                 `)
                 .order('created_at', { ascending: false });
