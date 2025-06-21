@@ -12,16 +12,43 @@ pretty_urls = true
 [build.environment]
 NODE_ENV = "production"
 
-# Redirection SPA (CORRIGÉE - sans conditions de rôle)
+# ✅ CORRIGÉ: Exclusions pour éviter les conflits de redirection
 [[redirects]]
-from = "/*"
-to = "/index.html"
+from = "/config.js"
+to = "/config.js"
+status = 200
+
+[[redirects]]
+from = "/login.html"
+to = "/login.html"
+status = 200
+
+[[redirects]]
+from = "/styles.css"
+to = "/styles.css"
+status = 200
+
+# Redirection pour fichiers statiques (éviter les conflits)
+[[redirects]]
+from = "/*.js"
+to = "/:splat.js"
+status = 200
+
+[[redirects]]
+from = "/*.css"
+to = "/:splat.css"
 status = 200
 
 # Redirection pour la fonction env-vars
 [[redirects]]
 from = "/api/env"
 to = "/.netlify/functions/env-vars"
+status = 200
+
+# ✅ SPA redirection EN DERNIER (pour éviter les conflits)
+[[redirects]]
+from = "/*"
+to = "/index.html"
 status = 200
 
 # Headers de sécurité
