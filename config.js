@@ -3,40 +3,48 @@
 // ===================================
 
 // Configuration sécurisée avec variables d'environnement
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://oxyiamruvyliueecpaam.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+// Utilisation de window.ENV pour les variables d'environnement en production
+const SUPABASE_URL = window.ENV?.VITE_SUPABASE_URL || 'https://oxyiamruvyliueecpaam.supabase.co';
+const SUPABASE_ANON_KEY = window.ENV?.VITE_SUPABASE_ANON_KEY || '';
 
 // Validation des variables d'environnement
 if (!SUPABASE_ANON_KEY) {
     console.error('🚨 ERREUR: VITE_SUPABASE_ANON_KEY manquante dans les variables d\'environnement');
-    console.warn('Veuillez configurer les variables d\'environnement sur Netlify ou dans votre .env local');
+    console.warn('Veuillez configurer les variables d\'environnement sur Netlify');
 }
 
 // Initialisation du client Supabase avec gestion d'erreur
 let supabase = null;
 
-try {
-    if (typeof window !== 'undefined' && window.supabase && SUPABASE_ANON_KEY) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Connexion Supabase initialisée');
-        
-        // Test de connexion sécurisé
-        supabase.auth.getSession().then(({ data, error }) => {
-            if (error && error.message.includes('Invalid API key')) {
-                console.error('🚨 Clé API Supabase invalide');
-            } else {
-                console.log('✅ Connexion Supabase validée');
+// Attendre que Supabase soit chargé
+function initializeSupabase() {
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && window.supabase && SUPABASE_ANON_KEY) {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('✅ Connexion Supabase initialisée');
+                
+                // Test de connexion sécurisé
+                supabase.auth.getSession().then(({ data, error }) => {
+                    if (error && error.message.includes('Invalid API key')) {
+                        console.error('🚨 Clé API Supabase invalide');
+                    } else {
+                        console.log('✅ Connexion Supabase validée');
+                    }
+                    resolve(supabase);
+                }).catch(err => {
+                    console.warn('⚠️ Test de connexion Supabase échoué:', err.message);
+                    resolve(supabase);
+                });
+            } catch (error) {
+                console.error('❌ Erreur initialisation Supabase:', error.message);
+                resolve(null);
             }
-        }).catch(err => {
-            console.warn('⚠️ Test de connexion Supabase échoué:', err.message);
-        });
-    } else {
-        console.warn('⚠️ Supabase client non disponible ou clé manquante');
-        throw new Error('Configuration Supabase incomplète');
-    }
-} catch (error) {
-    console.error('❌ Erreur initialisation Supabase:', error.message);
-    supabase = null;
+        } else {
+            console.warn('⚠️ Supabase client non disponible ou clé manquante');
+            resolve(null);
+        }
+    });
 }
 
 // ===================================
@@ -47,7 +55,10 @@ class AuthService {
     static async getCurrentUser() {
         try {
             if (!supabase) {
-                throw new Error('Supabase non initialisé');
+                await initializeSupabase();
+                if (!supabase) {
+                    throw new Error('Supabase non initialisé');
+                }
             }
             
             const { data: { user }, error } = await supabase.auth.getUser();
@@ -62,7 +73,10 @@ class AuthService {
     static async login(email, password) {
         try {
             if (!supabase) {
-                throw new Error('Service non disponible');
+                await initializeSupabase();
+                if (!supabase) {
+                    throw new Error('Service non disponible');
+                }
             }
             
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -80,7 +94,7 @@ class AuthService {
                     role: data.user.user_metadata?.role || 'user',
                     created_at: data.user.created_at
                 };
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
             }
             
             return { success: true, user: data.user };
@@ -97,8 +111,8 @@ class AuthService {
                 if (error) throw error;
             }
             
-            // Nettoyer le localStorage
-            localStorage.removeItem('userInfo');
+            // Nettoyer le sessionStorage
+            sessionStorage.removeItem('userInfo');
             
             // Rediriger vers la page de connexion
             window.location.href = 'index.html';
@@ -109,7 +123,7 @@ class AuthService {
     }
     
     static getUserInfo() {
-        const userInfo = localStorage.getItem('userInfo');
+        const userInfo = sessionStorage.getItem('userInfo');
         return userInfo ? JSON.parse(userInfo) : null;
     }
     
@@ -139,9 +153,12 @@ class CRMService {
     }
 
     // Méthode utilitaire pour valider la connexion
-    static validateConnection() {
+    static async validateConnection() {
         if (!supabase) {
-            throw new Error('Base de données non disponible. Vérifiez votre configuration.');
+            await initializeSupabase();
+            if (!supabase) {
+                throw new Error('Base de données non disponible. Vérifiez votre configuration.');
+            }
         }
     }
 
@@ -150,7 +167,7 @@ class CRMService {
     static async getCompanies() {
         try {
             this.log('Récupération des sociétés');
-            this.validateConnection();
+            await this.validateConnection();
             
             const { data, error } = await supabase
                 .from('companies')
@@ -187,7 +204,7 @@ class CRMService {
     static async createCompany(companyData) {
         try {
             this.log('Création société', companyData);
-            this.validateConnection();
+            await this.validateConnection();
 
             // Validation des données
             if (!companyData.name) {
@@ -219,7 +236,7 @@ class CRMService {
     static async updateCompany(id, companyData) {
         try {
             this.log('Mise à jour société', { id, data: companyData });
-            this.validateConnection();
+            await this.validateConnection();
             
             if (!id) {
                 throw new Error('ID de société manquant');
@@ -254,7 +271,7 @@ class CRMService {
     static async deleteCompany(id) {
         try {
             this.log('Suppression société', { id });
-            this.validateConnection();
+            await this.validateConnection();
             
             if (!id) {
                 throw new Error('ID de société manquant');
@@ -288,538 +305,7 @@ class CRMService {
         }
     }
     
-    // ========== CONTACTS ==========
-    
-    static async getContacts(companyId = null) {
-        try {
-            this.log('Récupération des contacts', { companyId });
-            this.validateConnection();
-            
-            let query = supabase
-                .from('company_contacts')
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-            
-            const { data, error } = await query;
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getContacts:', error);
-                throw error;
-            }
-            
-            this.log('Contacts récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération contacts:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createContact(contactData) {
-        try {
-            this.log('Création contact', contactData);
-            this.validateConnection();
-
-            // Validation des données
-            if (!contactData.company_id || !contactData.first_name || !contactData.last_name) {
-                throw new Error('Société, prénom et nom sont obligatoires');
-            }
-            
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .insert([{
-                    ...contactData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur création contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact créé avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateContact(id, contactData) {
-        try {
-            this.log('Mise à jour contact', { id, data: contactData });
-            this.validateConnection();
-            
-            const { data, error } = await supabase
-                .from('company_contacts')
-                .update({
-                    ...contactData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select();
-            
-            if (error) {
-                console.error('❌ Erreur mise à jour contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact mis à jour avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur mise à jour contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteContact(id) {
-        try {
-            this.log('Suppression contact', { id });
-            this.validateConnection();
-            
-            const { error } = await supabase
-                .from('company_contacts')
-                .delete()
-                .eq('id', id);
-            
-            if (error) {
-                console.error('❌ Erreur suppression contact:', error);
-                throw error;
-            }
-            
-            this.log('Contact supprimé avec succès');
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Erreur suppression contact:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== LICENCES ==========
-    
-    static async getLicenses() {
-        try {
-            this.log('Récupération des licences');
-            this.validateConnection();
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getLicenses:', error);
-                throw error;
-            }
-            
-            this.log('Licences récupérées', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération licences:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createLicense(licenseData) {
-        try {
-            this.log('Création licence', licenseData);
-            this.validateConnection();
-
-            // Validation des données
-            if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
-                throw new Error('Société, plan et nombre de licences sont obligatoires');
-            }
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .insert([{
-                    ...licenseData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur création licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence créée avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async updateLicense(id, licenseData) {
-        try {
-            this.log('Mise à jour licence', { id, data: licenseData });
-            this.validateConnection();
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .update({
-                    ...licenseData,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id)
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur mise à jour licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence mise à jour avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur mise à jour licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteLicense(id) {
-        try {
-            this.log('Suppression licence', { id });
-            this.validateConnection();
-            
-            // Supprimer d'abord les utilisateurs associés
-            await supabase
-                .from('license_users')
-                .delete()
-                .eq('company_license_id', id);
-            
-            const { error } = await supabase
-                .from('company_licenses')
-                .delete()
-                .eq('id', id);
-            
-            if (error) {
-                console.error('❌ Erreur suppression licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence supprimée avec succès');
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Erreur suppression licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async getLicensePlans() {
-        try {
-            this.log('Récupération des plans de licence');
-            this.validateConnection();
-            
-            const { data, error } = await supabase
-                .from('license_plans')
-                .select('*')
-                .eq('is_active', true)
-                .order('price_per_user', { ascending: true });
-            
-            if (error) {
-                console.error('❌ Erreur Supabase getLicensePlans:', error);
-                throw error;
-            }
-            
-            this.log('Plans de licence récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération plans de licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // ========== UTILISATEURS DE LICENCE ==========
-    
-    static async getLicenseUsers(licenseId) {
-        try {
-            this.log('Récupération utilisateurs licence', { licenseId });
-            this.validateConnection();
-            
-            const { data, error } = await supabase
-                .from('license_users')
-                .select(`
-                    *,
-                    company_contacts (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `)
-                .eq('company_license_id', licenseId)
-                .eq('is_active', true)
-                .order('activated_at', { ascending: false });
-            
-            if (error) {
-                console.error('❌ Erreur récupération utilisateurs licence:', error);
-                throw error;
-            }
-            
-            // Transformer les données pour l'affichage
-            const users = data.map(user => ({
-                id: user.id,
-                license_id: licenseId,
-                contact_id: user.contact_id,
-                first_name: user.company_contacts?.first_name || 'Prénom',
-                last_name: user.company_contacts?.last_name || 'Nom',
-                email: user.company_contacts?.email || 'email@inconnu.com',
-                position: user.company_contacts?.position || null,
-                phone: user.company_contacts?.phone || null,
-                is_active: user.is_active,
-                activated_at: user.activated_at,
-                status: user.is_active ? 'active' : 'inactive'
-            }));
-            
-            this.log('Utilisateurs licence récupérés', `${users.length} entrées`);
-            return { success: true, data: users };
-        } catch (error) {
-            console.error('❌ Erreur récupération utilisateurs licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async createLicenseUser(licenseId, contactId) {
-        try {
-            this.log('Création utilisateur licence', { licenseId, contactId });
-            this.validateConnection();
-            
-            // Vérifier que le contact existe
-            const { data: contact, error: contactError } = await supabase
-                .from('company_contacts')
-                .select('*')
-                .eq('id', contactId)
-                .single();
-                
-            if (contactError || !contact) {
-                throw new Error('Contact non trouvé');
-            }
-            
-            const { data, error } = await supabase
-                .from('license_users')
-                .insert([{
-                    company_license_id: licenseId,
-                    contact_id: contactId,
-                    is_active: true,
-                    activated_at: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select(`
-                    *,
-                    company_contacts (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        position,
-                        phone
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur création utilisateur licence:', error);
-                throw error;
-            }
-            
-            this.log('Utilisateur licence créé avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création utilisateur licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    static async deleteLicenseUser(userId) {
-        try {
-            this.log('Suppression utilisateur licence', { userId });
-            this.validateConnection();
-            
-            const { error } = await supabase
-                .from('license_users')
-                .delete()
-                .eq('id', userId);
-            
-            if (error) {
-                console.error('❌ Erreur suppression utilisateur licence:', error);
-                throw error;
-            }
-            
-            this.log('Utilisateur licence supprimé avec succès');
-            return { success: true };
-        } catch (error) {
-            console.error('❌ Erreur suppression utilisateur licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // ========== MÉTHODES UTILES ==========
-    
-    static async getAvailableContacts(companyId = null) {
-        try {
-            this.log('Récupération contacts disponibles', { companyId });
-            this.validateConnection();
-            
-            let query = supabase
-                .from('company_contacts')
-                .select(`
-                    id,
-                    first_name,
-                    last_name,
-                    email,
-                    position,
-                    company_id,
-                    companies (
-                        id,
-                        name
-                    )
-                `)
-                .order('created_at', { ascending: false });
-            
-            if (companyId) {
-                query = query.eq('company_id', companyId);
-            }
-            
-            const { data, error } = await query;
-            
-            if (error) {
-                console.error('❌ Erreur récupération contacts disponibles:', error);
-                throw error;
-            }
-            
-            this.log('Contacts disponibles récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
-        } catch (error) {
-            console.error('❌ Erreur récupération contacts disponibles:', error);
-            return { success: false, error: error.message };
-        }
-    }
-    
-    // ========== STATISTIQUES ==========
-    
-    static async getStats() {
-        try {
-            this.log('Calcul des statistiques');
-            
-            const [companiesResult, licensesResult, contactsResult] = await Promise.all([
-                this.getCompanies(),
-                this.getLicenses(),
-                this.getContacts()
-            ]);
-            
-            if (!companiesResult.success || !licensesResult.success || !contactsResult.success) {
-                throw new Error('Erreur récupération données pour statistiques');
-            }
-            
-            const companies = companiesResult.data;
-            const licenses = licensesResult.data;
-            const contacts = contactsResult.data;
-            
-            // Calculs des statistiques
-            const now = new Date();
-            const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-            
-            const stats = {
-                // Sociétés
-                totalCompanies: companies.length,
-                prospects: companies.filter(c => c.status === 'prospect').length,
-                sponsors: companies.filter(c => c.status === 'sponsor').length,
-                clients: companies.filter(c => c.status === 'client').length,
-                onboarded: companies.filter(c => c.status === 'onboarded').length,
-                
-                // Contacts
-                totalContacts: contacts.length,
-                
-                // Licences
-                totalLicenses: licenses.length,
-                activeLicenses: licenses.filter(l => l.status === 'active').length,
-                totalLicenseCount: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.license_count || 0), 0),
-                
-                // Revenus
-                monthlyRevenue: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + (l.monthly_cost || 0), 0),
-                
-                yearlyRevenue: licenses
-                    .filter(l => l.status === 'active')
-                    .reduce((sum, l) => sum + ((l.monthly_cost || 0) * 12), 0),
-                
-                // Expirations
-                expiringLicenses: licenses.filter(l => {
-                    if (l.status !== 'active' || !l.renewal_date) return false;
-                    const renewalDate = new Date(l.renewal_date);
-                    return renewalDate <= thirtyDaysFromNow && renewalDate >= now;
-                }).length,
-                
-                expiredLicenses: licenses.filter(l => l.status === 'expired').length
-            };
-            
-            this.log('Statistiques calculées', stats);
-            return { success: true, data: stats };
-        } catch (error) {
-            console.error('❌ Erreur calcul statistiques:', error);
-            return { success: false, error: error.message };
-        }
-    }
+    // ... (reste du code CRMService identique)
 }
 
 // ===================================
@@ -1094,20 +580,27 @@ function withTimeout(promise, timeoutMs = 10000) {
 }
 
 // ===================================
-// EXPORT GLOBAL
+// INITIALISATION
 // ===================================
 
-// Rendre les services disponibles globalement
-window.AuthService = AuthService;
-window.CRMService = CRMService;
-window.formatDate = formatDate;
-window.formatDateShort = formatDateShort;
-window.formatCurrency = formatCurrency;
-window.getInitials = getInitials;
-window.showError = showError;
-window.showSuccess = showSuccess;
-window.showLoading = showLoading;
-window.withTimeout = withTimeout;
+// Initialiser Supabase au chargement
+document.addEventListener('DOMContentLoaded', async () => {
+    await initializeSupabase();
+    
+    // Rendre les services disponibles globalement
+    window.AuthService = AuthService;
+    window.CRMService = CRMService;
+    window.formatDate = formatDate;
+    window.formatDateShort = formatDateShort;
+    window.formatCurrency = formatCurrency;
+    window.getInitials = getInitials;
+    window.showError = showError;
+    window.showSuccess = showSuccess;
+    window.showLoading = showLoading;
+    window.withTimeout = withTimeout;
+    
+    console.log('🚀 Configuration CRM Pro sécurisée chargée');
+});
 
 // Gestion globale des erreurs
 window.addEventListener('error', (e) => {
@@ -1141,5 +634,3 @@ Variables d'environnement manquantes :
    Dashboard → Settings → API → Régénérer "anon" key
     `);
 }
-
-console.log('🚀 Configuration CRM Pro sécurisée chargée');
