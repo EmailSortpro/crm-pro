@@ -29,6 +29,56 @@
             border-color: var(--primary-color);
         }
 
+        /* Vue par défaut : tableau */
+        .companies-table {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .companies-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .companies-table th {
+            background: #f9fafb;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+
+        .companies-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+
+        .companies-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .company-name {
+            font-weight: 600;
+            color: #1f2937;
+            cursor: pointer;
+        }
+
+        .company-name:hover {
+            color: #2563eb;
+        }
+
+        .revenue-amount {
+            font-weight: 600;
+            color: #059669;
+        }
+
+        /* Vue en cartes (alternative) */
         .companies-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -54,13 +104,6 @@
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 1rem;
-        }
-
-        .company-name {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin-bottom: 0.25rem;
         }
 
         .company-industry {
@@ -112,6 +155,53 @@
             display: flex;
             gap: 0.5rem;
             justify-content: flex-end;
+        }
+
+        /* Contrôles de vue */
+        .view-controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .toggle-btn.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background: #f3f4f6;
+            border-color: #d1d5db;
         }
 
         /* Modal styles */
@@ -197,12 +287,25 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            .companies-table {
+                overflow-x: auto;
+            }
+            
+            .companies-table table {
+                min-width: 800px;
+            }
+            
             .companies-grid {
                 grid-template-columns: 1fr;
             }
             .form-grid-2,
             .form-grid-3 {
                 grid-template-columns: 1fr;
+            }
+            
+            .controls-row {
+                flex-direction: column;
+                align-items: stretch;
             }
         }
     </style>
@@ -272,47 +375,76 @@
                     Gérez vos prospects, clients et sociétés onboardées
                 </p>
             </div>
-            <button class="btn btn-primary" onclick="openAddCompanyModal()">
-                ➕ Nouvelle Société
-            </button>
         </div>
 
-        <!-- Filtres et recherche -->
-        <div class="card" style="margin-bottom: 2rem;">
-            <div class="card-body" style="padding: 1.5rem;">
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <!-- Filtres par statut -->
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
-                        <button class="filter-btn active" data-filter="all" onclick="filterCompanies('all')">
-                            Toutes (<span id="count-all">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="prospect" onclick="filterCompanies('prospect')">
-                            Prospects (<span id="count-prospect">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="sponsor" onclick="filterCompanies('sponsor')">
-                            Sponsors (<span id="count-sponsor">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="client" onclick="filterCompanies('client')">
-                            Clients (<span id="count-client">0</span>)
-                        </button>
-                        <button class="filter-btn" data-filter="onboarded" onclick="filterCompanies('onboarded')">
-                            Onboardés (<span id="count-onboarded">0</span>)
-                        </button>
-                    </div>
-                    
-                    <!-- Barre de recherche -->
-                    <div style="flex: 1; min-width: 200px;">
-                        <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
-                               style="width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: var(--radius);"
-                               oninput="searchCompanies()">
-                    </div>
+        <!-- Contrôles et filtres -->
+        <div class="view-controls">
+            <div class="controls-row">
+                <div class="view-toggle">
+                    <button class="toggle-btn active" onclick="setView('table')" id="viewTable">
+                        📋 Vue tableau
+                    </button>
+                    <button class="toggle-btn" onclick="setView('cards')" id="viewCards">
+                        🏢 Vue cartes
+                    </button>
                 </div>
+                
+                <button class="btn btn-primary" onclick="openAddCompanyModal()">
+                    ➕ Nouvelle Société
+                </button>
+            </div>
+            
+            <div class="controls-row">
+                <!-- Filtres par statut -->
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <span style="font-weight: 600; color: var(--gray-700);">Statut :</span>
+                    <button class="filter-btn active" data-filter="all" onclick="filterCompanies('all')">
+                        Toutes (<span id="count-all">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="prospect" onclick="filterCompanies('prospect')">
+                        Prospects (<span id="count-prospect">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="sponsor" onclick="filterCompanies('sponsor')">
+                        Sponsors (<span id="count-sponsor">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="client" onclick="filterCompanies('client')">
+                        Clients (<span id="count-client">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="onboarded" onclick="filterCompanies('onboarded')">
+                        Onboardés (<span id="count-onboarded">0</span>)
+                    </button>
+                </div>
+                
+                <!-- Barre de recherche -->
+                <input type="text" id="searchInput" placeholder="🔍 Rechercher une société..." 
+                       style="padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: var(--radius); min-width: 250px;"
+                       oninput="searchCompanies()">
             </div>
         </div>
 
-        <!-- Liste des sociétés -->
-        <div id="companiesGrid" class="companies-grid">
+        <!-- Vue tableau (par défaut) -->
+        <div id="tableView" class="companies-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Société</th>
+                        <th>Statut</th>
+                        <th>Secteur</th>
+                        <th>Responsable</th>
+                        <th>Contacts</th>
+                        <th>Revenus/mois</th>
+                        <th>Ville</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="companiesTableBody">
+                    <!-- Chargé dynamiquement -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Vue cartes -->
+        <div id="cardsView" class="companies-grid" style="display: none;">
             <!-- Chargé dynamiquement -->
         </div>
 
@@ -344,8 +476,8 @@
                         <input type="text" id="companyName" required>
                     </div>
                     <div class="form-group">
-                        <label for="companyStatus">Statut</label>
-                        <select id="companyStatus">
+                        <label for="companyStatus">Statut *</label>
+                        <select id="companyStatus" required>
                             <option value="prospect">Prospect</option>
                             <option value="sponsor">Sponsor</option>
                             <option value="client">Client</option>
@@ -436,8 +568,10 @@
     <script>
         // Variables globales
         let companies = [];
+        let licenses = [];
         let filteredCompanies = [];
         let currentFilter = 'all';
+        let currentView = 'table';
         let editingCompany = null;
 
         // Initialisation
@@ -451,8 +585,8 @@
                 // Charger les informations utilisateur
                 loadUserInfo();
                 
-                // Charger les sociétés
-                await loadCompanies();
+                // Charger les données
+                await loadData();
                 
                 // Gérer les paramètres URL
                 handleUrlParams();
@@ -474,29 +608,45 @@
             }
         }
 
-        // Charger les sociétés
-        async function loadCompanies() {
+        // Charger toutes les données
+        async function loadData() {
             try {
-                console.log('🔄 Chargement des sociétés...');
+                console.log('🔄 Chargement des données...');
                 
-                const result = await CRMService.getCompanies();
-                if (result.success) {
-                    companies = result.data;
-                    updateCounts();
-                    filterCompanies(currentFilter);
-                    console.log(`✅ ${companies.length} société(s) chargée(s)`);
-                } else {
-                    throw new Error(result.error || 'Erreur lors du chargement');
-                }
+                // Charger sociétés et licences en parallèle
+                const [companiesResult, licensesResult] = await Promise.all([
+                    CRMService.getCompanies(),
+                    CRMService.getLicenses()
+                ]);
+                
+                companies = companiesResult.success ? companiesResult.data : [];
+                licenses = licensesResult.success ? licensesResult.data : [];
+                
+                console.log(`✅ ${companies.length} société(s) et ${licenses.length} licence(s) chargées`);
+                
+                updateCounts();
+                filterCompanies(currentFilter);
+                
             } catch (error) {
-                console.error('❌ Erreur chargement sociétés:', error);
-                showError('Erreur lors du chargement des sociétés: ' + error.message);
+                console.error('❌ Erreur chargement données:', error);
+                showError('Erreur lors du chargement des données: ' + error.message);
                 
                 // Afficher l'état vide en cas d'erreur
                 companies = [];
+                licenses = [];
                 filteredCompanies = [];
                 renderCompanies();
             }
+        }
+
+        // Calculer les revenus d'une société
+        function getCompanyRevenue(companyId) {
+            const companyLicenses = licenses.filter(l => 
+                l.company_id === companyId && l.status === 'active'
+            );
+            return companyLicenses.reduce((total, license) => 
+                total + (license.monthly_cost || 0), 0
+            );
         }
 
         // Mettre à jour les compteurs
@@ -515,6 +665,22 @@
                     element.textContent = counts[key];
                 }
             });
+        }
+
+        // Changer de vue
+        function setView(viewType) {
+            currentView = viewType;
+            
+            // Mettre à jour les boutons
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(viewType === 'table' ? 'viewTable' : 'viewCards').classList.add('active');
+            
+            // Afficher/masquer les vues
+            document.getElementById('tableView').style.display = viewType === 'table' ? 'block' : 'none';
+            document.getElementById('cardsView').style.display = viewType === 'cards' ? 'grid' : 'none';
+            
+            // Re-rendre les données
+            renderCompanies();
         }
 
         // Filtrer les sociétés
@@ -564,34 +730,87 @@
 
         // Rendu des sociétés
         function renderCompanies(companiesToRender = filteredCompanies) {
-            const grid = document.getElementById('companiesGrid');
-            const emptyState = document.getElementById('emptyState');
-            
-            console.log('🎨 Rendu des sociétés:', companiesToRender.length);
+            console.log('🎨 Rendu des sociétés:', companiesToRender.length, 'vue:', currentView);
             
             if (companiesToRender.length === 0) {
-                grid.style.display = 'none';
-                emptyState.style.display = 'block';
+                document.getElementById('tableView').style.display = 'none';
+                document.getElementById('cardsView').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
                 return;
             }
             
-            grid.style.display = 'grid';
-            emptyState.style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
             
+            if (currentView === 'table') {
+                renderTableView(companiesToRender);
+            } else {
+                renderCardsView(companiesToRender);
+            }
+        }
+
+        // Rendu vue tableau
+        function renderTableView(companiesToRender) {
+            document.getElementById('tableView').style.display = 'block';
+            document.getElementById('cardsView').style.display = 'none';
+            
+            const tbody = document.getElementById('companiesTableBody');
+            tbody.innerHTML = companiesToRender.map(company => {
+                const contactsCount = company.company_contacts ? company.company_contacts.length : 0;
+                const revenue = getCompanyRevenue(company.id);
+                
+                return `
+                    <tr onclick="openCompanyDetails('${company.id}')" style="cursor: pointer;">
+                        <td>
+                            <div class="company-name">${escapeHtml(company.name)}</div>
+                        </td>
+                        <td>
+                            <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span>
+                        </td>
+                        <td>${escapeHtml(company.industry || '-')}</td>
+                        <td>${escapeHtml(company.account_manager || '-')}</td>
+                        <td><strong>${contactsCount}</strong></td>
+                        <td><span class="revenue-amount">${formatCurrency(revenue)}</span></td>
+                        <td>${escapeHtml(company.city || '-')}</td>
+                        <td onclick="event.stopPropagation()">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-secondary" onclick="editCompany('${company.id}')" title="Modifier">
+                                    ✏️
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteCompany('${company.id}')" title="Supprimer">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Rendu vue cartes
+        function renderCardsView(companiesToRender) {
+            document.getElementById('tableView').style.display = 'none';
+            document.getElementById('cardsView').style.display = 'grid';
+            
+            const grid = document.getElementById('cardsView');
             grid.innerHTML = companiesToRender.map(company => {
                 const contactsCount = company.company_contacts ? company.company_contacts.length : 0;
+                const revenue = getCompanyRevenue(company.id);
                 
                 return `
                     <div class="company-card" onclick="openCompanyDetails('${company.id}')">
                         <div class="company-header">
                             <div>
-                                <div class="company-name">${escapeHtml(company.name)}</div>
+                                <div class="company-name" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;">${escapeHtml(company.name)}</div>
                                 <div class="company-industry">${escapeHtml(company.industry || 'Secteur non spécifié')}</div>
                             </div>
                             <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span>
                         </div>
                         
                         <div class="company-info">
+                            <div class="company-info-item">
+                                <span>💰</span>
+                                <span class="revenue-amount">${formatCurrency(revenue)}/mois</span>
+                            </div>
                             ${company.account_manager ? `
                                 <div class="company-info-item">
                                     <span>👤</span>
@@ -635,7 +854,7 @@
             }).join('');
         }
 
-        // Utilitaire pour échapper le HTML
+        // Utilitaires
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -643,7 +862,6 @@
             return div.innerHTML;
         }
 
-        // Obtenir le texte du statut
         function getStatusText(status) {
             const statusMap = {
                 'prospect': 'Prospect',
@@ -652,6 +870,14 @@
                 'onboarded': 'Onboardé'
             };
             return statusMap[status] || status;
+        }
+
+        function formatCurrency(amount) {
+            if (!amount || isNaN(amount)) return '0,00 €';
+            return new Intl.NumberFormat('fr-FR', {
+                style: 'currency',
+                currency: 'EUR'
+            }).format(amount);
         }
 
         // Gestion des modals
@@ -699,7 +925,7 @@
             // Passer en mode édition
             editingCompany = company;
             
-            // Remplir le formulaire
+            // Remplir le formulaire avec les valeurs actuelles
             document.getElementById('companyName').value = company.name || '';
             document.getElementById('companyStatus').value = company.status || 'prospect';
             document.getElementById('companyIndustry').value = company.industry || '';
@@ -741,7 +967,7 @@
                 const result = await CRMService.deleteCompany(companyId);
                 if (result.success) {
                     showSuccess('Société supprimée avec succès');
-                    await loadCompanies();
+                    await loadData();
                 } else {
                     throw new Error(result.error || 'Erreur lors de la suppression');
                 }
@@ -764,6 +990,9 @@
             console.log('👁️ Ouverture détails société:', company.name);
             
             document.getElementById('detailsTitle').textContent = company.name;
+            
+            const revenue = getCompanyRevenue(company.id);
+            const companyLicenses = licenses.filter(l => l.company_id === company.id);
             
             // Contenu des détails
             const contactsHtml = company.company_contacts && company.company_contacts.length > 0 ? 
@@ -796,6 +1025,8 @@
                         <h4 style="margin-bottom: 1rem; color: var(--gray-800);">📋 Informations générales</h4>
                         <div style="display: grid; gap: 0.75rem;">
                             <div><strong>Statut :</strong> <span class="status-badge status-${company.status}">${getStatusText(company.status)}</span></div>
+                            <div><strong>Revenus mensuels :</strong> <span class="revenue-amount">${formatCurrency(revenue)}</span></div>
+                            <div><strong>Licences :</strong> ${companyLicenses.length} licence(s)</div>
                             <div><strong>Secteur :</strong> ${escapeHtml(company.industry || 'Non spécifié')}</div>
                             <div><strong>Site web :</strong> ${company.website ? `<a href="${escapeHtml(company.website)}" target="_blank" style="color: var(--primary-color);">${escapeHtml(company.website)}</a>` : 'Non spécifié'}</div>
                             <div><strong>Téléphone :</strong> ${escapeHtml(company.phone || 'Non spécifié')}</div>
@@ -838,6 +1069,9 @@
                     <a href="contacts.html?company=${company.id}" class="btn btn-success">
                         👥 Gérer les contacts
                     </a>
+                    <a href="licenses.html" class="btn btn-warning">
+                        📄 Voir les licences
+                    </a>
                 </div>
             `;
             
@@ -866,6 +1100,13 @@
             // Validation
             if (!formData.name) {
                 showError('Le nom de la société est obligatoire');
+                document.getElementById('companyName').focus();
+                return;
+            }
+            
+            if (!formData.status) {
+                showError('Le statut est obligatoire');
+                document.getElementById('companyStatus').focus();
                 return;
             }
             
@@ -889,7 +1130,7 @@
                 
                 if (result.success) {
                     closeCompanyModal();
-                    await loadCompanies();
+                    await loadData();
                 } else {
                     throw new Error(result.error || 'Erreur lors de la sauvegarde');
                 }
@@ -911,7 +1152,7 @@
             }
         }
 
-        // Fermer les modals en cliquant à l'extérieur
+        // Event listeners
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 if (e.target.id === 'companyModal') {
@@ -922,7 +1163,6 @@
             }
         });
 
-        // Raccourcis clavier
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const companyModal = document.getElementById('companyModal');
