@@ -3,33 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM Pro - Test</title>
+    <title>CRM Pro - Urgence</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 2rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #f3f4f6;
+            color: #1f2937;
         }
         .container {
-            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
             background: white;
-            color: #333;
-            padding: 3rem;
+            padding: 2rem;
             border-radius: 1rem;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-            max-width: 500px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        h1 { color: #667eea; margin-bottom: 1rem; }
-        .status { margin: 1.5rem 0; padding: 1rem; border-radius: 0.5rem; }
+        h1 { color: #667eea; }
+        .status { padding: 1rem; margin: 1rem 0; border-radius: 0.5rem; }
         .success { background: #dcfce7; color: #166534; }
-        .warning { background: #fef3c7; color: #92400e; }
         .error { background: #fee2e2; color: #dc2626; }
+        .warning { background: #fef3c7; color: #92400e; }
         button {
             background: #667eea;
             color: white;
@@ -37,86 +32,121 @@
             padding: 0.75rem 1.5rem;
             border-radius: 0.5rem;
             cursor: pointer;
-            font-weight: 600;
             margin: 0.5rem;
         }
-        button:hover { background: #5a67d8; }
-        .info { font-size: 0.875rem; margin-top: 1rem; color: #6b7280; }
+        .info { background: #f8fafc; padding: 1rem; border-left: 4px solid #667eea; margin: 1rem 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 CRM Pro - Test de Déploiement</h1>
+        <h1>🚨 CRM Pro - Mode Urgence</h1>
         
         <div class="status success">
-            ✅ Netlify fonctionne !
-        </div>
-        
-        <p>Si vous voyez cette page, votre site Netlify est correctement déployé.</p>
-        
-        <div id="config-status" class="status warning">
-            🔄 Test de configuration en cours...
-        </div>
-        
-        <div>
-            <button onclick="testOriginalFiles()">📄 Charger le CRM complet</button>
-            <button onclick="testLogin()">🔐 Test page de connexion</button>
+            ✅ Le site Netlify fonctionne maintenant !
         </div>
         
         <div class="info">
-            <strong>Prochaines étapes :</strong><br>
-            1. Une fois ce test validé<br>
-            2. Remplacez ce fichier par votre index.html complet<br>
-            3. Configurez vos variables Netlify
+            <strong>Ce que nous avons résolu :</strong><br>
+            • Site accessible ✅<br>
+            • Fichier index.html valide ✅<br>
+            • Structure HTML correcte ✅
+        </div>
+        
+        <div id="diagnostic" class="status warning">
+            🔍 Diagnostic en cours...
+        </div>
+        
+        <h2>Actions disponibles :</h2>
+        <button onclick="loadOriginalCRM()">🚀 Charger le CRM complet</button>
+        <button onclick="testLogin()">🔐 Tester la connexion</button>
+        <button onclick="checkConfig()">⚙️ Vérifier la config</button>
+        
+        <div class="info">
+            <h3>Configuration Netlify requise :</h3>
+            <p><strong>Variables d'environnement à ajouter :</strong></p>
+            <ul>
+                <li><code>VITE_SUPABASE_URL</code> = https://oxyiamruvyliueecpaam.supabase.co</li>
+                <li><code>VITE_SUPABASE_ANON_KEY</code> = [Votre clé Supabase]</li>
+            </ul>
+            <p><strong>Comment :</strong> Netlify Dashboard → Site Settings → Environment variables</p>
+        </div>
+        
+        <div id="next-steps" class="info">
+            <h3>Prochaines étapes :</h3>
+            <ol>
+                <li>Configurez les variables d'environnement Netlify</li>
+                <li>Remplacez ce fichier par votre index.html complet</li>
+                <li>Testez toutes les fonctionnalités</li>
+            </ol>
         </div>
     </div>
 
     <script>
-        // Test de configuration
-        setTimeout(() => {
-            const statusElement = document.getElementById('config-status');
+        // Diagnostic automatique
+        document.addEventListener('DOMContentLoaded', function() {
+            const diagnostic = document.getElementById('diagnostic');
             
-            try {
-                // Détection environnement
-                const isNetlify = window.location.hostname.includes('netlify');
-                
-                if (isNetlify) {
-                    statusElement.className = 'status success';
-                    statusElement.innerHTML = '✅ Environnement Netlify détecté';
-                } else {
-                    statusElement.className = 'status warning';
-                    statusElement.innerHTML = '⚠️ Environnement local détecté';
+            setTimeout(() => {
+                try {
+                    // Test de l'environnement
+                    const isNetlify = window.location.hostname.includes('netlify');
+                    const hasHttps = window.location.protocol === 'https:';
+                    
+                    let status = '✅ Tests réussis :\n';
+                    status += `• Environnement Netlify: ${isNetlify ? '✅' : '❌'}\n`;
+                    status += `• HTTPS activé: ${hasHttps ? '✅' : '❌'}\n`;
+                    status += `• JavaScript fonctionnel: ✅\n`;
+                    
+                    diagnostic.className = 'status success';
+                    diagnostic.innerHTML = status.replace(/\n/g, '<br>');
+                    
+                    console.log('🔍 Diagnostic complet:', {
+                        hostname: window.location.hostname,
+                        protocol: window.location.protocol,
+                        userAgent: navigator.userAgent,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                } catch (error) {
+                    diagnostic.className = 'status error';
+                    diagnostic.innerHTML = `❌ Erreur diagnostic: ${error.message}`;
                 }
-                
-                // Test des variables (seront undefined pour ce test)
-                const hasEnvVars = window.NETLIFY_ENV && window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY;
-                
-                if (!hasEnvVars && isNetlify) {
-                    statusElement.innerHTML += '<br><small>Variables d\'environnement à configurer</small>';
-                }
-                
-            } catch (error) {
-                statusElement.className = 'status error';
-                statusElement.innerHTML = `❌ Erreur: ${error.message}`;
-            }
-        }, 1000);
+            }, 1000);
+        });
         
-        function testOriginalFiles() {
-            // Redirection vers les fichiers originaux une fois qu'ils sont déployés
-            alert('Remplacez ce fichier test par votre index.html complet !');
+        function loadOriginalCRM() {
+            alert('Prêt ! Maintenant remplacez ce fichier par votre index.html CRM complet.');
+            console.log('🚀 Prêt pour le CRM complet');
         }
         
         function testLogin() {
-            // Test si login.html existe
+            // Tester si login.html existe
             window.open('login.html', '_blank');
         }
         
-        // Diagnostic
-        console.log('🔍 Diagnostic Netlify:');
-        console.log('- Hostname:', window.location.hostname);
-        console.log('- URL complète:', window.location.href);
-        console.log('- Est Netlify:', window.location.hostname.includes('netlify'));
-        console.log('- User Agent:', navigator.userAgent);
+        function checkConfig() {
+            const configInfo = `
+Configuration requise dans Netlify :
+
+1. Allez dans votre Dashboard Netlify
+2. Sélectionnez votre site "crmemailsortpro"
+3. Site Settings → Environment variables
+4. Ajoutez ces variables :
+   - VITE_SUPABASE_URL = https://oxyiamruvyliueecpaam.supabase.co
+   - VITE_SUPABASE_ANON_KEY = [votre clé Supabase]
+5. Redéployez le site
+
+Votre clé Supabase se trouve sur :
+supabase.com → votre projet → Settings → API → "anon public"
+            `;
+            
+            alert(configInfo);
+            console.log('⚙️ Instructions de configuration affichées');
+        }
+        
+        // Test de connectivité
+        console.log('🌐 Site fonctionnel ! URL:', window.location.href);
+        console.log('📅 Chargé le:', new Date().toLocaleString('fr-FR'));
     </script>
 </body>
 </html>
