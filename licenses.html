@@ -66,28 +66,6 @@
             border-color: var(--primary-color);
         }
 
-        .license-usage-bar {
-            background: var(--gray-200);
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 1rem 0;
-        }
-
-        .license-usage-fill {
-            height: 100%;
-            background: var(--primary-color);
-            transition: width 0.3s ease;
-        }
-
-        .license-usage-fill.warning {
-            background: var(--warning-color);
-        }
-
-        .license-usage-fill.danger {
-            background: var(--error-color);
-        }
-
         /* Modal styles */
         .modal {
             display: none;
@@ -163,42 +141,64 @@
             gap: 1rem;
         }
 
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--gray-700);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--gray-300);
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-            transition: var(--transition);
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
         .pricing-preview {
             background: var(--gray-50);
             border: 1px solid var(--gray-200);
             border-radius: var(--radius-lg);
             padding: 1.5rem;
             margin: 1rem 0;
+        }
+
+        .users-modal-content {
+            max-width: 900px;
+            width: 95%;
+        }
+
+        .user-card {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .user-email {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.25rem;
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .user-status-inactive {
+            opacity: 0.5;
+        }
+
+        .add-user-form {
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            display: none;
         }
 
         /* Responsive */
@@ -237,7 +237,7 @@
     </style>
 </head>
 <body>
-    <!-- Navigation avec CSS unifié -->
+    <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
@@ -292,7 +292,7 @@
     <!-- Contenu principal -->
     <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
         <!-- En-tête de page -->
-        <div class="d-flex justify-between align-center mb-2" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
                 <h1 style="font-size: 2rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem;">
                     📄 Gestion des Licences
@@ -493,63 +493,32 @@
         </div>
     </div>
 
+    <!-- Modal Gestion des Utilisateurs -->
+    <div id="usersModal" class="modal">
+        <div class="modal-content users-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="usersModalTitle">👥 Gestion des utilisateurs</h3>
+                <button class="close-btn" onclick="closeUsersModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div id="usersModalContent">
+                    <!-- Contenu chargé dynamiquement -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="config.js"></script>
     <script>
         // Variables globales
         let licenses = [];
         let companies = [];
         let licensePlans = [];
-        let licenseUsers = []; // Stockage des utilisateurs pour chaque licence
         let filteredLicenses = [];
         let currentFilter = 'all';
         let editingLicense = null;
-
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', async () => {
-            showLoading(true);
-            
-            try {
-                // Vérifier l'authentification
-                if (!await AuthService.requireAuth()) return;
-                
-                // Charger les informations utilisateur
-                loadUserInfo();
-                
-                // Initialiser la page
-                await initializePage();
-                
-            } catch (error) {
-                console.error('Erreur initialisation:', error);
-                showError('Erreur lors du chargement de la page');
-            } finally {
-                showLoading(false);
-            }
-        });
-
-        function loadUserInfo() {
-            const userInfo = AuthService.getUserInfo();
-            if (userInfo) {
-                document.getElementById('userName').textContent = userInfo.email.split('@')[0];
-                document.getElementById('userRole').textContent = userInfo.role === 'admin' ? 'Admin' : 'Utilisateur';
-            }
-        }
-
-        async function initializePage() {
-            await loadData();
-            populateSelects();
-            updateStats();
-            updateCounts();
-            renderLicenses();
-            initializeDates();
-        }
-        // Variables globales
-        let licenses = [];
-        let companies = [];
-        let licensePlans = [];
-        let licenseUsers = []; // Stockage des utilisateurs pour chaque licence
-        let filteredLicenses = [];
-        let currentFilter = 'all';
-        let editingLicense = null;
+        let currentLicenseForUsers = null;
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
@@ -612,26 +581,21 @@
                     licenses = licensesResult.data.map(license => {
                         console.log('📝 Traitement licence:', license);
                         
-                        // Récupérer les infos de la société
-                        const companyInfo = license.companies || {};
-                        
-                        // Récupérer les infos du plan
-                        const planInfo = license.license_plans || {};
-                        
                         return {
                             id: license.id,
                             company_id: license.company_id,
-                            company_name: companyInfo.name || 'Société inconnue',
+                            company_name: license.companies?.name || 'Société inconnue',
                             plan_id: license.plan_id,
-                            plan_name: planInfo.name || 'Plan inconnu',
-                            plan_price: planInfo.price_per_user || 0,
+                            plan_name: license.license_plans?.name || 'Plan inconnu',
+                            plan_price: license.license_plans?.price_per_user || 0,
                             license_count: license.license_count || 0,
                             start_date: license.start_date,
                             end_date: license.end_date,
                             renewal_date: license.renewal_date,
                             status: license.status || 'active',
                             payment_method: license.payment_method,
-                            monthly_cost: license.monthly_cost || 0
+                            monthly_cost: license.monthly_cost || 0,
+                            users: license.license_users || []
                         };
                     });
                 } else {
@@ -655,9 +619,6 @@
                     licensePlans = [];
                 }
 
-                // Initialiser les utilisateurs (vide au début, sera rempli manuellement)
-                licenseUsers = [];
-
                 console.log('✅ Données finales:', {
                     licenses: licenses.length,
                     companies: companies.length,
@@ -675,7 +636,6 @@
                 licenses = [];
                 companies = [];
                 licensePlans = [];
-                licenseUsers = [];
                 filteredLicenses = [];
             }
         }
@@ -754,7 +714,7 @@
 
         function updateStats() {
             const activeLicenses = licenses.filter(l => l.status === 'active');
-            const totalUsers = licenseUsers.filter(u => u.status === 'active').length;
+            const totalUsers = activeLicenses.reduce((sum, l) => sum + (l.users?.filter(u => u.status === 'active').length || 0), 0);
             const monthlyRevenue = activeLicenses.reduce((sum, l) => sum + (l.monthly_cost || 0), 0);
             
             const now = new Date();
@@ -866,19 +826,20 @@
                 const isExpiring = isLicenseExpiring(license);
                 const statusClass = isExpiring ? 'license-expiring' : `license-${license.status}`;
                 const statusText = isExpiring ? 'À renouveler' : getStatusText(license.status);
+                const activeUsers = license.users?.filter(u => u.status === 'active').length || 0;
                 
                 return `
                     <tr onclick="openLicenseDetails('${license.id}')" style="cursor: pointer;">
                         <td>
-                            <div style="font-weight: 600;">${license.company_name}</div>
+                            <div style="font-weight: 600;">${escapeHtml(license.company_name)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-500);">ID: ${license.company_id}</div>
                         </td>
                         <td>
-                            <div style="font-weight: 500;">${license.plan_name}</div>
+                            <div style="font-weight: 500;">${escapeHtml(license.plan_name)}</div>
                             <div style="font-size: 0.875rem; color: var(--gray-500);">${formatCurrency(license.plan_price)}/mois</div>
                         </td>
                         <td>
-                            <span style="font-weight: 600; font-size: 1.125rem;">${licenseUsers.filter(u => u.license_id === license.id && u.status === 'active').length}/${license.license_count}</span>
+                            <span style="font-weight: 600; font-size: 1.125rem;">${activeUsers}/${license.license_count}</span>
                             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openUsersModal('${license.id}')" title="Gérer les utilisateurs" style="margin-left: 0.5rem;">
                                 👥
                             </button>
@@ -910,6 +871,13 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function isLicenseExpiring(license) {
@@ -957,7 +925,7 @@
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            alert(`Détails de la licence ${license.company_name} - ${license.plan_name}\n\nCette fonctionnalité est en cours de développement.`);
+            alert(`Détails de la licence ${license.company_name} - ${license.plan_name}\n\nCette fonctionnalité sera développée prochainement.`);
         }
 
         // Gestion des modals
@@ -975,6 +943,12 @@
             const modal = document.getElementById('licenseModal');
             modal.classList.remove('show');
             resetLicenseForm();
+        }
+
+        function closeUsersModal() {
+            const modal = document.getElementById('usersModal');
+            modal.classList.remove('show');
+            currentLicenseForUsers = null;
         }
 
         function resetLicenseForm() {
@@ -1014,7 +988,7 @@
             const license = licenses.find(l => l.id === licenseId);
             if (!license) return;
             
-            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${license.company_name}" ?\n\nCette action est irréversible.`);
+            const confirmed = confirm(`Êtes-vous sûr de vouloir supprimer la licence de "${license.company_name}" ?\n\nCette action est irréversible et supprimera également tous les utilisateurs associés.`);
             if (!confirmed) return;
             
             showLoading(true);
@@ -1038,6 +1012,385 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        // Gestion des utilisateurs
+        async function openUsersModal(licenseId) {
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            currentLicenseForUsers = license;
+            
+            document.getElementById('usersModalTitle').textContent = `👥 Utilisateurs - ${license.company_name}`;
+            
+            // Charger les utilisateurs de la licence
+            showLoading(true);
+            try {
+                const result = await CRMService.getLicenseUsers(licenseId);
+                const users = result.success ? result.data : license.users || [];
+                
+                renderUsersModal(license, users);
+                document.getElementById('usersModal').classList.add('show');
+            } catch (error) {
+                console.error('Erreur chargement utilisateurs:', error);
+                showError('Erreur lors du chargement des utilisateurs');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function renderUsersModal(license, users) {
+            const activeUsers = users.filter(u => u.status === 'active').length;
+            const availableSlots = license.license_count - activeUsers;
+            
+            document.getElementById('usersModalContent').innerHTML = `
+                <div style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; text-align: center;">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">${activeUsers}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Utilisateurs actifs</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--gray-700);">${license.license_count}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Licences disponibles</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: ${availableSlots > 0 ? 'var(--success-color)' : 'var(--error-color)'};">${availableSlots}</div>
+                            <div style="font-size: 0.875rem; color: var(--gray-600);">Places libres</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${availableSlots > 0 ? `
+                    <div style="margin-bottom: 1.5rem;">
+                        <button class="btn btn-primary" onclick="showAddUserForm()">
+                            ➕ Ajouter un utilisateur
+                        </button>
+                        <button class="btn btn-secondary" onclick="showImportUserForm()" style="margin-left: 0.5rem;">
+                            📄 Importer CSV
+                        </button>
+                    </div>
+                ` : `
+                    <div style="background: var(--warning-color); color: var(--white); padding: 1rem; border-radius: var(--radius); margin-bottom: 1.5rem; text-align: center;">
+                        Toutes les licences sont utilisées. Augmentez le nombre de licences pour ajouter plus d'utilisateurs.
+                    </div>
+                `}
+
+                <!-- Formulaire d'ajout d'utilisateur -->
+                <div id="addUserForm" class="add-user-form">
+                    <h4 style="margin-bottom: 1rem;">➕ Nouvel utilisateur</h4>
+                    <form id="userForm" onsubmit="addUser(event, '${license.id}')">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label for="userFirstName">Prénom *</label>
+                                <input type="text" id="userFirstName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="userLastName">Nom *</label>
+                                <input type="text" id="userLastName" required>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-group">
+                                <label for="userEmail">Email *</label>
+                                <input type="email" id="userEmail" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="userRole">Rôle</label>
+                                <select id="userRole">
+                                    <option value="user">Utilisateur</option>
+                                    <option value="admin">Administrateur</option>
+                                    <option value="manager">Manager</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                            <button type="button" class="btn btn-secondary" onclick="hideAddUserForm()">Annuler</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Formulaire d'import CSV -->
+                <div id="importUserForm" class="add-user-form">
+                    <h4 style="margin-bottom: 1rem;">📄 Import CSV</h4>
+                    <p style="margin-bottom: 1rem; color: var(--gray-600);">
+                        Format: prénom,nom,email,rôle
+                    </p>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <input type="file" id="csvFile" accept=".csv" style="width: 100%;">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <button class="btn btn-primary" onclick="importUsers('${license.id}')">Importer</button>
+                        <button class="btn btn-secondary" onclick="hideImportUserForm()">Annuler</button>
+                        <button class="btn btn-info" onclick="downloadTemplate()">📥 Télécharger modèle</button>
+                    </div>
+                </div>
+
+                <!-- Liste des utilisateurs -->
+                <div style="margin-top: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem;">Utilisateurs existants</h4>
+                    <div id="usersList">
+                        ${users.length > 0 ? users.map(user => `
+                            <div class="user-card ${user.status === 'inactive' ? 'user-status-inactive' : ''}">
+                                <div class="user-info">
+                                    <div class="user-name">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
+                                    <div class="user-email">${escapeHtml(user.email)}</div>
+                                    <div>
+                                        <span class="user-role">${user.role}</span>
+                                        <span style="margin-left: 0.5rem; font-size: 0.75rem; color: var(--gray-500);">
+                                            ${user.status === 'active' ? '🟢 Actif' : '🔴 Inactif'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-secondary" onclick="toggleUserStatus('${user.id}')" title="${user.status === 'active' ? 'Désactiver' : 'Activer'}">
+                                        ${user.status === 'active' ? '⏸️' : '▶️'}
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="removeUser('${user.id}')" title="Supprimer">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('') : '<p style="color: var(--gray-500); font-style: italic; text-align: center; padding: 2rem;">Aucun utilisateur ajouté</p>'}
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-secondary" onclick="closeUsersModal()">
+                        Fermer
+                    </button>
+                    <button class="btn btn-primary" onclick="saveUsersChanges('${license.id}')">
+                        💾 Sauvegarder
+                    </button>
+                </div>
+            `;
+        }
+
+        // Gestion des utilisateurs - Fonctions
+        function showAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'block';
+            document.getElementById('importUserForm').style.display = 'none';
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'none';
+            document.getElementById('userForm').reset();
+        }
+
+        function showImportUserForm() {
+            document.getElementById('importUserForm').style.display = 'block';
+            document.getElementById('addUserForm').style.display = 'none';
+        }
+
+        function hideImportUserForm() {
+            document.getElementById('importUserForm').style.display = 'none';
+            document.getElementById('csvFile').value = '';
+        }
+
+        async function addUser(event, licenseId) {
+            event.preventDefault();
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            const currentUsers = license.users?.filter(u => u.status === 'active') || [];
+            if (currentUsers.length >= license.license_count) {
+                showError('Nombre maximum d\'utilisateurs atteint pour cette licence');
+                return;
+            }
+            
+            const firstName = document.getElementById('userFirstName').value.trim();
+            const lastName = document.getElementById('userLastName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            const role = document.getElementById('userRole').value;
+            
+            // Vérifier que l'email n'existe pas déjà
+            const existingUser = license.users?.find(u => u.email === email);
+            if (existingUser) {
+                showError('Un utilisateur avec cet email existe déjà pour cette licence');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const userData = {
+                    license_id: licenseId,
+                    first_name: firstName,
+                    last_name: lastName,
+                    email: email,
+                    role: role,
+                    status: 'active'
+                };
+                
+                const result = await CRMService.createLicenseUser(userData);
+                
+                if (result.success) {
+                    showSuccess('Utilisateur ajouté avec succès');
+                    hideAddUserForm();
+                    
+                    // Recharger les données et la modal
+                    await loadData();
+                    updateStats();
+                    renderLicenses();
+                    openUsersModal(licenseId);
+                } else {
+                    throw new Error(result.error || 'Erreur lors de l\'ajout');
+                }
+            } catch (error) {
+                console.error('Erreur ajout utilisateur:', error);
+                showError('Erreur lors de l\'ajout de l\'utilisateur: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function downloadTemplate() {
+            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'modele_utilisateurs.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        async function importUsers(licenseId) {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Veuillez sélectionner un fichier CSV');
+                return;
+            }
+            
+            const license = licenses.find(l => l.id === licenseId);
+            if (!license) return;
+            
+            showLoading(true);
+            
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n');
+                    
+                    if (lines.length < 2) {
+                        showError('Le fichier CSV doit contenir au moins une ligne de données');
+                        return;
+                    }
+                    
+                    // Ignorer la première ligne (en-têtes)
+                    const dataLines = lines.slice(1).filter(line => line.trim());
+                    
+                    const currentUsers = license.users?.filter(u => u.status === 'active') || [];
+                    const availableSlots = license.license_count - currentUsers.length;
+                    
+                    if (dataLines.length > availableSlots) {
+                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
+                        return;
+                    }
+                    
+                    let importedCount = 0;
+                    const errors = [];
+                    
+                    for (let index = 0; index < dataLines.length; index++) {
+                        const line = dataLines[index];
+                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+                        
+                        if (columns.length < 3) {
+                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
+                            continue;
+                        }
+                        
+                        const [firstName, lastName, email, role = 'user'] = columns;
+                        
+                        if (!firstName || !lastName || !email) {
+                            errors.push(`Ligne ${index + 2}: Données manquantes`);
+                            continue;
+                        }
+                        
+                        // Vérifier si l'email existe déjà
+                        const existingUser = license.users?.find(u => u.email === email);
+                        if (existingUser) {
+                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
+                            continue;
+                        }
+                        
+                        try {
+                            const userData = {
+                                license_id: licenseId,
+                                first_name: firstName,
+                                last_name: lastName,
+                                email: email,
+                                role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
+                                status: 'active'
+                            };
+                            
+                            const result = await CRMService.createLicenseUser(userData);
+                            
+                            if (result.success) {
+                                importedCount++;
+                            } else {
+                                errors.push(`Ligne ${index + 2}: ${result.error || 'Erreur création'}`);
+                            }
+                        } catch (error) {
+                            errors.push(`Ligne ${index + 2}: ${error.message}`);
+                        }
+                    }
+                    
+                    if (errors.length > 0) {
+                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
+                    } else {
+                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
+                    }
+                    
+                    hideImportUserForm();
+                    
+                    // Recharger les données
+                    await loadData();
+                    updateStats();
+                    renderLicenses();
+                    openUsersModal(licenseId);
+                    
+                } catch (error) {
+                    console.error('Erreur import CSV:', error);
+                    showError('Erreur lors de l\'import du fichier CSV: ' + error.message);
+                } finally {
+                    showLoading(false);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        async function toggleUserStatus(userId) {
+            // Cette fonction devrait appeler l'API pour changer le statut
+            // Pour l'instant, on simule avec les données locales
+            showError('Fonctionnalité en cours de développement');
+        }
+
+        async function removeUser(userId) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+                return;
+            }
+            
+            // Cette fonction devrait appeler l'API pour supprimer l'utilisateur
+            // Pour l'instant, on simule
+            showError('Fonctionnalité en cours de développement');
+        }
+
+        function saveUsersChanges(licenseId) {
+            showSuccess('Modifications sauvegardées');
+            closeUsersModal();
         }
 
         // Gestion du formulaire
@@ -1105,462 +1458,25 @@
             if (e.target.classList.contains('modal')) {
                 if (e.target.id === 'licenseModal') {
                     closeLicenseModal();
+                } else if (e.target.id === 'usersModal') {
+                    closeUsersModal();
                 }
             }
         });
 
-    <script src="config.js"></script>
-    <script>
-        function showAddUserForm(licenseId) {
-            document.getElementById('addUserForm').style.display = 'block';
-            document.getElementById('importUserForm').style.display = 'none';
-        }
-
-        function hideAddUserForm() {
-            document.getElementById('addUserForm').style.display = 'none';
-            document.getElementById('userForm').reset();
-        }
-
-        function showImportUserForm(licenseId) {
-            document.getElementById('importUserForm').style.display = 'block';
-            document.getElementById('addUserForm').style.display = 'none';
-        }
-
-        function hideImportUserForm() {
-            document.getElementById('importUserForm').style.display = 'none';
-            document.getElementById('csvFile').value = '';
-        }
-
-        function addUser(event, licenseId) {
-            event.preventDefault();
-            
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
-            if (currentUsers.length >= license.license_count) {
-                showError('Nombre maximum d\'utilisateurs atteint pour cette licence');
-                return;
-            }
-            
-            const firstName = document.getElementById('userFirstName').value;
-            const lastName = document.getElementById('userLastName').value;
-            const email = document.getElementById('userEmail').value;
-            const role = document.getElementById('userRole').value;
-            
-            // Vérifier que l'email n'existe pas déjà
-            const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
-            if (existingUser) {
-                showError('Un utilisateur avec cet email existe déjà pour cette licence');
-                return;
-            }
-            
-            const newUser = {
-                id: Date.now().toString(),
-                license_id: licenseId,
-                first_name: firstName,
-                last_name: lastName,
-                email: email,
-                role: role,
-                status: 'active',
-                created_at: new Date().toISOString(),
-                last_activity: null
-            };
-            
-            licenseUsers.push(newUser);
-            
-            showSuccess('Utilisateur ajouté avec succès');
-            hideAddUserForm();
-            
-            // Actualiser la modal
-            openUsersModal(licenseId);
-        }
-
-        function downloadTemplate() {
-            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'modele_utilisateurs.csv');
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-
-        function importUsers(licenseId) {
-            const fileInput = document.getElementById('csvFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                showError('Veuillez sélectionner un fichier CSV');
-                return;
-            }
-            
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const csv = e.target.result;
-                    const lines = csv.split('\n');
-                    
-                    if (lines.length < 2) {
-                        showError('Le fichier CSV doit contenir au moins une ligne de données');
-                        return;
-                    }
-                    
-                    // Ignorer la première ligne (en-têtes)
-                    const dataLines = lines.slice(1).filter(line => line.trim());
-                    
-                    const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
-                    const availableSlots = license.license_count - currentUsers.length;
-                    
-                    if (dataLines.length > availableSlots) {
-                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
-                        return;
-                    }
-                    
-                    let importedCount = 0;
-                    const errors = [];
-                    
-                    dataLines.forEach((line, index) => {
-                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
-                        
-                        if (columns.length < 3) {
-                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
-                            return;
-                        }
-                        
-                        const [firstName, lastName, email, role = 'user'] = columns;
-                        
-                        if (!firstName || !lastName || !email) {
-                            errors.push(`Ligne ${index + 2}: Données manquantes`);
-                            return;
-                        }
-                        
-                        // Vérifier si l'email existe déjà
-                        const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
-                        if (existingUser) {
-                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
-                            return;
-                        }
-                        
-                        const newUser = {
-                            id: Date.now().toString() + '_' + index,
-                            license_id: licenseId,
-                            first_name: firstName,
-                            last_name: lastName,
-                            email: email,
-                            role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
-                            status: 'active',
-                            created_at: new Date().toISOString(),
-                            last_activity: null
-                        };
-                        
-                        licenseUsers.push(newUser);
-                        importedCount++;
-                    });
-                    
-                    if (errors.length > 0) {
-                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
-                    } else {
-                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
-                    }
-                    
-                    hideImportUserForm();
-                    openUsersModal(licenseId);
-                    
-                } catch (error) {
-                    console.error('Erreur import CSV:', error);
-                    showError('Erreur lors de l\'import du fichier CSV');
-                }
-            };
-            
-            reader.readAsText(file);
-        }
-
-        function toggleUserStatus(userId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            user.status = user.status === 'active' ? 'inactive' : 'active';
-            
-            showSuccess(`Utilisateur ${user.status === 'active' ? 'activé' : 'désactivé'}`);
-            
-            // Actualiser la modal
-            const licenseId = user.license_id;
-            openUsersModal(licenseId);
-        }
-
-        function removeUser(userId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${user.first_name} ${user.last_name} ?`)) {
-                return;
-            }
-            
-            const index = licenseUsers.findIndex(u => u.id === userId);
-            if (index !== -1) {
-                licenseUsers.splice(index, 1);
-                showSuccess('Utilisateur supprimé');
-                
-                // Actualiser la modal
-                openUsersModal(user.license_id);
-            }
-        }
-
-        function saveUsersChanges(licenseId) {
-            // Dans une vraie application, ici on enverrait les données à Supabase
-            // Pour le moment, les changements sont déjà appliqués en temps réel
-            
-            showSuccess('Modifications sauvegardées');
-            closeUsersModal();
-            
-            // Mettre à jour les stats et le tableau
-            updateStats();
-            renderLicenses();
-        }
-
-        // Fermer les modals avec la touche Escape
+        // Raccourcis clavier
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const licenseModal = document.getElementById('licenseModal');
-                const detailsModal = document.getElementById('detailsModal');
                 const usersModal = document.getElementById('usersModal');
                 
                 if (licenseModal.classList.contains('show')) {
                     closeLicenseModal();
-                } else if (detailsModal.classList.contains('show')) {
-                    closeDetailsModal();
                 } else if (usersModal.classList.contains('show')) {
                     closeUsersModal();
                 }
             }
         });
-            document.getElementById('addUserForm').style.display = 'block';
-            document.getElementById('importUserForm').style.display = 'none';
-        }
-
-        function hideAddUserForm() {
-            document.getElementById('addUserForm').style.display = 'none';
-            document.getElementById('userForm').reset();
-        }
-
-        function showImportUserForm(licenseId) {
-            document.getElementById('importUserForm').style.display = 'block';
-            document.getElementById('addUserForm').style.display = 'none';
-        }
-
-        function hideImportUserForm() {
-            document.getElementById('importUserForm').style.display = 'none';
-            document.getElementById('csvFile').value = '';
-        }
-
-        function addUser(event, licenseId) {
-            event.preventDefault();
-            
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
-            if (currentUsers.length >= license.license_count) {
-                showError('Nombre maximum d\'utilisateurs atteint pour cette licence');
-                return;
-            }
-            
-            const firstName = document.getElementById('userFirstName').value;
-            const lastName = document.getElementById('userLastName').value;
-            const email = document.getElementById('userEmail').value;
-            const role = document.getElementById('userRole').value;
-            
-            // Vérifier que l'email n'existe pas déjà
-            const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
-            if (existingUser) {
-                showError('Un utilisateur avec cet email existe déjà pour cette licence');
-                return;
-            }
-            
-            const newUser = {
-                id: Date.now().toString(),
-                license_id: licenseId,
-                first_name: firstName,
-                last_name: lastName,
-                email: email,
-                role: role,
-                status: 'active',
-                created_at: new Date().toISOString(),
-                last_activity: null
-            };
-            
-            licenseUsers.push(newUser);
-            
-            showSuccess('Utilisateur ajouté avec succès');
-            hideAddUserForm();
-            
-            // Actualiser la modal
-            openUsersModal(licenseId);
-        }
-
-        function downloadTemplate() {
-            const csvContent = "prénom,nom,email,rôle\nJean,Dupont,jean.dupont@example.com,user\nMarie,Martin,marie.martin@example.com,admin\nPierre,Durand,pierre.durand@example.com,manager";
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'modele_utilisateurs.csv');
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-
-        function importUsers(licenseId) {
-            const fileInput = document.getElementById('csvFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                showError('Veuillez sélectionner un fichier CSV');
-                return;
-            }
-            
-            const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const csv = e.target.result;
-                    const lines = csv.split('\n');
-                    
-                    if (lines.length < 2) {
-                        showError('Le fichier CSV doit contenir au moins une ligne de données');
-                        return;
-                    }
-                    
-                    // Ignorer la première ligne (en-têtes)
-                    const dataLines = lines.slice(1).filter(line => line.trim());
-                    
-                    const currentUsers = licenseUsers.filter(u => u.license_id === licenseId);
-                    const availableSlots = license.license_count - currentUsers.length;
-                    
-                    if (dataLines.length > availableSlots) {
-                        showError(`Impossible d'importer ${dataLines.length} utilisateurs. Places disponibles: ${availableSlots}`);
-                        return;
-                    }
-                    
-                    let importedCount = 0;
-                    const errors = [];
-                    
-                    dataLines.forEach((line, index) => {
-                        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
-                        
-                        if (columns.length < 3) {
-                            errors.push(`Ligne ${index + 2}: Format invalide (colonnes manquantes)`);
-                            return;
-                        }
-                        
-                        const [firstName, lastName, email, role = 'user'] = columns;
-                        
-                        if (!firstName || !lastName || !email) {
-                            errors.push(`Ligne ${index + 2}: Données manquantes`);
-                            return;
-                        }
-                        
-                        // Vérifier si l'email existe déjà
-                        const existingUser = licenseUsers.find(u => u.email === email && u.license_id === licenseId);
-                        if (existingUser) {
-                            errors.push(`Ligne ${index + 2}: Email ${email} déjà existant`);
-                            return;
-                        }
-                        
-                        const newUser = {
-                            id: Date.now().toString() + '_' + index,
-                            license_id: licenseId,
-                            first_name: firstName,
-                            last_name: lastName,
-                            email: email,
-                            role: ['user', 'admin', 'manager'].includes(role.toLowerCase()) ? role.toLowerCase() : 'user',
-                            status: 'active',
-                            created_at: new Date().toISOString(),
-                            last_activity: null
-                        };
-                        
-                        licenseUsers.push(newUser);
-                        importedCount++;
-                    });
-                    
-                    if (errors.length > 0) {
-                        showError(`Import partiel: ${importedCount} utilisateurs importés, ${errors.length} erreurs:\n${errors.join('\n')}`);
-                    } else {
-                        showSuccess(`${importedCount} utilisateurs importés avec succès`);
-                    }
-                    
-                    hideImportUserForm();
-                    openUsersModal(licenseId);
-                    
-                } catch (error) {
-                    console.error('Erreur import CSV:', error);
-                    showError('Erreur lors de l\'import du fichier CSV');
-                }
-            };
-            
-            reader.readAsText(file);
-        }
-
-        function toggleUserStatus(userId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            user.status = user.status === 'active' ? 'inactive' : 'active';
-            
-            showSuccess(`Utilisateur ${user.status === 'active' ? 'activé' : 'désactivé'}`);
-            
-            // Actualiser la modal
-            const licenseId = user.license_id;
-            openUsersModal(licenseId);
-        }
-
-        function removeUser(userId) {
-            const user = licenseUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur ${user.first_name} ${user.last_name} ?`)) {
-                return;
-            }
-            
-            const index = licenseUsers.findIndex(u => u.id === userId);
-            if (index !== -1) {
-                licenseUsers.splice(index, 1);
-                showSuccess('Utilisateur supprimé');
-                
-                // Actualiser la modal
-                openUsersModal(user.license_id);
-            }
-        }
-
-        function saveUsersChanges(licenseId) {
-            // Dans une vraie application, ici on enverrait les données à Supabase
-            // Pour le moment, les changements sont déjà appliqués en temps réel
-            
-            showSuccess('Modifications sauvegardées');
-            closeUsersModal();
-            
-            // Mettre à jour les stats et le tableau
-            updateStats();
-            renderLicenses();
-        }
     </script>
 </body>
 </html>
