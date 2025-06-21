@@ -147,7 +147,6 @@
             font-size: 0.875rem;
         }
 
-        /* Skeleton loading pour les stats */
         .skeleton {
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
@@ -161,13 +160,6 @@
             100% { background-position: -200% 0; }
         }
 
-        .error-state {
-            color: #dc2626;
-            font-size: 0.875rem;
-            text-align: center;
-        }
-
-        /* Loading overlay */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -193,27 +185,6 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
-
-        /* Message d'erreur discret */
-        .error-toast {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border-left: 4px solid #dc2626;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            max-width: 300px;
-            z-index: 1001;
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-        }
-
-        .error-toast.show {
-            transform: translateX(0);
         }
 
         @media (max-width: 768px) {
@@ -256,7 +227,7 @@
                 </a>
                 <a href="dashboard.html" class="nav-link">
                     <span class="nav-icon">📊</span>
-                    Tableau de bord
+                    <span style="line-height: 1.2;">Tableau<br>de bord</span>
                 </a>
                 <a href="companies.html" class="nav-link">
                     <span class="nav-icon">🏢</span>
@@ -470,37 +441,27 @@
         </div>
     </footer>
 
-    <!-- ✅ Utilise la nouvelle configuration corrigée -->
     <script src="config.js"></script>
     <script>
-        // Variables globales
         let statsCache = null;
         let lastStatsUpdate = 0;
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+        const CACHE_DURATION = 5 * 60 * 1000;
 
-        // Initialisation avec la nouvelle config
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 showLoading(true);
                 console.log('🏠 Initialisation de la page d\'accueil...');
                 
-                // Attendre que AuthService soit disponible
                 await waitForAuthService();
                 
-                // Vérifier l'authentification
                 const isAuthenticated = await AuthService.requireAuth();
                 if (!isAuthenticated) {
                     console.log('🔒 Non authentifié, redirection vers login');
                     return;
                 }
                 
-                // Charger les informations utilisateur
                 loadUserInfo();
-                
-                // Charger les statistiques
                 await loadQuickStatsWithRetry();
-                
-                // Animation d'entrée des cartes
                 animateCards();
                 
                 console.log('✅ Initialisation terminée avec succès');
@@ -513,7 +474,6 @@
             }
         });
 
-        // Attendre que AuthService soit disponible
         async function waitForAuthService() {
             let attempts = 0;
             const maxAttempts = 100;
@@ -530,7 +490,6 @@
             console.log('✅ AuthService disponible');
         }
 
-        // Charger les informations utilisateur
         function loadUserInfo() {
             try {
                 const userInfo = AuthService.getUserInfo();
@@ -545,17 +504,14 @@
                 }
             } catch (error) {
                 console.error('⚠️ Erreur chargement info utilisateur:', error);
-                // Valeurs par défaut
                 document.getElementById('userName').textContent = 'Utilisateur';
                 document.getElementById('userRole').textContent = 'User';
             }
         }
 
-        // Charger les statistiques avec retry et cache
         async function loadQuickStatsWithRetry() {
             const now = Date.now();
             
-            // Vérifier le cache
             if (statsCache && (now - lastStatsUpdate) < CACHE_DURATION) {
                 console.log('📊 Utilisation du cache pour les statistiques');
                 updateStatsElements(statsCache);
@@ -568,14 +524,12 @@
                 try {
                     console.log(`📊 Tentative ${attempt + 1}/${maxRetries + 1} de chargement des statistiques`);
                     
-                    // Attendre que CRMService soit disponible
                     if (!window.CRMService) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                     
                     const stats = await loadQuickStats();
                     
-                    // Mettre en cache
                     statsCache = stats;
                     lastStatsUpdate = now;
                     
@@ -590,40 +544,34 @@
                         console.log('📊 Affichage des statistiques par défaut');
                         setDefaultStats();
                         
-                        // Afficher un message d'erreur discret
                         const errorMsg = error.message.includes('timeout') ? 
                             'Chargement lent des données. Actualisation en cours...' :
                             'Données temporairement indisponibles. Mode hors ligne activé.';
                         
                         showError(errorMsg, 3000);
                     } else {
-                        // Attendre avant le prochain essai
                         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
                     }
                 }
             }
         }
 
-        // Charger les statistiques rapides
         async function loadQuickStats() {
             try {
                 if (!window.CRMService) {
                     throw new Error('CRMService non disponible');
                 }
                 
-                // Méthode simple pour récupérer les stats de base
                 const companiesResult = await withTimeout(CRMService.getCompanies(), 8000);
                 
                 if (companiesResult.success) {
                     const companies = companiesResult.data || [];
                     
-                    // Calculer les statistiques de base
                     const totalCompanies = companies.length;
                     const totalContacts = companies.reduce((sum, company) => 
                         sum + (company.company_contacts?.length || 0), 0
                     );
                     
-                    // Stats simulées pour les autres métriques
                     const activeLicenses = Math.floor(totalCompanies * 0.7);
                     const monthlyRevenue = totalCompanies * 150 + Math.random() * 500;
                     
@@ -643,7 +591,6 @@
             }
         }
 
-        // Mettre à jour les éléments de statistiques
         function updateStatsElements(stats) {
             updateStatElement('previewTotalCompanies', stats.totalCompanies || 0);
             updateStatElement('previewTotalContacts', stats.totalContacts || 0);
@@ -651,17 +598,14 @@
             updateStatElement('previewRevenue', formatCurrency(stats.monthlyRevenue || 0));
         }
 
-        // Mettre à jour un élément de statistique
         function updateStatElement(elementId, value) {
             const element = document.getElementById(elementId);
             if (element) {
-                // Enlever le skeleton
                 const skeleton = element.querySelector('.skeleton');
                 if (skeleton) {
                     skeleton.remove();
                 }
                 
-                // Animation de compteur pour les nombres
                 if (typeof value === 'number') {
                     animateCounter(element, value);
                 } else {
@@ -670,7 +614,6 @@
             }
         }
 
-        // Animation de compteur
         function animateCounter(element, targetValue) {
             const duration = 1000;
             const start = 0;
@@ -687,7 +630,6 @@
             }, 16);
         }
 
-        // Formater les devises
         function formatCurrency(amount) {
             return new Intl.NumberFormat('fr-FR', {
                 style: 'currency',
@@ -695,7 +637,6 @@
             }).format(amount);
         }
 
-        // Définir les statistiques par défaut
         function setDefaultStats() {
             const defaultStats = {
                 totalCompanies: 5,
@@ -707,11 +648,8 @@
             updateStatsElements(defaultStats);
         }
 
-        // Gérer les erreurs d'initialisation
         function handleInitError(error) {
             console.error('❌ Erreur critique:', error);
-            
-            // Afficher les valeurs par défaut
             setDefaultStats();
             
             if (error.message.includes('Auth') || error.message.includes('timeout')) {
@@ -721,7 +659,6 @@
             }
         }
 
-        // Animation d'entrée des cartes
         function animateCards() {
             try {
                 const cards = document.querySelectorAll('.action-card');
@@ -740,7 +677,6 @@
             }
         }
 
-        // Fonctions utilitaires
         function withTimeout(promise, timeoutMs = 10000) {
             return Promise.race([
                 promise,
@@ -758,41 +694,28 @@
         }
 
         function showError(message, duration = 5000) {
-            // Créer le toast d'erreur
-            const toast = document.createElement('div');
-            toast.className = 'error-toast';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            
-            // Afficher avec animation
-            setTimeout(() => toast.classList.add('show'), 100);
-            
-            // Masquer après le délai
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => document.body.removeChild(toast), 300);
-            }, duration);
+            if (window.showError) {
+                window.showError(message, duration);
+            } else {
+                console.error('Erreur:', message);
+            }
         }
 
-        // Gestion sécurisée de la déconnexion
         async function handleLogout() {
             try {
                 if (window.AuthService) {
                     await AuthService.logout();
                 } else {
-                    // Fallback si AuthService n'est pas disponible
                     localStorage.clear();
                     window.location.href = 'login.html';
                 }
             } catch (error) {
                 console.error('Erreur déconnexion:', error);
-                // Forcer la redirection même en cas d'erreur
                 localStorage.clear();
                 window.location.href = 'login.html';
             }
         }
 
-        // Gestion de la visibilité pour optimiser les performances
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 const now = Date.now();
@@ -805,7 +728,6 @@
             }
         });
 
-        // Pré-chargement des pages importantes
         window.addEventListener('load', () => {
             try {
                 const pagesToPreload = ['dashboard.html', 'companies.html', 'contacts.html'];
@@ -821,18 +743,6 @@
             }
         });
 
-        // Fonction de test pour le debug
-        window.debugIndex = () => {
-            console.group('🔍 Debug Index');
-            console.log('AuthService:', !!window.AuthService);
-            console.log('CRMService:', !!window.CRMService);
-            console.log('User Info:', AuthService?.getUserInfo());
-            console.log('Stats Cache:', statsCache);
-            console.log('Last Update:', new Date(lastStatsUpdate));
-            console.groupEnd();
-        };
-
-        // Gestion des erreurs globales
         window.addEventListener('error', (e) => {
             console.error('Erreur globale non critique:', e.error?.message);
         });
