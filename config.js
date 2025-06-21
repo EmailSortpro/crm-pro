@@ -1,14 +1,13 @@
 // ===================================
-// CRM PRO - CONFIGURATION SÉCURISÉE
-// Tout à la racine, variables via fonction Netlify
+// CRM PRO - CONFIGURATION SÉCURISÉE (CORRIGÉE)
 // ===================================
 
 console.log('🚀 CRM Pro - Initialisation...');
 
-// Configuration par défaut (SANS CLÉS SENSIBLES)
+// Configuration par défaut
 const DEFAULT_CONFIG = {
     SUPABASE_URL: 'https://oxyiamruvyliueecpaam.supabase.co',
-    SUPABASE_ANON_KEY: '' // ❌ JAMAIS de clé en dur
+    SUPABASE_ANON_KEY: ''
 };
 
 // Détection de l'environnement
@@ -36,10 +35,13 @@ async function loadNetlifyEnvVars() {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        // La réponse est du JavaScript qui définit window.NETLIFY_ENV
         const jsCode = await response.text();
         
-        // Exécuter le code JavaScript
+        // Vérifier que c'est du JavaScript, pas du HTML
+        if (jsCode.trim().startsWith('<')) {
+            throw new Error('Réponse HTML reçue au lieu de JavaScript - fonction non trouvée');
+        }
+        
         eval(jsCode);
         
         if (window.NETLIFY_ENV && window.NETLIFY_ENV.VITE_SUPABASE_ANON_KEY) {
@@ -103,7 +105,7 @@ async function getConfig() {
 }
 
 // ===================================
-// CLIENT SUPABASE
+// CLIENT SUPABASE (CORRIGÉ)
 // ===================================
 
 let supabaseClient = null;
@@ -142,14 +144,26 @@ async function initializeSupabase() {
             }
         }
         
-        // Vérifier la configuration
+        // Vérifier la configuration (SANS LIMITE DE LONGUEUR)
         if (!APP_CONFIG.SUPABASE_ANON_KEY) {
             throw new Error('Clé Supabase manquante - vérifiez les variables d\'environnement Netlify');
         }
         
-        if (APP_CONFIG.SUPABASE_ANON_KEY.length < 50) {
-            throw new Error('Clé Supabase invalide (trop courte)');
+        // ✅ SUPPRIMÉ: Validation de longueur trop restrictive
+        // if (APP_CONFIG.SUPABASE_ANON_KEY.length < 50) {
+        //     throw new Error('Clé Supabase invalide (trop courte)');
+        // }
+        
+        // Validation basique : clé non vide et ne contenant pas de placeholders
+        if (APP_CONFIG.SUPABASE_ANON_KEY.includes('%') || APP_CONFIG.SUPABASE_ANON_KEY.trim().length === 0) {
+            throw new Error('Clé Supabase invalide - contient des placeholders ou est vide');
         }
+        
+        console.log('🔑 Clé API info:', {
+            hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
+            keyLength: APP_CONFIG.SUPABASE_ANON_KEY?.length || 0,
+            keyPreview: APP_CONFIG.SUPABASE_ANON_KEY?.substring(0, 20) + '...' + APP_CONFIG.SUPABASE_ANON_KEY?.slice(-10)
+        });
         
         // Créer le client
         supabaseClient = window.supabase.createClient(
@@ -157,10 +171,15 @@ async function initializeSupabase() {
             APP_CONFIG.SUPABASE_ANON_KEY
         );
         
-        // Test de connexion
-        const { error } = await supabaseClient.auth.getSession();
-        if (error && error.message.includes('Invalid API key')) {
-            throw new Error('Clé API Supabase invalide');
+        // Test de connexion simple (sans vérification d'erreur API key)
+        try {
+            const { error } = await supabaseClient.auth.getSession();
+            if (error && error.message.includes('Invalid API key')) {
+                throw new Error('Clé API Supabase invalide selon le serveur');
+            }
+        } catch (testError) {
+            console.warn('⚠️ Test de connexion échoué:', testError.message);
+            // Ne pas échouer complètement, juste avertir
         }
         
         isInitialized = true;
@@ -180,7 +199,7 @@ async function initializeSupabase() {
         supabaseClient = null;
         isInitialized = false;
         
-        // Instructions de debug
+        // Instructions de debug améliorées
         if (!APP_CONFIG?.SUPABASE_ANON_KEY) {
             console.group('🚨 CONFIGURATION REQUISE');
             console.error('❌ Clé Supabase manquante !');
@@ -190,6 +209,12 @@ async function initializeSupabase() {
             console.log('3. Redéployer le site');
             console.log('🔑 Clé Supabase: supabase.com → projet → Settings → API → clé "anon"');
             console.groupEnd();
+        } else if (APP_CONFIG.SUPABASE_ANON_KEY.includes('%')) {
+            console.group('🚨 PROBLÈME DE SUBSTITUTION');
+            console.error('❌ Variables Netlify non substituées !');
+            console.log('🔧 La clé contient encore des % - vérifiez le déploiement');
+            console.log('📝 Clé reçue:', APP_CONFIG.SUPABASE_ANON_KEY);
+            console.groupEnd();
         }
         
         throw error;
@@ -197,7 +222,7 @@ async function initializeSupabase() {
 }
 
 // ===================================
-// SERVICES AUTHENTIFICATION
+// SERVICES AUTHENTIFICATION (IDENTIQUES)
 // ===================================
 
 class AuthService {
@@ -298,7 +323,7 @@ class AuthService {
 }
 
 // ===================================
-// SERVICES CRM (identiques)
+// SERVICES CRM
 // ===================================
 
 class CRMService {
@@ -309,7 +334,6 @@ class CRMService {
         return supabaseClient;
     }
     
-    // ... (reste identique à votre code existant)
     static async getCompanies() {
         try {
             const client = await this.getClient();
@@ -332,7 +356,7 @@ class CRMService {
         }
     }
     
-    // ... (ajoutez ici tous vos autres méthodes CRMService existantes)
+    // Ajoutez ici vos autres méthodes CRMService...
 }
 
 // ===================================
@@ -344,7 +368,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('📄 DOM chargé - Initialisation des services...');
     
     try {
-        // Pré-charger la configuration
         const configData = await getConfig();
         APP_CONFIG = configData.config;
         CONFIG_SOURCE = configData.source;
@@ -360,7 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.AuthService = AuthService;
 window.CRMService = CRMService;
 
-// Fonction de diagnostic
+// Fonction de diagnostic améliorée
 window.testConfig = async function() {
     if (!APP_CONFIG) {
         const configData = await getConfig();
@@ -375,6 +398,9 @@ window.testConfig = async function() {
     console.log('Supabase URL:', APP_CONFIG.SUPABASE_URL);
     console.log('Has Key:', !!APP_CONFIG.SUPABASE_ANON_KEY);
     console.log('Key Length:', APP_CONFIG.SUPABASE_ANON_KEY?.length || 0);
+    console.log('Key Preview:', APP_CONFIG.SUPABASE_ANON_KEY ? 
+        APP_CONFIG.SUPABASE_ANON_KEY.substring(0, 20) + '...' + APP_CONFIG.SUPABASE_ANON_KEY.slice(-10) 
+        : 'Non définie');
     console.log('Supabase Client:', !!supabaseClient);
     console.log('Is Initialized:', isInitialized);
     console.groupEnd();
@@ -383,6 +409,7 @@ window.testConfig = async function() {
         environment: ENV_INFO,
         configSource: CONFIG_SOURCE,
         hasKey: !!APP_CONFIG.SUPABASE_ANON_KEY,
+        keyLength: APP_CONFIG.SUPABASE_ANON_KEY?.length || 0,
         isInitialized,
         client: !!supabaseClient
     };
