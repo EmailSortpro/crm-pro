@@ -215,6 +215,82 @@
             display: none;
         }
 
+        .autocomplete-container {
+            position: relative;
+        }
+
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border: 1px solid var(--gray-300);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: var(--shadow-lg);
+            display: none;
+        }
+
+        .autocomplete-suggestion {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--gray-100);
+            transition: background-color 0.2s;
+        }
+
+        .autocomplete-suggestion:hover,
+        .autocomplete-suggestion.highlighted {
+            background: var(--gray-50);
+        }
+
+        .autocomplete-suggestion:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .suggestion-email {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.25rem;
+        }
+
+        .suggestion-company {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .suggestion-match {
+            background: yellow;
+            font-weight: 600;
+        }
+
+        .no-suggestions {
+            padding: 1rem;
+            text-align: center;
+            color: var(--gray-500);
+            font-style: italic;
+        }
+
+        .existing-contact-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--blue-50);
+            color: var(--blue-700);
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
         .license-assignment {
             background: var(--blue-50);
             border: 1px solid var(--blue-200);
@@ -1235,8 +1311,12 @@
                                     ${license.users.map(user => `
                                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--gray-200); ${user.status === 'inactive' ? 'opacity: 0.6;' : ''}">
                                             <div>
-                                                <div style="font-weight: 600; font-size: 0.875rem;">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
+                                                <div style="font-weight: 600; font-size: 0.875rem;">
+                                                    ${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}
+                                                    ${user.contact_id ? '<span style="color: var(--blue-600); font-size: 0.7rem; margin-left: 0.5rem;">🔗 Contact lié</span>' : ''}
+                                                </div>
                                                 <div style="font-size: 0.75rem; color: var(--gray-500);">${escapeHtml(user.email)}</div>
+                                                ${user.position ? `<div style="font-size: 0.7rem; color: var(--gray-400);">${escapeHtml(user.position)}</div>` : ''}
                                             </div>
                                             <div style="text-align: right;">
                                                 <div style="font-size: 0.75rem; color: ${user.status === 'active' ? 'var(--success-color)' : 'var(--error-color)'};">
@@ -1571,7 +1651,26 @@
                 <!-- Formulaire d'ajout d'utilisateur -->
                 <div id="addUserForm" class="add-user-form">
                     <h4 style="margin-bottom: 1rem;">➕ Nouvel utilisateur</h4>
+                    <p style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.875rem;">
+                        Commencez à taper le prénom, nom ou email. Les contacts existants seront suggérés automatiquement.
+                    </p>
+                    
                     <form id="userForm" onsubmit="addUser(event, '${license.id}')">
+                        <!-- Champ de recherche avec autocomplétion -->
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label for="userSearch">Rechercher un contact existant</label>
+                            <div class="autocomplete-container">
+                                <input type="text" id="userSearch" placeholder="Tapez un prénom, nom ou email..." autocomplete="off"
+                                       oninput="handleUserSearch()" onkeydown="handleSearchKeydown(event)">
+                                <div id="autocompleteSuggestions" class="autocomplete-suggestions"></div>
+                            </div>
+                            <div id="selectedContactInfo" class="existing-contact-indicator" style="display: none;">
+                                <span>✅</span>
+                                <span id="selectedContactText"></span>
+                                <button type="button" onclick="clearSelectedContact()" style="background: none; border: none; color: var(--blue-700); cursor: pointer; margin-left: 0.5rem;">✖️</button>
+                            </div>
+                        </div>
+
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                             <div class="form-group">
                                 <label for="userFirstName">Prénom *</label>
@@ -1596,6 +1695,26 @@
                                 </select>
                             </div>
                         </div>
+                        
+                        <!-- Informations supplémentaires du contact -->
+                        <div id="contactExtraInfo" style="display: none; background: var(--blue-50); padding: 1rem; border-radius: var(--radius); margin-bottom: 1rem;">
+                            <h5 style="margin-bottom: 0.5rem; color: var(--blue-800);">📋 Informations du contact</h5>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
+                                <div>
+                                    <strong>Téléphone:</strong> <span id="contactPhone">-</span>
+                                </div>
+                                <div>
+                                    <strong>Poste:</strong> <span id="contactPosition">-</span>
+                                </div>
+                                <div>
+                                    <strong>Société:</strong> <span id="contactCompany">-</span>
+                                </div>
+                                <div>
+                                    <strong>Statut:</strong> <span id="contactStatus">-</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="btn btn-primary">Ajouter</button>
                             <button type="button" class="btn btn-secondary" onclick="hideAddUserForm()">Annuler</button>
@@ -1610,8 +1729,12 @@
                         ${users.length > 0 ? users.map(user => `
                             <div class="user-card ${user.status === 'inactive' ? 'user-status-inactive' : ''}">
                                 <div class="user-info">
-                                    <div class="user-name">${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}</div>
+                                    <div class="user-name">
+                                        ${escapeHtml(user.first_name)} ${escapeHtml(user.last_name)}
+                                        ${user.contact_id ? '<span style="color: var(--blue-600); font-size: 0.75rem; margin-left: 0.5rem;">🔗 Contact lié</span>' : ''}
+                                    </div>
                                     <div class="user-email">${escapeHtml(user.email)}</div>
+                                    ${user.position ? `<div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">${escapeHtml(user.position)}</div>` : ''}
                                     <div>
                                         <span class="user-role">${user.role}</span>
                                         <span style="margin-left: 0.5rem; font-size: 0.75rem; color: var(--gray-500);">
@@ -1643,12 +1766,249 @@
         // Gestion des utilisateurs - Fonctions
         function showAddUserForm() {
             document.getElementById('addUserForm').style.display = 'block';
+            // Focus sur le champ de recherche
+            setTimeout(() => {
+                document.getElementById('userSearch').focus();
+            }, 100);
         }
 
         function hideAddUserForm() {
             document.getElementById('addUserForm').style.display = 'none';
             document.getElementById('userForm').reset();
+            clearSelectedContact();
+            hideAutocompleteSuggestions();
         }
+
+        // Système d'autocomplétion
+        function handleUserSearch() {
+            const searchInput = document.getElementById('userSearch');
+            const query = searchInput.value.trim();
+            
+            // Effacer le timeout précédent
+            if (autocompleteTimeout) {
+                clearTimeout(autocompleteTimeout);
+            }
+            
+            // Attendre 300ms avant de chercher (debounce)
+            autocompleteTimeout = setTimeout(() => {
+                if (query.length >= 1) {
+                    searchContacts(query);
+                } else {
+                    hideAutocompleteSuggestions();
+                }
+            }, 300);
+        }
+
+        function searchContacts(query) {
+            const suggestionContainer = document.getElementById('autocompleteSuggestions');
+            const queryLower = query.toLowerCase();
+            
+            // Chercher dans tous les contacts
+            const matchingContacts = contacts.filter(contact => {
+                const firstName = (contact.first_name || '').toLowerCase();
+                const lastName = (contact.last_name || '').toLowerCase();
+                const email = (contact.email || '').toLowerCase();
+                const fullName = `${firstName} ${lastName}`.trim();
+                
+                return firstName.includes(queryLower) || 
+                       lastName.includes(queryLower) || 
+                       email.includes(queryLower) ||
+                       fullName.includes(queryLower);
+            });
+            
+            // Trier par pertinence (correspondance au début prioritaire)
+            matchingContacts.sort((a, b) => {
+                const aFirstName = (a.first_name || '').toLowerCase();
+                const bFirstName = (b.first_name || '').toLowerCase();
+                const aLastName = (a.last_name || '').toLowerCase();
+                const bLastName = (b.last_name || '').toLowerCase();
+                
+                const aStartsWithFirst = aFirstName.startsWith(queryLower);
+                const bStartsWithFirst = bFirstName.startsWith(queryLower);
+                const aStartsWithLast = aLastName.startsWith(queryLower);
+                const bStartsWithLast = bLastName.startsWith(queryLower);
+                
+                if (aStartsWithFirst && !bStartsWithFirst) return -1;
+                if (!aStartsWithFirst && bStartsWithFirst) return 1;
+                if (aStartsWithLast && !bStartsWithLast) return -1;
+                if (!aStartsWithLast && bStartsWithLast) return 1;
+                
+                return 0;
+            });
+            
+            // Limiter à 8 résultats
+            const limitedResults = matchingContacts.slice(0, 8);
+            
+            if (limitedResults.length > 0) {
+                suggestionContainer.innerHTML = limitedResults.map((contact, index) => {
+                    const companyName = contact.companies?.name || 'Société inconnue';
+                    const highlightedName = highlightMatch(`${contact.first_name} ${contact.last_name}`, query);
+                    const highlightedEmail = highlightMatch(contact.email, query);
+                    
+                    return `
+                        <div class="autocomplete-suggestion" data-contact-id="${contact.id}" data-index="${index}">
+                            <div class="suggestion-name">${highlightedName}</div>
+                            <div class="suggestion-email">${highlightedEmail}</div>
+                            <div class="suggestion-company">${escapeHtml(companyName)}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Ajouter les événements de clic
+                suggestionContainer.querySelectorAll('.autocomplete-suggestion').forEach(suggestion => {
+                    suggestion.addEventListener('click', () => {
+                        const contactId = suggestion.dataset.contactId;
+                        selectContact(contactId);
+                    });
+                });
+                
+                showAutocompleteSuggestions();
+            } else {
+                suggestionContainer.innerHTML = '<div class="no-suggestions">Aucun contact trouvé</div>';
+                showAutocompleteSuggestions();
+            }
+        }
+
+        function highlightMatch(text, query) {
+            if (!text || !query) return escapeHtml(text);
+            
+            const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+            const escapedText = escapeHtml(text);
+            return escapedText.replace(regex, '<span class="suggestion-match">$1</span>');
+        }
+
+        function escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\        // Gestion des utilisateurs - Fonctions
+        function showAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'block';
+        }
+
+        function hideAddUserForm() {
+            document.getElementById('addUserForm').style.display = 'none';
+            document.getElementById('userForm').reset();
+        }');
+        }
+
+        function showAutocompleteSuggestions() {
+            document.getElementById('autocompleteSuggestions').style.display = 'block';
+        }
+
+        function hideAutocompleteSuggestions() {
+            document.getElementById('autocompleteSuggestions').style.display = 'none';
+        }
+
+        function handleSearchKeydown(event) {
+            const suggestions = document.querySelectorAll('.autocomplete-suggestion');
+            const currentHighlighted = document.querySelector('.autocomplete-suggestion.highlighted');
+            
+            switch (event.key) {
+                case 'ArrowDown':
+                    event.preventDefault();
+                    if (currentHighlighted) {
+                        currentHighlighted.classList.remove('highlighted');
+                        const next = currentHighlighted.nextElementSibling;
+                        if (next) {
+                            next.classList.add('highlighted');
+                        } else {
+                            suggestions[0]?.classList.add('highlighted');
+                        }
+                    } else {
+                        suggestions[0]?.classList.add('highlighted');
+                    }
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    if (currentHighlighted) {
+                        currentHighlighted.classList.remove('highlighted');
+                        const prev = currentHighlighted.previousElementSibling;
+                        if (prev) {
+                            prev.classList.add('highlighted');
+                        } else {
+                            suggestions[suggestions.length - 1]?.classList.add('highlighted');
+                        }
+                    } else {
+                        suggestions[suggestions.length - 1]?.classList.add('highlighted');
+                    }
+                    break;
+                    
+                case 'Enter':
+                    event.preventDefault();
+                    if (currentHighlighted) {
+                        const contactId = currentHighlighted.dataset.contactId;
+                        selectContact(contactId);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    hideAutocompleteSuggestions();
+                    break;
+            }
+        }
+
+        function selectContact(contactId) {
+            const contact = contacts.find(c => c.id === contactId);
+            if (!contact) return;
+            
+            selectedContact = contact;
+            
+            // Remplir les champs du formulaire
+            document.getElementById('userFirstName').value = contact.first_name || '';
+            document.getElementById('userLastName').value = contact.last_name || '';
+            document.getElementById('userEmail').value = contact.email || '';
+            
+            // Déterminer le rôle par défaut basé sur la position
+            const position = (contact.position || '').toLowerCase();
+            let defaultRole = 'user';
+            if (position.includes('admin') || position.includes('directeur') || position.includes('ceo') || position.includes('président')) {
+                defaultRole = 'admin';
+            } else if (position.includes('manager') || position.includes('chef') || position.includes('responsable')) {
+                defaultRole = 'manager';
+            }
+            document.getElementById('userRole').value = defaultRole;
+            
+            // Afficher les informations du contact sélectionné
+            document.getElementById('selectedContactText').textContent = 
+                `${contact.first_name} ${contact.last_name} (${contact.email})`;
+            document.getElementById('selectedContactInfo').style.display = 'flex';
+            
+            // Afficher les informations supplémentaires
+            document.getElementById('contactPhone').textContent = contact.phone || 'Non renseigné';
+            document.getElementById('contactPosition').textContent = contact.position || 'Non renseigné';
+            document.getElementById('contactCompany').textContent = contact.companies?.name || 'Non renseigné';
+            document.getElementById('contactStatus').textContent = getContactStatusText(contact.status);
+            document.getElementById('contactExtraInfo').style.display = 'block';
+            
+            // Effacer le champ de recherche et masquer les suggestions
+            document.getElementById('userSearch').value = '';
+            hideAutocompleteSuggestions();
+        }
+
+        function clearSelectedContact() {
+            selectedContact = null;
+            document.getElementById('selectedContactInfo').style.display = 'none';
+            document.getElementById('contactExtraInfo').style.display = 'none';
+            document.getElementById('userFirstName').value = '';
+            document.getElementById('userLastName').value = '';
+            document.getElementById('userEmail').value = '';
+            document.getElementById('userRole').value = 'user';
+        }
+
+        function getContactStatusText(status) {
+            const statusMap = {
+                'active': '🟢 Actif',
+                'inactive': '🔴 Inactif',
+                'pending': '🟡 En attente'
+            };
+            return statusMap[status] || status || 'Non défini';
+        }
+
+        // Fermer l'autocomplétion quand on clique ailleurs
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.autocomplete-container')) {
+                hideAutocompleteSuggestions();
+            }
+        });
 
         function showImportUserForm() {
             // Fonctionnalité à implémenter
@@ -1688,14 +2048,31 @@
                     last_name: lastName,
                     email: email,
                     role: role,
-                    status: 'active'
+                    status: 'active',
+                    // Ajouter les informations du contact si sélectionné
+                    contact_id: selectedContact?.id || null,
+                    phone: selectedContact?.phone || null,
+                    position: selectedContact?.position || null
                 };
                 
                 const result = await CRMService.createLicenseUser(userData);
                 
                 if (result.success) {
-                    showSuccess('Utilisateur ajouté avec succès');
+                    showSuccess(`Utilisateur ajouté avec succès${selectedContact ? ' (lié au contact existant)' : ''}`);
                     hideAddUserForm();
+                    
+                    // Si c'était un contact existant, mettre à jour son statut
+                    if (selectedContact) {
+                        try {
+                            await CRMService.updateContact(selectedContact.id, {
+                                ...selectedContact,
+                                has_license: true,
+                                license_id: licenseId
+                            });
+                        } catch (error) {
+                            console.warn('Erreur mise à jour contact:', error);
+                        }
+                    }
                     
                     // Recharger les données et la modal
                     await loadData();
