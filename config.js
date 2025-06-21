@@ -1,59 +1,4 @@
-static async createLicense(licenseData) {
-        try {
-            this.log('Création licence', licenseData);
-            
-            if (!supabase) {
-                throw new Error('Base de données non disponible');
-            }
-
-            // Valider les données selon le type de licence
-            if (licenseData.license_type === 'individual') {
-                if (!licenseData.individual_contact_id || !licenseData.plan_id) {
-                    throw new Error('Contact et plan sont obligatoires pour une licence individuelle');
-                }
-                // Forcer license_count à 1 pour les licences individuelles
-                licenseData.license_count = 1;
-            } else {
-                if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
-                    throw new Error('Société, plan et nombre de licences sont obligatoires pour une licence société');
-                }
-            }
-            
-            const { data, error } = await supabase
-                .from('company_licenses')
-                .insert([{
-                    ...licenseData,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select(`
-                    *,
-                    companies (
-                        id,
-                        name,
-                        status
-                    ),
-                    license_plans (
-                        id,
-                        name,
-                        price_per_user,
-                        features
-                    )
-                `);
-            
-            if (error) {
-                console.error('❌ Erreur création licence:', error);
-                throw error;
-            }
-            
-            this.log('Licence créée avec succès', data[0]);
-            return { success: true, data: data[0] };
-        } catch (error) {
-            console.error('❌ Erreur création licence:', error);
-            return { success: false, error: error.message };
-        }
-    }
-                        // ===================================
+// ===================================
 // CONFIGURATION SUPABASE
 // ===================================
 
@@ -391,8 +336,8 @@ class CRMService {
             }
 
             // Valider les données
-            if (!contactData.company_id || !contactData.first_name || !contactData.last_name) {
-                throw new Error('Société, prénom et nom sont obligatoires');
+            if (!contactData.first_name || !contactData.last_name) {
+                throw new Error('Prénom et nom sont obligatoires');
             }
             
             const { data, error } = await supabase
@@ -473,7 +418,7 @@ class CRMService {
         }
     }
     
-    // ========== LICENCES (Table company_licenses) ==========
+    // ========== LICENCES ==========
     
     static async getLicenses() {
         try {
@@ -530,9 +475,17 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
 
-            // Valider les données
-            if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
-                throw new Error('Société, plan et nombre de licences sont obligatoires');
+            // Valider les données selon le type de licence
+            if (licenseData.license_type === 'individual') {
+                if (!licenseData.individual_contact_id || !licenseData.plan_id) {
+                    throw new Error('Contact et plan sont obligatoires pour une licence individuelle');
+                }
+                // Forcer license_count à 1 pour les licences individuelles
+                licenseData.license_count = 1;
+            } else {
+                if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
+                    throw new Error('Société, plan et nombre de licences sont obligatoires pour une licence société');
+                }
             }
             
             const { data, error } = await supabase
@@ -1137,16 +1090,6 @@ function showLoading(show = true) {
     }
 }
 
-// Gestion des timeouts pour éviter les blocages
-function withTimeout(promise, timeoutMs = 10000) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), timeoutMs)
-        )
-    ]);
-}
-
 // ===================================
 // EXPORT GLOBAL
 // ===================================
@@ -1161,7 +1104,6 @@ window.getInitials = getInitials;
 window.showError = showError;
 window.showSuccess = showSuccess;
 window.showLoading = showLoading;
-window.withTimeout = withTimeout;
 
 // Gestion globale des erreurs
 window.addEventListener('error', (e) => {
@@ -1170,7 +1112,7 @@ window.addEventListener('error', (e) => {
 
 window.addEventListener('unhandledrejection', (e) => {
     console.error('Promise rejetée:', e.reason);
-    e.preventDefault(); // Empêcher l'affichage dans la console
+    e.preventDefault();
 });
 
 console.log('🚀 Configuration CRM Pro chargée avec succès');
