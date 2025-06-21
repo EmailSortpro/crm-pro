@@ -51,6 +51,42 @@
             color: #374151;
             border-bottom: 1px solid #e5e7eb;
             white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s ease;
+        }
+
+        .companies-table th:hover {
+            background: #f3f4f6;
+        }
+
+        .companies-table th.sortable {
+            padding-right: 2rem;
+        }
+
+        .sort-arrow {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+
+        .companies-table th:hover .sort-arrow {
+            opacity: 0.8;
+        }
+
+        .companies-table th.sort-asc .sort-arrow {
+            opacity: 1;
+            color: #2563eb;
+        }
+
+        .companies-table th.sort-desc .sort-arrow {
+            opacity: 1;
+            color: #2563eb;
         }
 
         .companies-table td {
@@ -493,13 +529,27 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Société</th>
-                        <th>Statut</th>
-                        <th>Secteur</th>
-                        <th>Responsable</th>
-                        <th>Contacts</th>
-                        <th>Revenus/mois</th>
-                        <th>Ville</th>
+                        <th class="sortable" data-sort="name" onclick="sortTable('name')">
+                            Société <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="status" onclick="sortTable('status')">
+                            Statut <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="industry" onclick="sortTable('industry')">
+                            Secteur <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="account_manager" onclick="sortTable('account_manager')">
+                            Responsable <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="contacts" onclick="sortTable('contacts')">
+                            Contacts <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="revenue" onclick="sortTable('revenue')">
+                            Revenus/mois <span class="sort-arrow">↕️</span>
+                        </th>
+                        <th class="sortable" data-sort="city" onclick="sortTable('city')">
+                            Ville <span class="sort-arrow">↕️</span>
+                        </th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -639,6 +689,7 @@
         let currentFilter = 'all';
         let currentView = 'table';
         let editingCompany = null;
+        let currentSort = { field: null, direction: 'asc' };
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
@@ -749,6 +800,92 @@
             renderCompanies();
         }
 
+        // Trier le tableau
+        function sortTable(field) {
+            // Déterminer la direction du tri
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+            
+            // Mettre à jour les indicateurs visuels
+            updateSortIndicators();
+            
+            // Trier les données
+            filteredCompanies.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch (field) {
+                    case 'name':
+                        valueA = (a.name || '').toLowerCase();
+                        valueB = (b.name || '').toLowerCase();
+                        break;
+                    case 'status':
+                        const statusOrder = { 'prospect': 1, 'sponsor': 2, 'client': 3, 'onboarded': 4 };
+                        valueA = statusOrder[a.status] || 0;
+                        valueB = statusOrder[b.status] || 0;
+                        break;
+                    case 'industry':
+                        valueA = (a.industry || '').toLowerCase();
+                        valueB = (b.industry || '').toLowerCase();
+                        break;
+                    case 'account_manager':
+                        valueA = (a.account_manager || '').toLowerCase();
+                        valueB = (b.account_manager || '').toLowerCase();
+                        break;
+                    case 'contacts':
+                        valueA = a.company_contacts ? a.company_contacts.length : 0;
+                        valueB = b.company_contacts ? b.company_contacts.length : 0;
+                        break;
+                    case 'revenue':
+                        valueA = getCompanyRevenue(a.id);
+                        valueB = getCompanyRevenue(b.id);
+                        break;
+                    case 'city':
+                        valueA = (a.city || '').toLowerCase();
+                        valueB = (b.city || '').toLowerCase();
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                if (currentSort.direction === 'asc') {
+                    return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+                } else {
+                    return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+                }
+            });
+            
+            // Re-rendre le tableau
+            renderCompanies();
+        }
+
+        // Mettre à jour les indicateurs de tri
+        function updateSortIndicators() {
+            // Réinitialiser tous les indicateurs
+            document.querySelectorAll('.companies-table th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                const arrow = th.querySelector('.sort-arrow');
+                if (arrow) {
+                    arrow.textContent = '↕️';
+                }
+            });
+            
+            // Mettre à jour l'indicateur actif
+            if (currentSort.field) {
+                const activeTh = document.querySelector(`[data-sort="${currentSort.field}"]`);
+                if (activeTh) {
+                    activeTh.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                    const arrow = activeTh.querySelector('.sort-arrow');
+                    if (arrow) {
+                        arrow.textContent = currentSort.direction === 'asc' ? '↑' : '↓';
+                    }
+                }
+            }
+        }
+
         // Filtrer les sociétés
         function filterCompanies(filter) {
             currentFilter = filter;
@@ -771,7 +908,12 @@
             if (searchTerm) {
                 searchCompanies();
             } else {
-                renderCompanies();
+                // Réappliquer le tri si un tri est actif
+                if (currentSort.field) {
+                    sortTable(currentSort.field);
+                } else {
+                    renderCompanies();
+                }
             }
         }
 
@@ -792,6 +934,11 @@
             );
             
             renderCompanies(searchResults);
+            
+            // Réappliquer le tri si un tri est actif
+            if (currentSort.field && searchResults.length > 0) {
+                sortTable(currentSort.field);
+            }
         }
 
         // Rendu des sociétés
