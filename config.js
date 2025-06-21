@@ -1,6 +1,6 @@
 // ===================================
-// CONFIGURATION CRM PRO SÉCURISÉE v5.0
-// Inspiré de EmailSortPro - Compatible Netlify
+// CONFIGURATION CRM PRO SÉCURISÉE v5.1
+// Compatible navigateur sans modules ES6
 // ===================================
 
 // FONCTION DE DÉTECTION DE L'ENVIRONNEMENT
@@ -41,39 +41,25 @@ function getEnvironmentConfig() {
         // Variables Netlify injectées au build
         SUPABASE_URL = process.env.VITE_SUPABASE_URL || SUPABASE_URL;
         SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
-        console.log('[CRM CONFIG] Using Netlify environment variables');
+        console.log('[CRM CONFIG] Using Netlify process.env variables');
     }
     
-    // 2. Fallback via import.meta (Vite)
-    if (!SUPABASE_ANON_KEY && typeof import !== 'undefined') {
-        try {
-            // Vérifier si on a access à import.meta
-            if (typeof import.meta !== 'undefined' && import.meta.env) {
-                SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || SUPABASE_URL;
-                SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-                console.log('[CRM CONFIG] Using Vite import.meta.env');
-            }
-        } catch (e) {
-            // import.meta pas disponible, on continue
-        }
+    // 2. Fallback via window.ENV (injection manuelle)
+    if (!SUPABASE_ANON_KEY && window.ENV) {
+        SUPABASE_URL = window.ENV.VITE_SUPABASE_URL || SUPABASE_URL;
+        SUPABASE_ANON_KEY = window.ENV.VITE_SUPABASE_ANON_KEY || '';
+        console.log('[CRM CONFIG] Using window.ENV variables');
     }
 
-    // 3. DÉVELOPPEMENT LOCAL - Variables par défaut ou localStorage
+    // 3. DÉVELOPPEMENT LOCAL - Variables depuis localStorage
     if (env.isLocalhost && !SUPABASE_ANON_KEY) {
         // Essayer de récupérer depuis localStorage pour le dev
         const storedConfig = JSON.parse(localStorage.getItem('crmDevConfig') || '{}');
         SUPABASE_ANON_KEY = storedConfig.SUPABASE_ANON_KEY || '';
         
         if (!SUPABASE_ANON_KEY) {
-            console.warn('[CRM CONFIG] Localhost: No Supabase key found. Please configure in localStorage or .env');
+            console.warn('[CRM CONFIG] Localhost: No Supabase key found. Use localStorage or window.ENV');
         }
-    }
-
-    // 4. Fallback via window.ENV (injection manuelle)
-    if (!SUPABASE_ANON_KEY && window.ENV) {
-        SUPABASE_URL = window.ENV.VITE_SUPABASE_URL || SUPABASE_URL;
-        SUPABASE_ANON_KEY = window.ENV.VITE_SUPABASE_ANON_KEY || '';
-        console.log('[CRM CONFIG] Using window.ENV fallback');
     }
 
     return {
@@ -109,8 +95,8 @@ if (!SUPABASE_ANON_KEY) {
         console.log('3. Redéployer le site');
     } else if (ENVIRONMENT.isLocalhost) {
         console.log('📋 LOCALHOST - Options :');
-        console.log('1. Créer un fichier .env avec : VITE_SUPABASE_ANON_KEY=votre_cle');
-        console.log('2. Ou configurer via localStorage : localStorage.setItem("crmDevConfig", JSON.stringify({SUPABASE_ANON_KEY: "votre_cle"}))');
+        console.log('1. Ajouter avant config.js: window.ENV = {VITE_SUPABASE_ANON_KEY: "votre_cle"}');
+        console.log('2. Ou localStorage: localStorage.setItem("crmDevConfig", JSON.stringify({SUPABASE_ANON_KEY: "votre_cle"}))');
     }
     
     console.log('🔑 Sur Supabase : Dashboard → Settings → API → Copier "anon/public" key');
@@ -152,7 +138,9 @@ function initializeSupabase() {
                     .then(({ data, error }) => {
                         if (error && error.message.includes('Invalid API key')) {
                             console.error('🚨 Invalid Supabase API key');
-                            showError('Configuration Supabase invalide. Vérifiez votre clé API.');
+                            if (typeof showError === 'function') {
+                                showError('Configuration Supabase invalide. Vérifiez votre clé API.');
+                            }
                         } else {
                             console.log('✅ Supabase connection validated');
                         }
@@ -605,6 +593,119 @@ class CRMService {
         }
     }
 
+    static async createLicense(licenseData) {
+        try {
+            this.log('Création licence', licenseData);
+            const client = await this.ensureSupabase();
+
+            if (!licenseData.company_id || !licenseData.plan_id || !licenseData.license_count) {
+                throw new Error('Société, plan et nombre de licences sont obligatoires');
+            }
+            
+            const { data, error } = await client
+                .from('company_licenses')
+                .insert([{
+                    ...licenseData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    ),
+                    license_plans (
+                        id,
+                        name,
+                        price_per_user,
+                        features
+                    )
+                `);
+            
+            if (error) {
+                console.error('❌ Erreur création licence:', error);
+                throw error;
+            }
+            
+            this.log('Licence créée avec succès', data[0]);
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('❌ Erreur création licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    static async updateLicense(id, licenseData) {
+        try {
+            this.log('Mise à jour licence', { id, data: licenseData });
+            const client = await this.ensureSupabase();
+            
+            const { data, error } = await client
+                .from('company_licenses')
+                .update({
+                    ...licenseData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    ),
+                    license_plans (
+                        id,
+                        name,
+                        price_per_user,
+                        features
+                    )
+                `);
+            
+            if (error) {
+                console.error('❌ Erreur mise à jour licence:', error);
+                throw error;
+            }
+            
+            this.log('Licence mise à jour avec succès', data[0]);
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('❌ Erreur mise à jour licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    static async deleteLicense(id) {
+        try {
+            this.log('Suppression licence', { id });
+            const client = await this.ensureSupabase();
+            
+            // Supprimer d'abord les utilisateurs associés
+            await client
+                .from('license_users')
+                .delete()
+                .eq('company_license_id', id);
+            
+            const { error } = await client
+                .from('company_licenses')
+                .delete()
+                .eq('id', id);
+            
+            if (error) {
+                console.error('❌ Erreur suppression licence:', error);
+                throw error;
+            }
+            
+            this.log('Licence supprimée avec succès');
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Erreur suppression licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     static async getLicensePlans() {
         try {
             this.log('Récupération des plans de licence');
@@ -926,6 +1027,12 @@ function diagnoseCRMConfig() {
     console.log('Key Length:', SUPABASE_ANON_KEY?.length || 0);
     console.log('Supabase Client:', !!supabase);
     console.log('Window Supabase Library:', !!window.supabase);
+    
+    if (!SUPABASE_ANON_KEY) {
+        console.warn('💡 Pour configurer temporairement:');
+        console.warn('window.ENV = {VITE_SUPABASE_ANON_KEY: "votre_cle"}');
+    }
+    
     console.groupEnd();
 }
 
@@ -933,24 +1040,36 @@ function diagnoseCRMConfig() {
 // INITIALISATION GLOBALE
 // ===================================
 
-// Exposer les services et utilitaires
-window.AuthService = AuthService;
-window.CRMService = CRMService;
-window.formatDate = formatDate;
-window.formatDateShort = formatDateShort;
-window.formatCurrency = formatCurrency;
-window.getInitials = getInitials;
-window.showError = showError;
-window.showSuccess = showSuccess;
-window.showLoading = showLoading;
-window.diagnoseCRMConfig = diagnoseCRMConfig;
-
-// Initialisation au chargement du DOM
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 CRM Pro Config v5.0 - Initializing...');
+// Fonction d'initialisation qui attend le DOM et Supabase
+async function initializeCRMConfig() {
+    console.log('🚀 CRM Pro Config v5.1 - Initializing...');
+    
+    // Attendre que Supabase soit disponible
+    let attempts = 0;
+    while (!window.supabase && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+    
+    if (!window.supabase) {
+        console.error('❌ Supabase library not loaded');
+        return;
+    }
     
     // Initialiser Supabase
     await initializeSupabase();
+    
+    // Exposer les services et utilitaires globalement
+    window.AuthService = AuthService;
+    window.CRMService = CRMService;
+    window.formatDate = formatDate;
+    window.formatDateShort = formatDateShort;
+    window.formatCurrency = formatCurrency;
+    window.getInitials = getInitials;
+    window.showError = showError;
+    window.showSuccess = showSuccess;
+    window.showLoading = showLoading;
+    window.diagnoseCRMConfig = diagnoseCRMConfig;
     
     // Signaler que la configuration est prête
     window.dispatchEvent(new CustomEvent('crmConfigReady', {
@@ -967,7 +1086,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (ENVIRONMENT.isLocalhost) {
         setTimeout(diagnoseCRMConfig, 1000);
     }
-});
+}
+
+// Attendre le chargement du DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeCRMConfig);
+} else {
+    // DOM déjà chargé
+    initializeCRMConfig();
+}
 
 // Gestion des erreurs globales
 window.addEventListener('error', (e) => {
@@ -979,4 +1106,4 @@ window.addEventListener('unhandledrejection', (e) => {
     e.preventDefault();
 });
 
-console.log('📝 CRM Pro Config v5.0 loaded - Use diagnoseCRMConfig() for troubleshooting');
+console.log('📝 CRM Pro Config v5.1 loaded - Use diagnoseCRMConfig() for troubleshooting');
