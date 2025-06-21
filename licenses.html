@@ -229,6 +229,14 @@
             border-radius: var(--radius);
             background: var(--white);
             display: none;
+            position: absolute;
+            z-index: 1000;
+            width: 100%;
+            margin-top: 0.25rem;
+        }
+
+        .contact-search-wrapper {
+            position: relative;
         }
 
         .custom-pricing {
@@ -292,45 +300,6 @@
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
         }
 
-        .license-timeline {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 0.5rem 0;
-        }
-
-        .timeline-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--gray-400);
-        }
-
-        .timeline-dot.start {
-            background: var(--success-color);
-        }
-
-        .timeline-dot.renewal {
-            background: var(--warning-color);
-        }
-
-        .timeline-dot.end {
-            background: var(--error-color);
-        }
-
-        .timeline-line {
-            flex: 1;
-            height: 2px;
-            background: var(--gray-200);
-            position: relative;
-        }
-
-        .timeline-progress {
-            height: 100%;
-            background: var(--primary-color);
-            border-radius: 1px;
-        }
-
         /* Responsive */
         @media (max-width: 768px) {
             .form-grid,
@@ -343,7 +312,7 @@
             }
         }
 
-        /* Animations keyframes */
+        /* Animations */
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -539,7 +508,7 @@
                     <button class="tab-btn active" data-tab="license-form" onclick="switchLicenseTab('license-form')">
                         📝 Licence actuelle
                     </button>
-                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')" id="companyLicensesTabBtn">
+                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')" id="companyLicensesTabBtn" style="display: none;">
                         📄 Toutes les licences
                     </button>
                 </div>
@@ -549,114 +518,122 @@
                 <!-- Onglet 1: Formulaire de licence -->
                 <div id="licenseFormTab" class="tab-content active">
                     <form id="licenseForm">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="licenseCompany">Société *</label>
-                            <select id="licenseCompany" required onchange="updateCompanyInfo()">
-                                <option value="">Sélectionner une société</option>
-                            </select>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="licenseCompany">Société *</label>
+                                <select id="licenseCompany" required onchange="updateCompanyInfo()">
+                                    <option value="">Sélectionner une société</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="licensePlan">Plan de base *</label>
+                                <select id="licensePlan" required onchange="updatePricing()">
+                                    <option value="">Sélectionner un plan</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="licensePlan">Plan de base *</label>
-                            <select id="licensePlan" required onchange="updatePricing()">
-                                <option value="">Sélectionner un plan</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <!-- Tarification personnalisée -->
-                    <div class="custom-pricing">
-                        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
-                            <h4 style="margin: 0; color: #92400e;">⚙️ Tarification personnalisée</h4>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="checkbox" id="enableCustomPricing" onchange="toggleCustomPricing()">
-                                Activer la tarification personnalisée
-                            </label>
+                        <!-- Tarification personnalisée -->
+                        <div class="custom-pricing">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 style="margin: 0; color: #92400e;">⚙️ Tarification personnalisée</h4>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="checkbox" id="enableCustomPricing" onchange="toggleCustomPricing()">
+                                    Activer la tarification personnalisée
+                                </label>
+                            </div>
+                            
+                            <div id="customPricingFields" style="display: none;">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="customPricePerUser">Prix par utilisateur/mois (€) *</label>
+                                        <input type="number" id="customPricePerUser" step="0.01" min="0" onchange="updatePricing()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="customDescription">Description de la tarification</label>
+                                        <input type="text" id="customDescription" placeholder="Ex: Tarif négocié, remise volume...">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div id="customPricingFields" style="display: none;">
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="customPricePerUser">Prix par utilisateur/mois (€) *</label>
-                                    <input type="number" id="customPricePerUser" step="0.01" min="0" onchange="updatePricing()">
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="licenseCount">Nombre de licences *</label>
+                                <input type="number" id="licenseCount" value="1" min="1" required onchange="updatePricing()">
+                            </div>
+                            <div class="form-group">
+                                <label for="startDate">Date de début *</label>
+                                <input type="date" id="startDate" required onchange="updateDates()">
+                            </div>
+                            <div class="form-group">
+                                <label for="endDate">Date de fin *</label>
+                                <input type="date" id="endDate" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="renewalDate">Date de renouvellement</label>
+                                <input type="date" id="renewalDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="licenseStatus">Statut</label>
+                                <select id="licenseStatus">
+                                    <option value="active">Active</option>
+                                    <option value="suspended">Suspendue</option>
+                                    <option value="expired">Expirée</option>
+                                    <option value="cancelled">Annulée</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="paymentMethod">Méthode de paiement</label>
+                                <select id="paymentMethod">
+                                    <option value="">Sélectionner</option>
+                                    <option value="stripe">Stripe</option>
+                                    <option value="bank_transfer">Virement bancaire</option>
+                                    <option value="check">Chèque</option>
+                                    <option value="cash">Espèces</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Aperçu des coûts -->
+                        <div id="pricingPreview" class="pricing-preview" style="display: none;">
+                            <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
+                            <div class="form-grid-3" style="text-align: center;">
+                                <div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="customDescription">Description de la tarification</label>
-                                    <input type="text" id="customDescription" placeholder="Ex: Tarif négocié, remise volume...">
+                                <div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
+                                    <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
                                 </div>
                             </div>
                         </div>
+                        
+                        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                            <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">
+                                Annuler
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitLicenseBtn">
+                                💾 Créer la licence
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Onglet 2: Licences de la société -->
+                <div id="companyLicensesTab" class="tab-content">
+                    <div id="companyLicensesContent">
+                        <!-- Contenu chargé dynamiquement -->
                     </div>
-                    
-                    <div class="form-grid-3">
-                        <div class="form-group">
-                            <label for="licenseCount">Nombre de licences *</label>
-                            <input type="number" id="licenseCount" value="1" min="1" required onchange="updatePricing()">
-                        </div>
-                        <div class="form-group">
-                            <label for="startDate">Date de début *</label>
-                            <input type="date" id="startDate" required onchange="updateDates()">
-                        </div>
-                        <div class="form-group">
-                            <label for="endDate">Date de fin *</label>
-                            <input type="date" id="endDate" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-grid-3">
-                        <div class="form-group">
-                            <label for="renewalDate">Date de renouvellement</label>
-                            <input type="date" id="renewalDate">
-                        </div>
-                        <div class="form-group">
-                            <label for="licenseStatus">Statut</label>
-                            <select id="licenseStatus">
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspendue</option>
-                                <option value="expired">Expirée</option>
-                                <option value="cancelled">Annulée</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="paymentMethod">Méthode de paiement</label>
-                            <select id="paymentMethod">
-                                <option value="">Sélectionner</option>
-                                <option value="stripe">Stripe</option>
-                                <option value="bank_transfer">Virement bancaire</option>
-                                <option value="check">Chèque</option>
-                                <option value="cash">Espèces</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Aperçu des coûts -->
-                    <div id="pricingPreview" class="pricing-preview" style="display: none;">
-                        <h4 style="margin-bottom: 1rem; color: var(--gray-800);">💰 Aperçu des coûts</h4>
-                        <div class="form-grid-3" style="text-align: center;">
-                            <div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="pricePerUser">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">par utilisateur/mois</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="monthlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">total mensuel</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);" id="yearlyTotal">0,00 €</div>
-                                <div style="font-size: 0.875rem; color: var(--gray-600);">total annuel</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                        <button type="button" class="btn btn-secondary" onclick="closeLicenseModal()">
-                            Annuler
-                        </button>
-                        <button type="submit" class="btn btn-primary" id="submitLicenseBtn">
-                            💾 Créer la licence
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
@@ -688,6 +665,7 @@
         let currentFilter = 'all';
         let editingLicense = null;
         let currentLicenseForUsers = null;
+        let selectedContactId = null;
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
@@ -747,7 +725,7 @@
                 
                 // Charger toutes les données en parallèle
                 const [licensesResult, companiesResult, plansResult, contactsResult] = await Promise.all([
-                    CRMService.getLicenses(),
+                    CRMService.getCompanyLicenses(),
                     CRMService.getCompanies(),
                     CRMService.getLicensePlans(),
                     CRMService.getContacts()
@@ -876,7 +854,6 @@
         }
 
         function updateCompanyInfo() {
-            // Cette fonction peut être étendue pour afficher des informations sur la société sélectionnée
             updatePricing();
         }
 
@@ -1157,21 +1134,6 @@
             return statusMap[status] || status;
         }
 
-        function addNewLicenseForCompany(companyId) {
-            console.log('➕ Ajout nouvelle licence pour société:', companyId);
-            
-            // Fermer la modal actuelle
-            closeLicenseModal();
-            
-            // Ouvrir une nouvelle licence avec la société pré-sélectionnée
-            setTimeout(() => {
-                openAddLicenseModal();
-                if (companyId) {
-                    document.getElementById('licenseCompany').value = companyId;
-                    updateCompanyInfo();
-                }
-            }, 100);
-        } (définie AVANT editLicense)
         function switchLicenseTab(tabName) {
             console.log('🔄 switchLicenseTab appelé avec:', tabName);
             
@@ -1179,7 +1141,6 @@
                 // Masquer tous les contenus d'onglet
                 document.querySelectorAll('.tab-content').forEach(tab => {
                     tab.classList.remove('active');
-                    tab.style.display = 'none';
                 });
                 
                 // Désactiver tous les boutons d'onglet
@@ -1189,184 +1150,136 @@
                 
                 // Activer l'onglet sélectionné
                 const targetTab = tabName === 'license-form' ? 'licenseFormTab' : 'companyLicensesTab';
-                let tabContent = document.getElementById(targetTab);
+                const tabContent = document.getElementById(targetTab);
                 const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
                 
-                console.log('🔍 Recherche éléments:', {
-                    targetTab,
-                    tabContent: tabContent ? 'TROUVÉ' : 'NON TROUVÉ',
-                    tabButton: tabButton ? 'TROUVÉ' : 'NON TROUVÉ'
-                });
-                
-                // Vérifier si les éléments existent
-                if (!tabContent) {
-                    console.error('❌ Élément tab-content non trouvé:', targetTab);
-                    // Créer l'élément s'il n'existe pas
-                    if (targetTab === 'companyLicensesTab') {
-                        const modalBody = document.querySelector('#licenseModal .modal-body');
-                        if (modalBody) {
-                            const newTab = document.createElement('div');
-                            newTab.id = 'companyLicensesTab';
-                            newTab.className = 'tab-content';
-                            newTab.style.display = 'none';
-                            newTab.innerHTML = '<div id="companyLicensesContent"><!-- Contenu chargé dynamiquement --></div>';
-                            modalBody.appendChild(newTab);
-                            console.log('✅ Élément companyLicensesTab créé dynamiquement');
-                            tabContent = newTab; // Utiliser le nouvel élément
-                        }
-                    }
-                }
-                
-                if (!tabButton) {
-                    console.error('❌ Bouton d\'onglet non trouvé pour:', tabName);
-                    return;
-                }
-                
-                if (tabContent) {
+                if (tabContent && tabButton) {
                     tabContent.classList.add('active');
-                    tabContent.style.display = 'block';
                     tabButton.classList.add('active');
                     
-                    console.log('✅ Onglet activé:', targetTab);
-                    
-                    // Si on affiche l'onglet des licences de la société, charger les données DIRECTEMENT
+                    // Si on affiche l'onglet des licences de la société, charger les données
                     if (tabName === 'company-licenses' && editingLicense) {
-                        console.log('📊 Chargement des licences de la société:', editingLicense.company_id);
-                        
-                        // FORCER L'AFFICHAGE DIRECTEMENT ICI
-                        const companyId = editingLicense.company_id;
-                        const companyLicensesContent = document.getElementById('companyLicensesContent');
-                        
-                        if (companyLicensesContent) {
-                            // Afficher un loader
-                            companyLicensesContent.innerHTML = `
-                                <div style="text-align: center; padding: 2rem;">
-                                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
-                                    <p style="color: var(--gray-600);">Chargement des licences...</p>
-                                </div>
-                            `;
-                            
-                            // Filtrer les licences pour cette société
-                            const companyLicenses = licenses.filter(l => l.company_id === companyId);
-                            const company = companies.find(c => c.id === companyId);
-                            
-                            console.log('🔍 Licences trouvées pour la société:', companyLicenses.length);
-                            
-                            if (companyLicenses.length === 0) {
-                                companyLicensesContent.innerHTML = `
-                                    <div style="text-align: center; padding: 2rem;">
-                                        <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
-                                        <h4 style="color: var(--gray-700); margin-bottom: 0.5rem;">Aucune licence trouvée</h4>
-                                        <p style="color: var(--gray-500); margin-bottom: 1.5rem;">Cette société n'a pas encore de licence</p>
-                                        <button class="btn btn-primary" onclick="addNewLicenseForCompany('${companyId}')">
-                                            ➕ Créer la première licence
-                                        </button>
-                                    </div>
-                                `;
-                                return;
-                            }
-                            
-                            // Trier par date de création (plus récent en premier)
-                            companyLicenses.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
-                            
-                            const currentLicenseId = editingLicense ? editingLicense.id : null;
-                            
-                            // AFFICHAGE FORCE
-                            companyLicensesContent.innerHTML = `
-                                <div style="margin-bottom: 1.5rem;">
-                                    <h4 style="color: var(--gray-800); margin-bottom: 0.5rem;">
-                                        📄 Licences de ${escapeHtml(company?.name || 'Société inconnue')}
-                                    </h4>
-                                    <p style="color: var(--gray-600); font-size: 0.875rem;">
-                                        ${companyLicenses.length} licence(s) • ${companyLicenses.filter(l => l.status === 'active').length} active(s)
-                                    </p>
-                                </div>
-                                
-                                <div style="max-height: 400px; overflow-y: auto;">
-                                    ${companyLicenses.map(license => {
-                                        const isCurrentLicense = license.id === currentLicenseId;
-                                        const activeUsers = license.users?.filter(u => u.is_active).length || 0;
-                                        
-                                        return `
-                                            <div class="company-license-card ${isCurrentLicense ? 'current' : ''}" style="cursor: pointer;">
-                                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                                                    <div style="flex: 1;">
-                                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                                            <h5 style="margin: 0; color: var(--gray-800);">${escapeHtml(license.plan_name)}</h5>
-                                                            ${isCurrentLicense ? '<span style="background: var(--primary-color); color: var(--white); font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px;">ACTUELLE</span>' : ''}
-                                                            ${license.custom_price_per_user ? '<span style="background: #f59e0b; color: var(--white); font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px;">⚙️ PERSONNALISÉ</span>' : ''}
-                                                        </div>
-                                                        <div style="font-size: 0.875rem; color: var(--gray-600);">
-                                                            ${activeUsers}/${license.license_count} utilisateurs • ${formatCurrency(license.monthly_cost || 0)}/mois
-                                                        </div>
-                                                    </div>
-                                                    <div style="text-align: right;">
-                                                        <span class="license-status license-${license.status}" style="font-size: 0.75rem;">
-                                                            ${getStatusText(license.status)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- Dates importantes -->
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                                                    <div style="text-align: center;">
-                                                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">Début</div>
-                                                        <div style="font-weight: 500; font-size: 0.875rem;">${formatDateShort(license.start_date)}</div>
-                                                    </div>
-                                                    <div style="text-align: center;">
-                                                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">Renouvellement</div>
-                                                        <div style="font-weight: 500; font-size: 0.875rem;">
-                                                            ${formatDateShort(license.renewal_date)}
-                                                        </div>
-                                                    </div>
-                                                    <div style="text-align: center;">
-                                                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">Fin</div>
-                                                        <div style="font-weight: 500; font-size: 0.875rem;">${formatDateShort(license.end_date)}</div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- Actions rapides -->
-                                                <div style="display: flex; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
-                                                    <button class="btn btn-sm btn-secondary" onclick="editLicense('${license.id}')" title="Modifier">
-                                                        ✏️ Modifier
-                                                    </button>
-                                                    <button class="btn btn-sm btn-secondary" onclick="openUsersModal('${license.id}')" title="Gérer les utilisateurs">
-                                                        👥 Utilisateurs
-                                                    </button>
-                                                    <button class="btn btn-sm btn-danger" onclick="deleteLicense('${license.id}')" title="Supprimer">
-                                                        🗑️ Supprimer
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                                
-                                <!-- Actions globales -->
-                                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
-                                    <button class="btn btn-primary" onclick="openAddLicenseModal(); document.getElementById('licenseCompany').value='${companyId}'; updateCompanyInfo();">
-                                        ➕ Ajouter une nouvelle licence
-                                    </button>
-                                </div>
-                            `;
-                            
-                            console.log('✅ Contenu des licences de société affiché DIRECTEMENT');
-                        }
+                        loadCompanyLicenses(editingLicense.company_id);
                     }
                 }
             } catch (error) {
                 console.error('❌ Erreur switchLicenseTab:', error);
-                // Afficher l'erreur directement dans l'onglet
-                const companyLicensesContent = document.getElementById('companyLicensesContent');
-                if (companyLicensesContent) {
-                    companyLicensesContent.innerHTML = `
-                        <div style="text-align: center; padding: 2rem;">
-                            <div style="color: var(--error-color); font-size: 1.5rem; margin-bottom: 1rem;">⚠️</div>
-                            <p style="color: var(--error-color);">Erreur: ${error.message}</p>
-                        </div>
-                    `;
-                }
             }
+        }
+
+        function loadCompanyLicenses(companyId) {
+            const companyLicenses = licenses.filter(l => l.company_id === companyId);
+            const company = companies.find(c => c.id === companyId);
+            const currentLicenseId = editingLicense ? editingLicense.id : null;
+            
+            const companyLicensesContent = document.getElementById('companyLicensesContent');
+            
+            if (companyLicenses.length === 0) {
+                companyLicensesContent.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
+                        <h4 style="color: var(--gray-700); margin-bottom: 0.5rem;">Aucune licence trouvée</h4>
+                        <p style="color: var(--gray-500); margin-bottom: 1.5rem;">Cette société n'a pas encore de licence</p>
+                        <button class="btn btn-primary" onclick="addNewLicenseForCompany('${companyId}')">
+                            ➕ Créer la première licence
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Trier par date de création (plus récent en premier)
+            companyLicenses.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+            
+            companyLicensesContent.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--gray-800); margin-bottom: 0.5rem;">
+                        📄 Licences de ${escapeHtml(company?.name || 'Société inconnue')}
+                    </h4>
+                    <p style="color: var(--gray-600); font-size: 0.875rem;">
+                        ${companyLicenses.length} licence(s) • ${companyLicenses.filter(l => l.status === 'active').length} active(s)
+                    </p>
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto;">
+                    ${companyLicenses.map(license => {
+                        const isCurrentLicense = license.id === currentLicenseId;
+                        const activeUsers = license.users?.filter(u => u.is_active).length || 0;
+                        
+                        return `
+                            <div class="company-license-card ${isCurrentLicense ? 'current' : ''}">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                                    <div style="flex: 1;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <h5 style="margin: 0; color: var(--gray-800);">${escapeHtml(license.plan_name)}</h5>
+                                            ${isCurrentLicense ? '<span style="background: var(--primary-color); color: var(--white); font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px;">ACTUELLE</span>' : ''}
+                                            ${license.custom_price_per_user ? '<span style="background: #f59e0b; color: var(--white); font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px;">⚙️ PERSONNALISÉ</span>' : ''}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--gray-600);">
+                                            ${activeUsers}/${license.license_count} utilisateurs • ${formatCurrency(license.monthly_cost || 0)}/mois
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <span class="license-status license-${license.status}" style="font-size: 0.75rem;">
+                                            ${getStatusText(license.status)}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Dates importantes -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">Début</div>
+                                        <div style="font-weight: 500; font-size: 0.875rem;">${formatDateShort(license.start_date)}</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">Renouvellement</div>
+                                        <div style="font-weight: 500; font-size: 0.875rem;">
+                                            ${formatDateShort(license.renewal_date)}
+                                        </div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 0.75rem; color: var(--gray-500); margin-bottom: 0.25rem;">Fin</div>
+                                        <div style="font-weight: 500; font-size: 0.875rem;">${formatDateShort(license.end_date)}</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Actions rapides -->
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                                    <button class="btn btn-sm btn-secondary" onclick="editLicense('${license.id}')" title="Modifier">
+                                        ✏️ Modifier
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" onclick="openUsersModal('${license.id}')" title="Gérer les utilisateurs">
+                                        👥 Utilisateurs
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteLicense('${license.id}')" title="Supprimer">
+                                        🗑️ Supprimer
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <!-- Actions globales -->
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-200);">
+                    <button class="btn btn-primary" onclick="addNewLicenseForCompany('${companyId}')">
+                        ➕ Ajouter une nouvelle licence
+                    </button>
+                </div>
+            `;
+        }
+
+        function addNewLicenseForCompany(companyId) {
+            console.log('➕ Ajout nouvelle licence pour société:', companyId);
+            closeLicenseModal();
+            setTimeout(() => {
+                openAddLicenseModal();
+                if (companyId) {
+                    document.getElementById('licenseCompany').value = companyId;
+                    updateCompanyInfo();
+                }
+            }, 100);
         }
 
         // Gestion des modals
@@ -1422,15 +1335,10 @@
                 return;
             }
             
-            console.log('✅ Licence trouvée:', license);
-            
             editingLicense = license;
             
             // Afficher le deuxième onglet en mode édition
-            const companyTabBtn = document.getElementById('companyLicensesTabBtn');
-            if (companyTabBtn) {
-                companyTabBtn.style.display = 'block';
-            }
+            document.getElementById('companyLicensesTabBtn').style.display = 'block';
             
             // Remplir le formulaire
             try {
@@ -1464,7 +1372,6 @@
                 // S'assurer qu'on est sur l'onglet du formulaire
                 switchLicenseTab('license-form');
                 
-                console.log('✅ Ouverture de la modal');
                 document.getElementById('licenseModal').classList.add('show');
                 
             } catch (error) {
@@ -1483,7 +1390,7 @@
             showLoading(true);
             
             try {
-                const result = await CRMService.deleteLicense(licenseId);
+                const result = await CRMService.deleteCompanyLicense(licenseId);
                 
                 if (result.success) {
                     showSuccess('Licence supprimée avec succès');
@@ -1579,14 +1486,19 @@
                         <div style="margin-bottom: 1.5rem;">
                             <h5 style="margin-bottom: 0.5rem;">Option 1: Sélectionner un contact existant</h5>
                             ${availableContacts.length > 0 ? `
-                                <div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--gray-300); border-radius: var(--radius); padding: 0.5rem;">
-                                    ${availableContacts.map(contact => `
-                                        <div class="contact-suggestion" onclick="selectExistingContact('${contact.id}', '${escapeHtml(contact.first_name)}', '${escapeHtml(contact.last_name)}', '${escapeHtml(contact.email)}')">
-                                            <div style="font-weight: 600;">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}</div>
-                                            <div style="font-size: 0.875rem; color: var(--gray-600);">${escapeHtml(contact.email)}</div>
-                                            <div style="font-size: 0.75rem; color: var(--gray-500);">${escapeHtml(contact.position || 'Poste non défini')}</div>
-                                        </div>
-                                    `).join('')}
+                                <div class="contact-search-wrapper">
+                                    <input type="text" id="contactSearch" placeholder="🔍 Rechercher un contact (tapez le prénom ou nom)..." 
+                                           style="width: 100%; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: var(--radius); margin-bottom: 0.5rem;"
+                                           oninput="filterContacts()">
+                                    <div id="contactSuggestions" class="suggestions-container">
+                                        ${availableContacts.map(contact => `
+                                            <div class="contact-suggestion" data-contact-id="${contact.id}" onclick="selectExistingContact('${contact.id}', '${escapeHtml(contact.first_name)}', '${escapeHtml(contact.last_name)}', '${escapeHtml(contact.email)}', '${escapeHtml(contact.position || '')}', '${escapeHtml(contact.phone || '')}')">
+                                                <div style="font-weight: 600;">${escapeHtml(contact.first_name)} ${escapeHtml(contact.last_name)}</div>
+                                                <div style="font-size: 0.875rem; color: var(--gray-600);">${escapeHtml(contact.email)}</div>
+                                                <div style="font-size: 0.75rem; color: var(--gray-500);">${escapeHtml(contact.position || 'Poste non défini')}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
                                 </div>
                             ` : `
                                 <p style="color: var(--gray-500); font-style: italic;">Aucun contact disponible pour cette société</p>
@@ -1630,6 +1542,9 @@
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="btn btn-primary">Ajouter l'utilisateur</button>
                             <button type="button" class="btn btn-secondary" onclick="hideAddUserForm()">Annuler</button>
+                            <button type="button" id="clearSelectionBtn" class="btn btn-warning" onclick="clearContactSelection()" style="display: none;">
+                                🔄 Nouveau contact
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1677,16 +1592,112 @@
             `;
         }
 
+        // Fonctions de gestion des contacts et recherche
+        function filterContacts() {
+            const searchTerm = document.getElementById('contactSearch').value.toLowerCase();
+            const suggestions = document.getElementById('contactSuggestions');
+            const allSuggestions = suggestions.querySelectorAll('.contact-suggestion');
+            
+            if (searchTerm.length === 0) {
+                suggestions.style.display = 'none';
+                allSuggestions.forEach(suggestion => {
+                    suggestion.style.display = 'block';
+                });
+                return;
+            }
+            
+            // Afficher le conteneur de suggestions
+            suggestions.style.display = 'block';
+            
+            // Filtrer les suggestions
+            let visibleCount = 0;
+            allSuggestions.forEach(suggestion => {
+                const text = suggestion.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    suggestion.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    suggestion.style.display = 'none';
+                }
+            });
+            
+            // Masquer si aucun résultat
+            if (visibleCount === 0) {
+                suggestions.style.display = 'none';
+            }
+        }
+
+        function selectExistingContact(contactId, firstName, lastName, email, position, phone) {
+            console.log('👤 Sélection du contact:', { contactId, firstName, lastName, email });
+            
+            selectedContactId = contactId;
+            
+            // Marquer le contact comme sélectionné visuellement
+            document.querySelectorAll('.contact-suggestion').forEach(el => {
+                el.classList.remove('selected');
+            });
+            document.querySelector(`[data-contact-id="${contactId}"]`).classList.add('selected');
+            
+            // Remplir le formulaire avec les données du contact
+            document.getElementById('selectedContactId').value = contactId;
+            document.getElementById('userFirstName').value = firstName;
+            document.getElementById('userLastName').value = lastName;
+            document.getElementById('userEmail').value = email;
+            document.getElementById('userPosition').value = position || '';
+            document.getElementById('userPhone').value = phone || '';
+            
+            // Remplir la barre de recherche avec le nom complet
+            document.getElementById('contactSearch').value = `${firstName} ${lastName}`;
+            
+            // Masquer les suggestions
+            document.getElementById('contactSuggestions').style.display = 'none';
+            
+            // Marquer les champs comme remplis automatiquement
+            ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.readOnly = true;
+                    field.style.backgroundColor = '#f3f4f6';
+                }
+            });
+            
+            // Afficher le bouton pour désélectionner
+            document.getElementById('clearSelectionBtn').style.display = 'inline-block';
+        }
+
+        function clearContactSelection() {
+            selectedContactId = null;
+            document.getElementById('selectedContactId').value = '';
+            document.getElementById('contactSearch').value = '';
+            
+            // Réactiver tous les champs
+            ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.readOnly = false;
+                    field.style.backgroundColor = '';
+                    field.value = '';
+                }
+            });
+            
+            // Désélectionner visuellement tous les contacts
+            document.querySelectorAll('.contact-suggestion').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Masquer les suggestions et le bouton de désélection
+            document.getElementById('contactSuggestions').style.display = 'none';
+            document.getElementById('clearSelectionBtn').style.display = 'none';
+        }
+
         // Fonctions supplémentaires pour la gestion des utilisateurs
         function editUserContact(contactId) {
-            // Ouvrir une modal pour modifier le contact
             alert(`Modification du contact ID: ${contactId}\nCette fonctionnalité sera implémentée prochainement.`);
         }
 
         async function refreshUsers(licenseId) {
             showLoading(true);
             try {
-                // Recharger les utilisateurs de la licence
                 const result = await CRMService.getLicenseUsers(licenseId);
                 const license = licenses.find(l => l.id === licenseId);
                 
@@ -1713,67 +1724,7 @@
         function hideAddUserForm() {
             document.getElementById('addUserForm').style.display = 'none';
             document.getElementById('userForm').reset();
-            
-            // Nettoyer la sélection de contact
             clearContactSelection();
-            
-            // Supprimer le bouton de désélection
-            const clearBtn = document.getElementById('clearSelectionBtn');
-            if (clearBtn) {
-                clearBtn.remove();
-            }
-        }
-
-        function selectExistingContact(contactId, firstName, lastName, email) {
-            console.log('👤 Sélection du contact:', { contactId, firstName, lastName, email });
-            
-            // Marquer le contact comme sélectionné visuellement
-            document.querySelectorAll('.contact-suggestion').forEach(el => {
-                el.classList.remove('selected');
-            });
-            event.target.closest('.contact-suggestion').classList.add('selected');
-            
-            // Remplir le formulaire avec les données du contact
-            document.getElementById('selectedContactId').value = contactId;
-            document.getElementById('userFirstName').value = firstName;
-            document.getElementById('userLastName').value = lastName;
-            document.getElementById('userEmail').value = email;
-            
-            // Marquer les champs comme remplis automatiquement
-            document.getElementById('userFirstName').readOnly = true;
-            document.getElementById('userLastName').readOnly = true;
-            document.getElementById('userEmail').readOnly = true;
-            document.getElementById('userFirstName').style.backgroundColor = '#f3f4f6';
-            document.getElementById('userLastName').style.backgroundColor = '#f3f4f6';
-            document.getElementById('userEmail').style.backgroundColor = '#f3f4f6';
-            
-            // Trouver le contact complet pour récupérer les autres informations
-            const fullContact = allContacts.find(c => c.id === contactId);
-            if (fullContact) {
-                document.getElementById('userPosition').value = fullContact.position || '';
-                document.getElementById('userPhone').value = fullContact.phone || '';
-                document.getElementById('userPosition').readOnly = true;
-                document.getElementById('userPhone').readOnly = true;
-                document.getElementById('userPosition').style.backgroundColor = '#f3f4f6';
-                document.getElementById('userPhone').style.backgroundColor = '#f3f4f6';
-            }
-            
-            // Ajouter un bouton pour désélectionner
-            const existingBtn = document.getElementById('clearSelectionBtn');
-            if (!existingBtn) {
-                const clearBtn = document.createElement('button');
-                clearBtn.id = 'clearSelectionBtn';
-                clearBtn.type = 'button';
-                clearBtn.className = 'btn btn-sm btn-warning';
-                clearBtn.textContent = '🔄 Nouveau contact';
-                clearBtn.onclick = clearContactSelection;
-                clearBtn.style.marginLeft = '0.5rem';
-                
-                const submitBtn = document.querySelector('#userForm button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.parentNode.insertBefore(clearBtn, submitBtn);
-                }
-            }
         }
 
         async function addUser(event, licenseId) {
@@ -1788,7 +1739,7 @@
                 return;
             }
             
-            const selectedContactId = document.getElementById('selectedContactId').value;
+            const selectedContactIdValue = document.getElementById('selectedContactId').value;
             const firstName = document.getElementById('userFirstName').value.trim();
             const lastName = document.getElementById('userLastName').value.trim();
             const email = document.getElementById('userEmail').value.trim();
@@ -1805,7 +1756,7 @@
             showLoading(true);
             
             try {
-                let contactId = selectedContactId;
+                let contactId = selectedContactIdValue;
                 
                 // Si aucun contact sélectionné, créer un nouveau contact
                 if (!contactId) {
@@ -1883,7 +1834,7 @@
             }
         }
 
-        // Gestion du formulaire
+        // Gestion du formulaire principal
         document.getElementById('licenseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1937,9 +1888,9 @@
                 
                 let result;
                 if (editingLicense) {
-                    result = await CRMService.updateLicense(editingLicense.id, licenseData);
+                    result = await CRMService.updateCompanyLicense(editingLicense.id, licenseData);
                 } else {
-                    result = await CRMService.createLicense(licenseData);
+                    result = await CRMService.createCompanyLicense(licenseData);
                 }
                 
                 if (result.success) {
@@ -1986,51 +1937,15 @@
             }
         });
 
-        // Réinitialiser les champs lors de la déselection d'un contact
+        // Masquer les suggestions si on clique ailleurs
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.contact-suggestion') && 
-                !e.target.closest('#userForm input') && 
-                !e.target.closest('#userForm select')) {
-                
-                // Si on clique ailleurs que sur une suggestion ou un champ du formulaire
-                const selectedContactId = document.getElementById('selectedContactId');
-                if (selectedContactId && !selectedContactId.value) {
-                    // Réactiver tous les champs seulement si aucun contact n'est sélectionné
-                    ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
-                        const field = document.getElementById(fieldId);
-                        if (field) {
-                            field.readOnly = false;
-                            field.style.backgroundColor = '';
-                        }
-                    });
-                    
-                    // Désélectionner visuellement tous les contacts
-                    document.querySelectorAll('.contact-suggestion').forEach(el => {
-                        el.classList.remove('selected');
-                    });
+            if (!e.target.closest('.contact-search-wrapper')) {
+                const suggestions = document.getElementById('contactSuggestions');
+                if (suggestions) {
+                    suggestions.style.display = 'none';
                 }
             }
         });
-
-        // Fonction pour réinitialiser la sélection de contact
-        function clearContactSelection() {
-            document.getElementById('selectedContactId').value = '';
-            
-            // Réactiver tous les champs
-            ['userFirstName', 'userLastName', 'userEmail', 'userPosition', 'userPhone'].forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    field.readOnly = false;
-                    field.style.backgroundColor = '';
-                    field.value = '';
-                }
-            });
-            
-            // Désélectionner visuellement tous les contacts
-            document.querySelectorAll('.contact-suggestion').forEach(el => {
-                el.classList.remove('selected');
-            });
-        }
     </script>
 </body>
 </html>
