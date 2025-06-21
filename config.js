@@ -428,6 +428,7 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
+            // Requête simplifiée pour éviter l'erreur 400
             const { data, error } = await supabase
                 .from('company_licenses')
                 .select(`
@@ -442,15 +443,6 @@ class CRMService {
                         name,
                         price_per_user,
                         features
-                    ),
-                    license_users (
-                        id,
-                        first_name,
-                        last_name,
-                        email,
-                        role,
-                        status,
-                        last_activity
                     )
                 `)
                 .order('created_at', { ascending: false });
@@ -567,11 +559,11 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
-            // Supprimer d'abord les utilisateurs associés
+            // Supprimer d'abord les utilisateurs associés de la nouvelle table
             await supabase
                 .from('license_users')
                 .delete()
-                .eq('license_id', id);
+                .eq('company_license_id', id);
             
             const { error } = await supabase
                 .from('company_licenses')
@@ -618,7 +610,7 @@ class CRMService {
         }
     }
 
-    // ========== UTILISATEURS DE LICENCE ==========
+    // ========== UTILISATEURS DE LICENCE (nouvelle structure) ==========
     
     static async getLicenseUsers(licenseId) {
         try {
@@ -628,41 +620,92 @@ class CRMService {
                 throw new Error('Base de données non disponible');
             }
             
+            // Utiliser la nouvelle structure avec license_users qui référence les contacts
             const { data, error } = await supabase
                 .from('license_users')
-                .select('*')
-                .eq('license_id', licenseId)
-                .order('created_at', { ascending: false });
+                .select(`
+                    *,
+                    company_contacts (
+                        id,
+                        first_name,
+                        last_name,
+                        email,
+                        position,
+                        phone
+                    )
+                `)
+                .eq('company_license_id', licenseId)
+                .eq('is_active', true)
+                .order('activated_at', { ascending: false });
             
             if (error) {
                 console.error('❌ Erreur récupération utilisateurs licence:', error);
                 throw error;
             }
             
-            this.log('Utilisateurs licence récupérés', `${data?.length || 0} entrées`);
-            return { success: true, data: data || [] };
+            // Transformer les données pour l'affichage
+            const users = data.map(user => ({
+                id: user.id,
+                license_id: licenseId,
+                contact_id: user.contact_id,
+                first_name: user.company_contacts?.first_name || 'Prénom',
+                last_name: user.company_contacts?.last_name || 'Nom',
+                email: user.company_contacts?.email || 'email@inconnu.com',
+                position: user.company_contacts?.position || null,
+                phone: user.company_contacts?.phone || null,
+                is_active: user.is_active,
+                activated_at: user.activated_at,
+                status: user.is_active ? 'active' : 'inactive'
+            }));
+            
+            this.log('Utilisateurs licence récupérés', `${users.length} entrées`);
+            return { success: true, data: users };
         } catch (error) {
             console.error('❌ Erreur récupération utilisateurs licence:', error);
             return { success: false, error: error.message };
         }
     }
     
-    static async createLicenseUser(userData) {
+    static async createLicenseUser(licenseId, contactId) {
         try {
-            this.log('Création utilisateur licence', userData);
+            this.log('Création utilisateur licence', { licenseId, contactId });
             
             if (!supabase) {
                 throw new Error('Base de données non disponible');
             }
             
+            // Vérifier que le contact existe
+            const { data: contact, error: contactError } = await supabase
+                .from('company_contacts')
+                .select('*')
+                .eq('id', contactId)
+                .single();
+                
+            if (contactError || !contact) {
+                throw new Error('Contact non trouvé');
+            }
+            
             const { data, error } = await supabase
                 .from('license_users')
                 .insert([{
-                    ...userData,
+                    company_license_id: licenseId,
+                    contact_id: contactId,
+                    is_active: true,
+                    activated_at: new Date().toISOString(),
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 }])
-                .select();
+                .select(`
+                    *,
+                    company_contacts (
+                        id,
+                        first_name,
+                        last_name,
+                        email,
+                        position,
+                        phone
+                    )
+                `);
             
             if (error) {
                 console.error('❌ Erreur création utilisateur licence:', error);
@@ -673,6 +716,77 @@ class CRMService {
             return { success: true, data: data[0] };
         } catch (error) {
             console.error('❌ Erreur création utilisateur licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteLicenseUser(userId) {
+        try {
+            this.log('Suppression utilisateur licence', { userId });
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+            
+            const { error } = await supabase
+                .from('license_users')
+                .delete()
+                .eq('id', userId);
+            
+            if (error) {
+                console.error('❌ Erreur suppression utilisateur licence:', error);
+                throw error;
+            }
+            
+            this.log('Utilisateur licence supprimé avec succès');
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Erreur suppression utilisateur licence:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ========== MÉTHODE POUR OBTENIR TOUS LES CONTACTS DISPONIBLES ==========
+    
+    static async getAvailableContacts(companyId = null) {
+        try {
+            this.log('Récupération contacts disponibles', { companyId });
+            
+            if (!supabase) {
+                throw new Error('Base de données non disponible');
+            }
+            
+            let query = supabase
+                .from('company_contacts')
+                .select(`
+                    id,
+                    first_name,
+                    last_name,
+                    email,
+                    position,
+                    company_id,
+                    companies (
+                        id,
+                        name
+                    )
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+            
+            const { data, error } = await query;
+            
+            if (error) {
+                console.error('❌ Erreur récupération contacts disponibles:', error);
+                throw error;
+            }
+            
+            this.log('Contacts disponibles récupérés', `${data?.length || 0} entrées`);
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('❌ Erreur récupération contacts disponibles:', error);
             return { success: false, error: error.message };
         }
     }
