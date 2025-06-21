@@ -72,29 +72,32 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
         }
 
         .stat-card {
             background: white;
-            padding: 1.5rem;
+            padding: 1rem;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
             text-align: center;
         }
 
         .stat-value {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: var(--primary);
+            line-height: 1;
+            margin-bottom: 0.25rem;
         }
 
         .stat-label {
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             color: var(--gray-600);
-            margin-top: 0.5rem;
+            margin: 0;
+            font-weight: 500;
         }
 
         /* Contrôles de vue condensés sur une ligne */
@@ -658,6 +661,23 @@
                 align-items: stretch;
             }
 
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+            }
+
+            .stat-card {
+                padding: 0.75rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            .stat-label {
+                font-size: 0.75rem;
+            }
+
             .view-controls {
                 padding: 1rem;
             }
@@ -813,8 +833,7 @@
                 <div class="sort-buttons">
                     <button class="sort-btn active" onclick="applySortFilter('created_desc')" data-sort="created_desc">📅 Récentes</button>
                     <button class="sort-btn" onclick="applySortFilter('expiring_only')" data-sort="expiring_only">🔄 À renouveler</button>
-                    <button class="sort-btn" onclick="applySortFilter('price_desc')" data-sort="price_desc">💰 Prix ↓</button>
-                    <button class="sort-btn" onclick="applySortFilter('price_asc')" data-sort="price_asc">💸 Prix ↑</button>
+                    <button class="sort-btn" onclick="togglePriceSort()" data-sort="price" id="priceSort">💰 Prix ↓</button>
                     <button class="sort-btn" onclick="applySortFilter('company_asc')" data-sort="company_asc">🏢 A-Z</button>
                     <button class="sort-btn" onclick="applySortFilter('status_active')" data-sort="status_active">✅ Actives</button>
                 </div>
@@ -956,6 +975,7 @@
             currentCompany: null,
             currentLicense: null,
             currentSort: 'created_desc',
+            priceDirection: 'desc', // 'desc' pour ↓, 'asc' pour ↑
             isEditing: false,
             filteredData: [],
             isLoading: false
@@ -2004,12 +2024,51 @@
             }
         }
 
+        function togglePriceSort() {
+            // Changer la direction du tri prix
+            if (appData.currentSort === 'price_desc') {
+                appData.priceDirection = 'asc';
+                appData.currentSort = 'price_asc';
+            } else if (appData.currentSort === 'price_asc') {
+                appData.priceDirection = 'desc';
+                appData.currentSort = 'price_desc';
+            } else {
+                // Premier clic sur le bouton prix
+                appData.priceDirection = 'desc';
+                appData.currentSort = 'price_desc';
+            }
+            
+            // Mettre à jour l'UI des boutons
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const priceBtn = document.getElementById('priceSort');
+            priceBtn.classList.add('active');
+            priceBtn.textContent = appData.priceDirection === 'desc' ? '💰 Prix ↓' : '💰 Prix ↑';
+            
+            // Appliquer le tri
+            applyFiltersAndSorting();
+        }
+
         function applySortFilter(sortType) {
+            // Gérer le cas spécial du prix (ne pas utiliser cette fonction pour le prix)
+            if (sortType.startsWith('price')) {
+                return;
+            }
+            
             // Mettre à jour l'UI des boutons
             document.querySelectorAll('.sort-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             document.querySelector(`[data-sort="${sortType}"]`).classList.add('active');
+            
+            // Réinitialiser le bouton prix si on change de tri
+            if (appData.currentSort.startsWith('price')) {
+                const priceBtn = document.getElementById('priceSort');
+                priceBtn.textContent = '💰 Prix ↓';
+                appData.priceDirection = 'desc';
+            }
             
             // Appliquer le tri
             appData.currentSort = sortType;
@@ -2220,6 +2279,12 @@
 
         function resetFilters() {
             document.getElementById('searchInput').value = '';
+            
+            // Réinitialiser le bouton prix
+            const priceBtn = document.getElementById('priceSort');
+            priceBtn.textContent = '💰 Prix ↓';
+            appData.priceDirection = 'desc';
+            
             applySortFilter('created_desc');
         }
 
