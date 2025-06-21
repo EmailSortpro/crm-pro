@@ -1178,20 +1178,50 @@
                 const tabContent = document.getElementById(targetTab);
                 const tabButton = document.querySelector(`[data-tab="${tabName}"]`);
                 
-                if (tabContent && tabButton) {
-                    tabContent.classList.add('active');
-                    tabContent.style.display = 'block';
-                    tabButton.classList.add('active');
-                    
-                    console.log('✅ Onglet activé:', targetTab);
-                    
-                    // Si on affiche l'onglet des licences de la société, charger les données
-                    if (tabName === 'company-licenses' && editingLicense) {
-                        console.log('📊 Chargement des licences de la société:', editingLicense.company_id);
-                        loadCompanyLicenses(editingLicense.company_id);
+                console.log('🔍 Recherche éléments:', {
+                    targetTab,
+                    tabContent: tabContent ? 'TROUVÉ' : 'NON TROUVÉ',
+                    tabButton: tabButton ? 'TROUVÉ' : 'NON TROUVÉ'
+                });
+                
+                // Vérifier si les éléments existent
+                if (!tabContent) {
+                    console.error('❌ Élément tab-content non trouvé:', targetTab);
+                    // Créer l'élément s'il n'existe pas
+                    if (targetTab === 'companyLicensesTab') {
+                        const modalBody = document.querySelector('#licenseModal .modal-body');
+                        if (modalBody) {
+                            const newTab = document.createElement('div');
+                            newTab.id = 'companyLicensesTab';
+                            newTab.className = 'tab-content';
+                            newTab.style.display = 'none';
+                            newTab.innerHTML = '<div id="companyLicensesContent"><!-- Contenu chargé dynamiquement --></div>';
+                            modalBody.appendChild(newTab);
+                            console.log('✅ Élément companyLicensesTab créé dynamiquement');
+                            
+                            // Relancer la fonction
+                            switchLicenseTab(tabName);
+                            return;
+                        }
                     }
-                } else {
-                    console.error('❌ Éléments d\'onglet non trouvés:', { targetTab, tabButton });
+                    return;
+                }
+                
+                if (!tabButton) {
+                    console.error('❌ Bouton d\'onglet non trouvé pour:', tabName);
+                    return;
+                }
+                
+                tabContent.classList.add('active');
+                tabContent.style.display = 'block';
+                tabButton.classList.add('active');
+                
+                console.log('✅ Onglet activé:', targetTab);
+                
+                // Si on affiche l'onglet des licences de la société, charger les données
+                if (tabName === 'company-licenses' && editingLicense) {
+                    console.log('📊 Chargement des licences de la société:', editingLicense.company_id);
+                    loadCompanyLicenses(editingLicense.company_id);
                 }
             } catch (error) {
                 console.error('❌ Erreur switchLicenseTab:', error);
