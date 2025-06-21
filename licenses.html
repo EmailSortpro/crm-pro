@@ -725,7 +725,7 @@
                 
                 // Charger toutes les données en parallèle
                 const [licensesResult, companiesResult, plansResult, contactsResult] = await Promise.all([
-                    CRMService.getCompanyLicenses(),
+                    CRMService.getLicenses(),
                     CRMService.getCompanies(),
                     CRMService.getLicensePlans(),
                     CRMService.getContacts()
@@ -1390,7 +1390,7 @@
             showLoading(true);
             
             try {
-                const result = await CRMService.deleteCompanyLicense(licenseId);
+                const result = await CRMService.deleteLicense(licenseId);
                 
                 if (result.success) {
                     showSuccess('Licence supprimée avec succès');
@@ -1888,9 +1888,9 @@
                 
                 let result;
                 if (editingLicense) {
-                    result = await CRMService.updateCompanyLicense(editingLicense.id, licenseData);
+                    result = await CRMService.updateLicense(editingLicense.id, licenseData);
                 } else {
-                    result = await CRMService.createCompanyLicense(licenseData);
+                    result = await CRMService.createLicense(licenseData);
                 }
                 
                 if (result.success) {
