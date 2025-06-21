@@ -691,6 +691,7 @@
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Initialisation de la page licences...');
             showLoading(true);
             
             try {
@@ -703,12 +704,24 @@
                 // Initialiser la page
                 await initializePage();
                 
+                console.log('✅ Page licences initialisée avec succès');
+                
             } catch (error) {
-                console.error('Erreur initialisation:', error);
-                showError('Erreur lors du chargement de la page');
+                console.error('❌ Erreur initialisation:', error);
+                showError('Erreur lors du chargement de la page: ' + error.message);
             } finally {
                 showLoading(false);
             }
+        });
+
+        // Gestionnaire d'erreur global
+        window.addEventListener('error', (e) => {
+            console.error('❌ Erreur JavaScript globale:', e.error);
+            console.error('📍 Fichier:', e.filename, 'Ligne:', e.lineno);
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('❌ Promise rejetée non gérée:', e.reason);
         });
 
         function loadUserInfo() {
@@ -1188,41 +1201,64 @@
         }
 
         function editLicense(licenseId) {
+            console.log('🔧 editLicense appelé avec ID:', licenseId);
+            
             const license = licenses.find(l => l.id === licenseId);
-            if (!license) return;
+            if (!license) {
+                console.error('❌ Licence non trouvée:', licenseId);
+                showError('Licence non trouvée');
+                return;
+            }
+            
+            console.log('✅ Licence trouvée:', license);
             
             editingLicense = license;
             
             // Afficher le deuxième onglet en mode édition
-            document.getElementById('companyLicensesTabBtn').style.display = 'block';
-            
-            document.getElementById('licenseCompany').value = license.company_id;
-            document.getElementById('licensePlan').value = license.plan_id;
-            document.getElementById('licenseCount').value = license.license_count;
-            document.getElementById('startDate').value = license.start_date;
-            document.getElementById('endDate').value = license.end_date;
-            document.getElementById('renewalDate').value = license.renewal_date;
-            document.getElementById('licenseStatus').value = license.status;
-            document.getElementById('paymentMethod').value = license.payment_method || '';
-            
-            // Gérer la tarification personnalisée
-            if (license.custom_price_per_user !== null) {
-                document.getElementById('enableCustomPricing').checked = true;
-                document.getElementById('customPricingFields').style.display = 'block';
-                document.getElementById('customPricePerUser').required = true;
-                document.getElementById('customPricePerUser').value = license.custom_price_per_user;
-                document.getElementById('customDescription').value = license.custom_description || '';
+            const companyTabBtn = document.getElementById('companyLicensesTabBtn');
+            if (companyTabBtn) {
+                companyTabBtn.style.display = 'block';
             }
             
-            document.getElementById('licenseModalTitle').textContent = '✏️ Modifier la Licence';
-            document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
-            
-            updatePricing();
-            
-            // S'assurer qu'on est sur l'onglet du formulaire
-            switchLicenseTab('license-form');
-            
-            document.getElementById('licenseModal').classList.add('show');
+            // Remplir le formulaire
+            try {
+                document.getElementById('licenseCompany').value = license.company_id;
+                document.getElementById('licensePlan').value = license.plan_id;
+                document.getElementById('licenseCount').value = license.license_count;
+                document.getElementById('startDate').value = license.start_date;
+                document.getElementById('endDate').value = license.end_date;
+                document.getElementById('renewalDate').value = license.renewal_date || '';
+                document.getElementById('licenseStatus').value = license.status;
+                document.getElementById('paymentMethod').value = license.payment_method || '';
+                
+                // Gérer la tarification personnalisée
+                if (license.custom_price_per_user !== null) {
+                    document.getElementById('enableCustomPricing').checked = true;
+                    document.getElementById('customPricingFields').style.display = 'block';
+                    document.getElementById('customPricePerUser').required = true;
+                    document.getElementById('customPricePerUser').value = license.custom_price_per_user;
+                    document.getElementById('customDescription').value = license.custom_description || '';
+                } else {
+                    document.getElementById('enableCustomPricing').checked = false;
+                    document.getElementById('customPricingFields').style.display = 'none';
+                    document.getElementById('customPricePerUser').required = false;
+                }
+                
+                document.getElementById('licenseModalTitle').textContent = '✏️ Modifier la Licence';
+                document.getElementById('submitLicenseBtn').textContent = '💾 Sauvegarder les modifications';
+                
+                updatePricing();
+                
+                // S'assurer qu'on est sur l'onglet du formulaire
+                switchLicenseTab('license-form');
+                
+                console.log('✅ Ouverture de la modal');
+                document.getElementById('licenseModal').classList.add('show');
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du remplissage du formulaire:', error);
+                showError('Erreur lors du chargement de la licence: ' + error.message);
+            }
         }
 
         async function deleteLicense(licenseId) {
