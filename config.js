@@ -9,17 +9,16 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .filter-btn {
-            padding: 0.5rem 0.75rem;
+            padding: 0.5rem 1rem;
             background: #f3f4f6;
             border: 1px solid #d1d5db;
             border-radius: 0.5rem;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.875rem;
             font-weight: 500;
             color: #374151;
             transition: all 0.2s ease;
             white-space: nowrap;
-            flex-shrink: 0;
         }
         .filter-btn:hover {
             background: #e5e7eb;
@@ -181,8 +180,8 @@
             display: flex;
             align-items: center;
             gap: 1rem;
+            flex-wrap: wrap;
             flex: 1;
-            min-width: 0;
         }
 
         .right-controls {
@@ -196,26 +195,15 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            min-width: 0;
-        }
-
-        .status-filters::-webkit-scrollbar {
-            display: none;
-        }
-
-        .status-filters {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+            flex-wrap: wrap;
         }
 
         .search-input {
-            padding: 0.4rem 0.8rem;
+            padding: 0.5rem 1rem;
             border: 1px solid #d1d5db;
             border-radius: 0.5rem;
-            min-width: 200px;
-            font-size: 0.8rem;
+            min-width: 250px;
+            font-size: 0.875rem;
         }
 
         .search-input:focus {
@@ -228,20 +216,13 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            flex-shrink: 0;
-            white-space: nowrap;
-        }
-
-        .per-page-selector span {
-            font-size: 0.8rem;
         }
 
         .per-page-selector select {
-            padding: 0.4rem 0.6rem;
+            padding: 0.5rem;
             border: 1px solid #d1d5db;
             border-radius: 0.375rem;
-            font-size: 0.8rem;
-            min-width: 100px;
+            font-size: 0.875rem;
         }
 
         .pagination {
@@ -341,36 +322,22 @@
             color: #374151;
         }
 
-        /* Responsive - Optimisé pour une ligne */
-        @media (max-width: 1400px) {
-            .filter-btn {
-                padding: 0.4rem 0.6rem;
-                font-size: 0.75rem;
-            }
-            
-            .per-page-selector span {
-                display: none;
-            }
-            
-            .search-input {
-                min-width: 180px;
-            }
-        }
-
+        /* Responsive */
         @media (max-width: 1200px) {
             .controls-row {
-                flex-wrap: wrap;
-                gap: 1rem;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1.5rem;
             }
             
             .left-controls {
-                width: 100%;
-                justify-content: space-between;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1.5rem;
             }
             
-            .right-controls {
-                width: 100%;
-                justify-content: flex-end;
+            .status-filters {
+                justify-content: flex-start;
             }
         }
 
@@ -384,22 +351,12 @@
             }
             
             .search-input {
-                min-width: 150px;
+                min-width: 200px;
                 width: 100%;
             }
             
             .pagination {
                 flex-wrap: wrap;
-            }
-            
-            .controls-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .left-controls,
-            .right-controls {
-                width: 100%;
             }
         }
     </style>
