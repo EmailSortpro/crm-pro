@@ -393,7 +393,15 @@
             <p>&copy; 2025 CRM Pro - Solution de gestion de la relation client</p>
         </div>
     </footer>
-
+<script>
+  // Injection des variables Netlify (sera remplacé au build)
+  if (window.location.hostname.includes('netlify')) {
+    window.NETLIFY_ENV = {
+      VITE_SUPABASE_URL: '%VITE_SUPABASE_URL%',
+      VITE_SUPABASE_ANON_KEY: '%VITE_SUPABASE_ANON_KEY%'
+    };
+  }
+</script>
     <script src="config.js"></script>
     <script>
         // Variables globales ULTRA SIMPLES
