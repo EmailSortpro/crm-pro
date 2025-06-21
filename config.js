@@ -956,6 +956,149 @@ class CRMService {
             return { success: false, error: error.message };
         }
     }
+
+    // ========== OPPORTUNITÉS ==========
+    
+    static async getOpportunities() {
+        try {
+            this.log('Récupération des opportunités');
+            
+            const client = await this.getClient();
+            const { data, error } = await client
+                .from('opportunities')
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    )
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('❌ Erreur Supabase getOpportunities:', error);
+                throw error;
+            }
+            
+            this.log('Opportunités récupérées', `${data?.length || 0} entrées`);
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('❌ Erreur récupération opportunités:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async createOpportunity(opportunityData) {
+        try {
+            this.log('Création opportunité', opportunityData);
+            
+            const client = await this.getClient();
+            
+            // Valider les données
+            if (!opportunityData.company_id) {
+                throw new Error('La société est obligatoire');
+            }
+            
+            const { data, error } = await client
+                .from('opportunities')
+                .insert([{
+                    ...opportunityData,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    )
+                `);
+            
+            if (error) {
+                console.error('❌ Erreur création opportunité:', error);
+                throw error;
+            }
+            
+            this.log('Opportunité créée avec succès', data[0]);
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('❌ Erreur création opportunité:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async updateOpportunity(id, opportunityData) {
+        try {
+            this.log('Mise à jour opportunité', { id, data: opportunityData });
+            
+            const client = await this.getClient();
+            
+            if (!id) {
+                throw new Error('ID d\'opportunité manquant');
+            }
+            
+            const { data, error } = await client
+                .from('opportunities')
+                .update({
+                    ...opportunityData,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select(`
+                    *,
+                    companies (
+                        id,
+                        name,
+                        status
+                    )
+                `);
+            
+            if (error) {
+                console.error('❌ Erreur mise à jour opportunité:', error);
+                throw error;
+            }
+            
+            if (!data || data.length === 0) {
+                throw new Error('Opportunité non trouvée');
+            }
+            
+            this.log('Opportunité mise à jour avec succès', data[0]);
+            return { success: true, data: data[0] };
+        } catch (error) {
+            console.error('❌ Erreur mise à jour opportunité:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    static async deleteOpportunity(id) {
+        try {
+            this.log('Suppression opportunité', { id });
+            
+            const client = await this.getClient();
+            
+            if (!id) {
+                throw new Error('ID d\'opportunité manquant');
+            }
+            
+            const { error } = await client
+                .from('opportunities')
+                .delete()
+                .eq('id', id);
+            
+            if (error) {
+                console.error('❌ Erreur suppression opportunité:', error);
+                throw error;
+            }
+            
+            this.log('Opportunité supprimée avec succès');
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Erreur suppression opportunité:', error);
+            return { success: false, error: error.message };
+        }
+    }
     
     // ========== STATISTIQUES ==========
     
