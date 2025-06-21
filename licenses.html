@@ -735,7 +735,7 @@
                 
                 <div class="sort-buttons">
                     <button class="sort-btn active" onclick="applySortFilter('created_desc')" data-sort="created_desc">📅 Récentes</button>
-                    <button class="sort-btn" onclick="applySortFilter('renewal_asc')" data-sort="renewal_asc">🔄 À renouveler</button>
+                    <button class="sort-btn" onclick="applySortFilter('expiring_only')" data-sort="expiring_only">🔄 À renouveler</button>
                     <button class="sort-btn" onclick="applySortFilter('price_desc')" data-sort="price_desc">💰 Prix ↓</button>
                     <button class="sort-btn" onclick="applySortFilter('price_asc')" data-sort="price_asc">💸 Prix ↑</button>
                     <button class="sort-btn" onclick="applySortFilter('company_asc')" data-sort="company_asc">🏢 A-Z</button>
@@ -1978,9 +1978,31 @@
                 });
             }
 
-            // Tri
+            // Filtrage spécial pour "À renouveler"
             const sortType = appData.currentSort || 'created_desc';
-            filtered = sortLicenses(filtered, sortType);
+            if (sortType === 'expiring_only') {
+                // Filtrer SEULEMENT les licences qui expirent dans les 30 jours
+                filtered = filtered.filter(license => {
+                    if (license.status !== 'active' || !license.renewal_date) return false;
+                    
+                    const now = new Date();
+                    const renewal = new Date(license.renewal_date);
+                    const daysUntil = Math.ceil((renewal - now) / (1000 * 60 * 60 * 24));
+                    
+                    // Retourner true seulement si la licence expire dans les 30 jours
+                    return daysUntil >= 0 && daysUntil <= 30;
+                });
+                
+                // Trier par date de renouvellement (les plus proches d'abord)
+                filtered = filtered.sort((a, b) => {
+                    const dateA = new Date(a.renewal_date);
+                    const dateB = new Date(b.renewal_date);
+                    return dateA - dateB;
+                });
+            } else {
+                // Appliquer le tri normal
+                filtered = sortLicenses(filtered, sortType);
+            }
 
             appData.filteredData = filtered;
             renderContent();
@@ -2037,12 +2059,9 @@
                         return statusA - statusB;
                     });
                 
-                case 'status_expiring':
-                    return sortedLicenses.sort((a, b) => {
-                        const statusA = getExpiringPriority(a);
-                        const statusB = getExpiringPriority(b);
-                        return statusA - statusB;
-                    });
+                case 'expiring_only':
+                    // Ce cas est géré directement dans applyFiltersAndSorting()
+                    return sortedLicenses;
                 
                 default:
                     return sortedLicenses;
@@ -2079,16 +2098,58 @@
         }
 
         function showEmptyState() {
+            const message = getEmptyStateMessage();
             document.getElementById('mainContent').innerHTML = `
                 <div class="empty-state">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
-                    <h3>Aucune licence trouvée</h3>
-                    <p>Commencez par créer votre première licence</p>
-                    <button class="btn btn-primary" onclick="openCreateModal()">
-                        ➕ Créer une licence
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">${message.icon}</div>
+                    <h3>${message.title}</h3>
+                    <p>${message.description}</p>
+                    <button class="btn btn-primary" onclick="${message.action}">
+                        ${message.buttonText}
                     </button>
                 </div>
             `;
+        }
+
+        function getEmptyStateMessage() {
+            const sortType = appData.currentSort || 'created_desc';
+            const search = document.getElementById('searchInput')?.value?.trim() || '';
+            
+            if (sortType === 'expiring_only') {
+                return {
+                    icon: '🎉',
+                    title: 'Aucune licence à renouveler',
+                    description: 'Toutes vos licences sont à jour ! Aucune expiration dans les 30 prochains jours.',
+                    action: 'resetFilters()',
+                    buttonText: '🔄 Voir toutes les licences'
+                };
+            } else if (search) {
+                return {
+                    icon: '🔍',
+                    title: 'Aucun résultat trouvé',
+                    description: `Aucune licence ne correspond à "${search}". Essayez un autre terme.`,
+                    action: 'clearSearch()',
+                    buttonText: '🗑️ Effacer la recherche'
+                };
+            } else {
+                return {
+                    icon: '📄',
+                    title: 'Aucune licence trouvée',
+                    description: 'Commencez par créer votre première licence',
+                    action: 'openCreateModal()',
+                    buttonText: '➕ Créer une licence'
+                };
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            applySortFilter('created_desc');
+        }
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            applyFiltersAndSorting();
         }
 
         // Utilitaires
