@@ -534,12 +534,12 @@
             </div>
             
             <!-- Onglets de navigation -->
-            <div id="licenseTabsContainer" style="display: none; border-bottom: 1px solid var(--gray-200);">
+            <div id="licenseTabsContainer" style="border-bottom: 1px solid var(--gray-200);">
                 <div style="display: flex; padding: 0 1.5rem;">
                     <button class="tab-btn active" data-tab="license-form" onclick="switchLicenseTab('license-form')">
                         📝 Licence actuelle
                     </button>
-                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')">
+                    <button class="tab-btn" data-tab="company-licenses" onclick="switchLicenseTab('company-licenses')" id="companyLicensesTabBtn">
                         📄 Toutes les licences
                     </button>
                 </div>
@@ -1151,6 +1151,9 @@
             document.getElementById('submitLicenseBtn').textContent = '💾 Créer la licence';
             editingLicense = null;
             
+            // Masquer le deuxième onglet pour les nouvelles licences
+            document.getElementById('companyLicensesTabBtn').style.display = 'none';
+            
             const modal = document.getElementById('licenseModal');
             modal.classList.add('show');
         }
@@ -1173,7 +1176,7 @@
             document.getElementById('enableCustomPricing').checked = false;
             document.getElementById('customPricingFields').style.display = 'none';
             document.getElementById('customPricePerUser').required = false;
-            document.getElementById('licenseTabsContainer').style.display = 'none';
+            document.getElementById('companyLicensesTabBtn').style.display = 'none';
             editingLicense = null;
             
             // Réinitialiser les onglets
@@ -1190,8 +1193,8 @@
             
             editingLicense = license;
             
-            // Afficher les onglets seulement en mode édition
-            document.getElementById('licenseTabsContainer').style.display = 'block';
+            // Afficher le deuxième onglet en mode édition
+            document.getElementById('companyLicensesTabBtn').style.display = 'block';
             
             document.getElementById('licenseCompany').value = license.company_id;
             document.getElementById('licensePlan').value = license.plan_id;
